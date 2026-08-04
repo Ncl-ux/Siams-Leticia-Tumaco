@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -185,8 +187,8 @@ TERRITORIOS = {
         "sede": "Universidad Nacional de Colombia – Sede Amazonia",
         "lat": -4.2153,
         "lon": -69.9406,
-        "area_principal": "25 km",
-        "contexto": "Hasta 50 km",
+        "area_principal": "15 km",
+        "contexto": "Municipio de Leticia",
         "fuente_clima": "NASA POWER",
         "estado_datos": "IDEAM con disponibilidad limitada",
         "descripcion": (
@@ -249,6 +251,241 @@ TERRITORIOS = {
 # =========================================================
 # FUNCIONES
 # =========================================================
+
+# Nombres de las imágenes tal como aparecen en tu carpeta.
+# No es necesario escribir la extensión: el código prueba PNG, JPG, JPEG y WEBP.
+MAPAS_LETICIA = {
+    "cobertura": "mapa_coberturas_leticia",
+    "geologia": "mapa_geologia_trapecio_sur",
+    "relieve": "mapa_geomorfologia_relieve_leticia",
+    "hidrografia": "mapa_hidrografia_leticia",
+    "humedales": "mapa_humedales_leticia_puerto_narino",
+    "inundacion": "mapa_inundacion_urbana_leticia",
+    "pozos_irca": "mapa_pozos_irca_leticia",
+}
+
+
+def encontrar_carpeta_mapas() -> Path:
+    """Busca la carpeta de mapas tanto junto al código como en Documentos."""
+    carpeta_codigo = Path(__file__).resolve().parent
+
+    candidatas = [
+        carpeta_codigo / "SIAMS MAPAS",
+        carpeta_codigo / "mapas",
+        carpeta_codigo / "datos" / "leticia" / "mapas",
+        Path.home() / "Documents" / "SIAMS MAPAS",
+        Path.home() / "Documentos" / "SIAMS MAPAS",
+    ]
+
+    for carpeta in candidatas:
+        if carpeta.exists() and carpeta.is_dir():
+            return carpeta
+
+    # Si ninguna existe, se devuelve la primera para mostrar una ruta clara en el aviso.
+    return candidatas[0]
+
+
+CARPETA_MAPAS = encontrar_carpeta_mapas()
+EXTENSIONES_IMAGEN = (".png", ".jpg", ".jpeg", ".webp", ".PNG", ".JPG", ".JPEG", ".WEBP")
+
+
+# =========================================================
+# ARCHIVO CLIMÁTICO DE LETICIA
+# =========================================================
+
+def encontrar_archivo_clima_leticia():
+    """Localiza automáticamente el Excel de NASA POWER junto al proyecto."""
+    carpeta_codigo = Path(__file__).resolve().parent
+    carpetas = [
+        carpeta_codigo,
+        carpeta_codigo / "DATOS CLIMA",
+        carpeta_codigo / "datos",
+        carpeta_codigo / "datos" / "leticia",
+        carpeta_codigo / "datos" / "leticia" / "clima",
+    ]
+
+    nombres_preferidos = [
+        "NASA_POWER_LETICIA_FINAL.xlsx",
+        "NASA_POWER_LETICIA_FINAL (3).xlsx",
+    ]
+
+    for carpeta in carpetas:
+        for nombre in nombres_preferidos:
+            ruta = carpeta / nombre
+            if ruta.exists() and ruta.is_file():
+                return ruta
+
+    # Permite variaciones del nombre, por ejemplo copias con (1), (2), etc.
+    for carpeta in carpetas:
+        if carpeta.exists():
+            coincidencias = sorted(carpeta.glob("NASA_POWER_LETICIA*.xlsx"))
+            if coincidencias:
+                return coincidencias[0]
+
+    return None
+
+
+ARCHIVO_CLIMA_LETICIA = encontrar_archivo_clima_leticia()
+
+
+def convertir_fecha_excel(valor):
+    """Convierte una fecha sin aplicar ``origin`` a textos o fechas ya interpretadas."""
+    if valor is None or pd.isna(valor):
+        return None
+
+    # El Excel de NASA POWER llega normalmente como datetime de Python o Timestamp.
+    # Este intento funciona para ambos y también para textos ISO como 2000-01-01.
+    fecha = pd.to_datetime(valor, errors="coerce")
+    if pd.notna(fecha):
+        return pd.Timestamp(fecha)
+
+    # Respaldo exclusivo para un serial numérico real de Excel.
+    # Se suma el número de días, sin usar el parámetro origin de pd.to_datetime.
+    if pd.api.types.is_number(valor):
+        return pd.Timestamp("1899-12-30") + pd.to_timedelta(float(valor), unit="D")
+
+    return None
+
+
+@st.cache_data(show_spinner=False)
+def cargar_clima_leticia(ruta_texto: str):
+    """Lee los regímenes mensuales y los indicadores del Excel procesado."""
+    ruta = Path(ruta_texto)
+
+    p = pd.read_excel(ruta, sheet_name="Regimen_P")
+    t = pd.read_excel(ruta, sheet_name="Regimen_T")
+    hr = pd.read_excel(ruta, sheet_name="Regimen_HR")
+    clim = pd.read_excel(ruta, sheet_name="Climatologia_mensual")
+    indicadores_df = pd.read_excel(ruta, sheet_name="Indicadores")
+
+    # Regimen_P contiene el total mensual climatológico, aunque la columna
+    # conserve el nombre original de la variable diaria.
+    p = p.rename(columns={"precipitacion_mm_dia": "Precipitación mensual (mm)"})
+    t = t.rename(columns={
+        "temperatura_media_C": "Temperatura media (°C)",
+        "temperatura_maxima_C": "Temperatura máxima (°C)",
+        "temperatura_minima_C": "Temperatura mínima (°C)",
+    })
+    hr = hr.rename(columns={"humedad_relativa_pct": "Humedad relativa (%)"})
+
+    otras = clim[[
+        "mes",
+        "viento_2m_m_s",
+        "presion_superficie_kPa",
+        "radiacion_solar_kWh_m2_dia",
+    ]].rename(columns={
+        "viento_2m_m_s": "Viento a 2 m (m/s)",
+        "presion_superficie_kPa": "Presión superficial (kPa)",
+        "radiacion_solar_kWh_m2_dia": "Radiación solar (kWh/m²/día)",
+    })
+
+    df = p.merge(t, on="mes", how="inner")
+    df = df.merge(hr, on="mes", how="inner")
+    df = df.merge(otras, on="mes", how="inner")
+    df = df.sort_values("mes").reset_index(drop=True)
+    df["Mes"] = df["mes"].map(dict(enumerate(MESES, start=1)))
+    df = df.drop(columns="mes")
+
+    columnas = [
+        "Mes",
+        "Precipitación mensual (mm)",
+        "Temperatura media (°C)",
+        "Temperatura máxima (°C)",
+        "Temperatura mínima (°C)",
+        "Humedad relativa (%)",
+        "Viento a 2 m (m/s)",
+        "Presión superficial (kPa)",
+        "Radiación solar (kWh/m²/día)",
+    ]
+    df = df[columnas]
+
+    indicadores = dict(
+        zip(indicadores_df["Indicador"].astype(str), indicadores_df["Valor"])
+    )
+
+    for clave in ("Fecha inicial", "Fecha final"):
+        if clave in indicadores:
+            indicadores[clave] = convertir_fecha_excel(indicadores[clave])
+
+    return df, indicadores
+
+
+def clima_prototipo(info: dict) -> pd.DataFrame:
+    """Respaldo para territorios que todavía no tienen Excel procesado."""
+    return pd.DataFrame({
+        "Mes": MESES,
+        "Precipitación mensual (mm)": info["precipitacion"],
+        "Temperatura media (°C)": info["temperatura"],
+        "Humedad relativa (%)": info["humedad"],
+    })
+
+
+def buscar_mapa(nombre_base: str):
+    """Devuelve la ruta de una imagen sin depender de su extensión."""
+    for extension in EXTENSIONES_IMAGEN:
+        ruta = CARPETA_MAPAS / f"{nombre_base}{extension}"
+        if ruta.exists():
+            return ruta
+
+    # También permite pequeñas variaciones de mayúsculas/minúsculas en el nombre.
+    if CARPETA_MAPAS.exists():
+        objetivo = nombre_base.casefold()
+        for archivo in CARPETA_MAPAS.iterdir():
+            if archivo.is_file() and archivo.stem.casefold() == objetivo:
+                if archivo.suffix.casefold() in {".png", ".jpg", ".jpeg", ".webp"}:
+                    return archivo
+
+    return None
+
+
+def mostrar_mapa_imagen(
+    clave: str,
+    titulo: str,
+    fuente: str,
+    descripcion: str = "",
+) -> None:
+    """Muestra un mapa de Leticia o un aviso claro si el archivo no aparece."""
+    nombre_base = MAPAS_LETICIA[clave]
+    ruta = buscar_mapa(nombre_base)
+
+    if ruta is None:
+        st.warning(
+            f"No se encontró el archivo **{nombre_base}** en la carpeta de mapas."
+        )
+        st.code(str(CARPETA_MAPAS), language=None)
+        st.caption(
+            "Verifica que la imagen esté descomprimida y que su nombre coincida. "
+            "La extensión puede ser PNG, JPG, JPEG o WEBP."
+        )
+        return
+
+    # Se conserva el tamaño original para evitar que Streamlit agrande una
+    # captura pequeña y la vuelva más borrosa. En pantallas estrechas el
+    # navegador la ajusta automáticamente.
+    st.image(
+        str(ruta),
+        caption=f"{titulo}. Fuente: {fuente}",
+        use_container_width=False,
+    )
+
+    with open(ruta, "rb") as archivo_imagen:
+        st.download_button(
+            "Ver mapa en su resolución original",
+            data=archivo_imagen.read(),
+            file_name=ruta.name,
+            mime=f"image/{ruta.suffix.lower().lstrip('.')}",
+            key=f"descargar_{clave}_{ruta.name}",
+        )
+
+    st.caption(
+        "La nitidez depende del archivo original. Para una mejora real conviene "
+        "exportar nuevamente el mapa desde el PDF o SIG a 300 ppp; el código evita "
+        "ampliarlo artificialmente dentro de la página."
+    )
+
+    if descripcion:
+        st.markdown(descripcion)
+
 
 def territorio_actual(nombre: str) -> dict:
     return TERRITORIOS[nombre]
@@ -564,11 +801,12 @@ elif seccion == "Resumen territorial":
 # =========================================================
 
 elif seccion == "Mapa y territorio":
-    st.title(f"🗺️ Mapa territorial de {territorio}")
+    st.title(f"🗺️ Ubicación territorial de {territorio}")
 
     st.write(
-        "En la versión final se integrarán capas de sede UNAL, área principal, "
-        "contexto regional, hidrografía, humedales, estaciones, pozos y sondas."
+        "Este mapa interactivo ubica la sede de referencia. Los mapas temáticos "
+        "completos se presentan en las secciones de hidrología, cobertura, relieve, "
+        "geología, hidrogeología e IRCA."
     )
 
     mapa = pd.DataFrame(
@@ -578,29 +816,35 @@ elif seccion == "Mapa y territorio":
         }
     )
 
-    st.map(mapa, zoom=8)
+    st.map(mapa, zoom=11 if territorio == "Leticia" else 10)
 
     c1, c2, c3 = st.columns(3)
 
     with c1:
         mostrar_tarjeta(
-            "Capas base",
-            "Límites administrativos, centros poblados y sede UNAL.",
+            "Sede de referencia",
+            info["sede"],
             "📍",
         )
 
     with c2:
         mostrar_tarjeta(
-            "Capas hídricas",
-            "Ríos, quebradas, humedales y cuerpos de agua.",
-            "💦",
+            "Área principal",
+            f"Análisis ambiental de referencia: {info['area_principal']}.",
+            "🧭",
         )
 
     with c3:
         mostrar_tarjeta(
-            "Capas de monitoreo",
-            "Estaciones IDEAM, pozos SGC y sondas.",
-            "📡",
+            "Contexto",
+            info["contexto"],
+            "🌎",
+        )
+
+    if territorio == "Leticia":
+        st.info(
+            "Los mapas temáticos disponibles fueron incorporados como imágenes de "
+            "referencia para evitar cargar capas SIG pesadas dentro del prototipo."
         )
 
 # =========================================================
@@ -609,24 +853,73 @@ elif seccion == "Mapa y territorio":
 
 elif seccion == "Clima":
     st.title(f"🌧️ Clima de {territorio}")
+    st.caption("Lector climático SIAMS · corrección de fechas v3")
 
-    st.warning(
-        "Los valores mostrados son ilustrativos y deben reemplazarse por los Excel finales."
-    )
+    indicadores = {}
+    datos_reales = territorio == "Leticia" and ARCHIVO_CLIMA_LETICIA is not None
 
-    df = pd.DataFrame(
-        {
-            "Mes": MESES,
-            "Precipitación (mm)": info["precipitacion"],
-            "Temperatura (°C)": info["temperatura"],
-            "Humedad relativa (%)": info["humedad"],
-        }
-    )
+    if datos_reales:
+        try:
+            df, indicadores = cargar_clima_leticia(str(ARCHIVO_CLIMA_LETICIA))
+            st.success(
+                f"Datos reales cargados desde `{ARCHIVO_CLIMA_LETICIA.name}` · "
+                "Fuente: NASA POWER."
+            )
+        except Exception as error:
+            datos_reales = False
+            df = clima_prototipo(info)
+            st.error(
+                "Se encontró el Excel, pero ocurrió un error al procesarlo. "
+                "La aplicación usará temporalmente los valores de respaldo."
+            )
+            st.code(str(error), language=None)
+    else:
+        df = clima_prototipo(info)
+        if territorio == "Leticia":
+            st.warning(
+                "No se encontró el Excel de NASA POWER. Súbelo al mismo nivel de "
+                "`app.py` con un nombre que comience por `NASA_POWER_LETICIA`."
+            )
+        else:
+            st.warning(
+                "Los valores mostrados todavía son ilustrativos para este territorio."
+            )
 
-    tab1, tab2, tab3 = st.tabs(
+    if datos_reales and indicadores:
+        fecha_inicial = indicadores.get("Fecha inicial")
+        fecha_final = indicadores.get("Fecha final")
+        dias = indicadores.get("Número de días descargados", "—")
+        p_max = indicadores.get("Precipitación diaria máxima [mm/día]", "—")
+        t_media = indicadores.get("Temperatura media del periodo [°C]", "—")
+        hr_media = indicadores.get("Humedad relativa media [%]", "—")
+
+        m1, m2, m3, m4 = st.columns(4)
+        periodo = (
+            f"{fecha_inicial:%Y-%m-%d} a {fecha_final:%Y-%m-%d}"
+            if hasattr(fecha_inicial, "strftime") and hasattr(fecha_final, "strftime")
+            else "—"
+        )
+        m1.metric("Periodo", periodo)
+        m2.metric("Días analizados", f"{int(dias):,}" if pd.notna(dias) else "—")
+        m3.metric("Máxima diaria", f"{float(p_max):.2f} mm/día" if pd.notna(p_max) else "—")
+        m4.metric("Temperatura media", f"{float(t_media):.2f} °C" if pd.notna(t_media) else "—")
+
+        st.markdown(
+            f"""
+            <div class="soft-box">
+                <strong>Humedad relativa media del periodo:</strong> {float(hr_media):.2f} %<br>
+                <strong>Tratamiento:</strong> régimen mensual multianual calculado a partir de datos diarios.<br>
+                <strong>Nota:</strong> la precipitación de la gráfica corresponde al total mensual climatológico, no a mm/día.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    tab1, tab2, tab3, tab4 = st.tabs(
         [
             "Precipitación",
             "Temperatura y humedad",
+            "Viento, presión y radiación",
             "Tabla",
         ]
     )
@@ -635,66 +928,126 @@ elif seccion == "Clima":
         fig = px.bar(
             df,
             x="Mes",
-            y="Precipitación (mm)",
-            title="Régimen mensual de precipitación",
+            y="Precipitación mensual (mm)",
+            title="Régimen mensual multianual de precipitación",
+            text_auto=".1f",
         )
+        fig.update_layout(
+            xaxis_title="Mes",
+            yaxis_title="Precipitación mensual (mm)",
+            margin=dict(l=30, r=30, t=60, b=30),
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
-        st.plotly_chart(
-            fig,
-            use_container_width=True,
-        )
+        if datos_reales:
+            mes_max = df.loc[df["Precipitación mensual (mm)"].idxmax()]
+            mes_min = df.loc[df["Precipitación mensual (mm)"].idxmin()]
+            st.info(
+                f"El mayor promedio mensual se presenta en **{mes_max['Mes']}** "
+                f"({mes_max['Precipitación mensual (mm)']:.1f} mm), mientras que "
+                f"el menor ocurre en **{mes_min['Mes']}** "
+                f"({mes_min['Precipitación mensual (mm)']:.1f} mm)."
+            )
 
     with tab2:
         fig = go.Figure()
 
-        fig.add_trace(
-            go.Scatter(
-                x=df["Mes"],
-                y=df["Temperatura (°C)"],
-                mode="lines+markers",
-                name="Temperatura (°C)",
-            )
-        )
+        fig.add_trace(go.Scatter(
+            x=df["Mes"],
+            y=df["Temperatura media (°C)"],
+            mode="lines+markers",
+            name="Temperatura media",
+        ))
 
-        fig.add_trace(
-            go.Scatter(
+        if "Temperatura máxima (°C)" in df.columns:
+            fig.add_trace(go.Scatter(
                 x=df["Mes"],
-                y=df["Humedad relativa (%)"],
-                mode="lines+markers",
-                name="Humedad relativa (%)",
-                yaxis="y2",
-            )
-        )
+                y=df["Temperatura máxima (°C)"],
+                mode="lines",
+                name="Temperatura máxima",
+                line=dict(dash="dot"),
+            ))
+            fig.add_trace(go.Scatter(
+                x=df["Mes"],
+                y=df["Temperatura mínima (°C)"],
+                mode="lines",
+                name="Temperatura mínima",
+                line=dict(dash="dot"),
+            ))
+
+        fig.add_trace(go.Scatter(
+            x=df["Mes"],
+            y=df["Humedad relativa (%)"],
+            mode="lines+markers",
+            name="Humedad relativa",
+            yaxis="y2",
+        ))
 
         fig.update_layout(
             title="Temperatura y humedad relativa",
-            yaxis=dict(
-                title="Temperatura (°C)",
-            ),
+            yaxis=dict(title="Temperatura (°C)"),
             yaxis2=dict(
-                title="Humedad (%)",
+                title="Humedad relativa (%)",
                 overlaying="y",
                 side="right",
+                range=[0, 100],
             ),
-            margin=dict(
-                l=30,
-                r=30,
-                t=60,
-                b=30,
-            ),
+            legend=dict(orientation="h", y=-0.2),
+            margin=dict(l=30, r=30, t=60, b=80),
         )
-
-        st.plotly_chart(
-            fig,
-            use_container_width=True,
-        )
+        st.plotly_chart(fig, use_container_width=True)
 
     with tab3:
+        columnas_otras = [
+            "Viento a 2 m (m/s)",
+            "Presión superficial (kPa)",
+            "Radiación solar (kWh/m²/día)",
+        ]
+
+        if all(col in df.columns for col in columnas_otras):
+            variable = st.selectbox(
+                "Variable climática",
+                columnas_otras,
+                key=f"variable_clima_{territorio}",
+            )
+            fig = px.line(
+                df,
+                x="Mes",
+                y=variable,
+                markers=True,
+                title=f"Régimen mensual de {variable.lower()}",
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info(
+                "Estas variables se mostrarán cuando exista un archivo procesado para el territorio."
+            )
+
+    with tab4:
         st.dataframe(
-            df,
+            df.round({
+                "Precipitación mensual (mm)": 1,
+                "Temperatura media (°C)": 2,
+                "Temperatura máxima (°C)": 2,
+                "Temperatura mínima (°C)": 2,
+                "Humedad relativa (%)": 2,
+                "Viento a 2 m (m/s)": 3,
+                "Presión superficial (kPa)": 2,
+                "Radiación solar (kWh/m²/día)": 2,
+            }),
             use_container_width=True,
             hide_index=True,
         )
+
+        if datos_reales:
+            with open(ARCHIVO_CLIMA_LETICIA, "rb") as archivo_excel:
+                st.download_button(
+                    "Descargar base climática procesada",
+                    data=archivo_excel.read(),
+                    file_name=ARCHIVO_CLIMA_LETICIA.name,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="descarga_clima_leticia",
+                )
 
 # =========================================================
 # HIDROLOGÍA
@@ -703,25 +1056,58 @@ elif seccion == "Clima":
 elif seccion == "Hidrología":
     st.title(f"💦 Hidrología de {territorio}")
 
-    c1, c2 = st.columns(2)
-
-    with c1:
-        mostrar_tarjeta(
-            "Agua superficial",
-            "Ríos, quebradas, humedales, cuerpos de agua y dirección general del drenaje.",
-            "🌊",
+    if territorio == "Leticia":
+        mostrar_mapa_imagen(
+            "hidrografia",
+            "Mapa de hidrografía del municipio de Leticia",
+            "Instituto Amazónico de Investigaciones Científicas SINCHI",
+            """
+            El mapa permite reconocer la extensa red de drenaje del municipio,
+            compuesta por ríos, quebradas, caños y cuerpos de agua conectados con
+            el sistema fluvial amazónico. Se utiliza como referencia municipal;
+            el área principal del prototipo SIAMS se concentra alrededor de la sede.
+            """,
         )
 
-    with c2:
-        mostrar_tarjeta(
-            "Información por incorporar",
-            "Cuencas, subcuencas, inventario de humedales, caudales y zonas inundables.",
-            "📂",
-        )
+        c1, c2 = st.columns(2)
 
-    st.info(
-        "Esta sección quedará conectada al mapa territorial y a fichas de cuerpos de agua."
-    )
+        with c1:
+            with st.expander("Ver mapa regional de humedales", expanded=False):
+                mostrar_mapa_imagen(
+                    "humedales",
+                    "Humedales de Leticia y Puerto Nariño",
+                    "Corpoamazonia",
+                    "Mapa regional complementario; no todos los humedales representados "
+                    "se localizan dentro del área inmediata de la sede.",
+                )
+
+        with c2:
+            with st.expander("Ver mapa de inundación urbana", expanded=False):
+                mostrar_mapa_imagen(
+                    "inundacion",
+                    "Áreas de inundación en la zona urbana de Leticia",
+                    "Corpoamazonia",
+                    "La imagen se usa como antecedente territorial y debe interpretarse "
+                    "de acuerdo con el año, la escala y la metodología de la fuente.",
+                )
+    else:
+        c1, c2 = st.columns(2)
+
+        with c1:
+            mostrar_tarjeta(
+                "Agua superficial",
+                "Ríos, quebradas, humedales, cuerpos de agua y dirección general del drenaje.",
+                "🌊",
+            )
+
+        with c2:
+            mostrar_tarjeta(
+                "Información por incorporar",
+                "Cuencas, subcuencas, inventario de humedales, caudales y zonas inundables.",
+                "📂",
+            )
+
+        st.info("Los mapas temáticos de Tumaco todavía están pendientes de incorporación.")
 
 # =========================================================
 # GEOLOGÍA
@@ -739,9 +1125,16 @@ elif seccion == "Geología":
     )
 
     with tab1:
-        st.info(
-            "Aquí se mostrará el mapa geológico oficial o una capa GeoJSON simplificada."
-        )
+        if territorio == "Leticia":
+            mostrar_mapa_imagen(
+                "geologia",
+                "Distribución espacial de las unidades geológicas del Trapecio Sur",
+                "Instituto SINCHI, con base en información geológica regional",
+                "El mapa tiene alcance regional y sirve para contextualizar las unidades "
+                "geológicas presentes en el sector del Trapecio Sur.",
+            )
+        else:
+            st.info("El mapa geológico de Tumaco todavía está pendiente de incorporación.")
 
     with tab2:
         ejemplo = pd.DataFrame(
@@ -802,6 +1195,16 @@ elif seccion == "Hidrogeología":
             "Recarga",
             "Zonas potenciales y limitaciones de interpretación.",
             "🌧️",
+        )
+
+    if territorio == "Leticia":
+        st.subheader("Pozos y aguas subterráneas")
+        mostrar_mapa_imagen(
+            "pozos_irca",
+            "Distribución de pozos de agua subterránea en Leticia",
+            "SENA – recurso académico de aguas subterráneas de Leticia",
+            "El mapa se incorpora como referencia académica complementaria. La ubicación "
+            "de los puntos debe leerse junto con la fuente, el periodo y el uso reportado.",
         )
 
     st.markdown(
@@ -865,9 +1268,18 @@ elif seccion == "Calidad del agua e IRCA":
     st.title(f"🚰 Calidad del agua e IRCA – {territorio}")
 
     st.write(
-        "El mapa clasificará los puntos por nivel de riesgo y permitirá consultar "
-        "fecha, fuente, valor IRCA y parámetros que generan incumplimiento."
+        "Esta sección presenta la clasificación del riesgo y, cuando existe "
+        "información georreferenciada, la ubicación de los puntos evaluados."
     )
+
+    if territorio == "Leticia":
+        mostrar_mapa_imagen(
+            "pozos_irca",
+            "Pozos y clasificación del riesgo IRCA en Leticia",
+            "SENA – recurso académico de aguas subterráneas de Leticia",
+            "El mapa corresponde a puntos específicos y no representa automáticamente "
+            "la calidad del agua de toda el área municipal.",
+        )
 
     irca = pd.DataFrame(
         {
@@ -879,7 +1291,7 @@ elif seccion == "Calidad del agua e IRCA":
                 "Inviable sanitariamente",
                 "Sin información",
             ],
-            "Estado": [
+            "Representación": [
                 "Verde",
                 "Azul",
                 "Amarillo",
@@ -897,8 +1309,8 @@ elif seccion == "Calidad del agua e IRCA":
     )
 
     st.caption(
-        "La clasificación corresponde al punto y periodo evaluado; "
-        "no representa automáticamente toda el área cercana."
+        "La clasificación debe verificarse con el valor, la fecha, la fuente y el "
+        "punto de muestreo representado."
     )
 
 # =========================================================
@@ -911,33 +1323,33 @@ elif seccion == "Cobertura y relieve":
     tab1, tab2 = st.tabs(
         [
             "Cobertura",
-            "Relieve",
+            "Relieve y geomorfología",
         ]
     )
 
     with tab1:
-        st.markdown(
-            """
-            Se incorporarán categorías como bosque, manglar, zona urbana,
-            cultivos, pastos, humedales, agua y áreas intervenidas.
-            """
-        )
-
-        st.info(
-            "Pendiente: capa de cobertura, año, leyenda y porcentaje por categoría."
-        )
+        if territorio == "Leticia":
+            mostrar_mapa_imagen(
+                "cobertura",
+                "Coberturas de la tierra del municipio de Leticia",
+                "Instituto SINCHI",
+                "El mapa permite diferenciar bosques, áreas transformadas, cuerpos de "
+                "agua y otras coberturas. Debe conservarse visible el año de la fuente.",
+            )
+        else:
+            st.info("El mapa de coberturas de Tumaco todavía está pendiente.")
 
     with tab2:
-        st.markdown(
-            """
-            Se incorporará el modelo digital de elevación, elevación mínima y máxima,
-            pendientes, perfil altitudinal y relación con el drenaje.
-            """
-        )
-
-        st.info(
-            "Pendiente: DEM, resolución espacial y estadísticas del área de análisis."
-        )
+        if territorio == "Leticia":
+            mostrar_mapa_imagen(
+                "relieve",
+                "Geomorfología y características generales del relieve del Trapecio Sur",
+                "Instituto SINCHI",
+                "Esta imagen se utiliza para interpretar las formas generales del terreno. "
+                "No reemplaza un DEM ni un análisis detallado de pendientes.",
+            )
+        else:
+            st.info("El mapa de relieve de Tumaco todavía está pendiente.")
 
 # =========================================================
 # ESTACIONES Y DATOS
@@ -1126,7 +1538,7 @@ elif seccion == "Comparar territorios":
                 "NASA POWER",
                 "Muy limitada",
                 "Fluvial amazónica",
-                "25 km",
+                "15 km",
             ],
             "Tumaco": [
                 "Pacífico",
@@ -1199,6 +1611,25 @@ elif seccion == "Metodología":
 
 elif seccion == "Fuentes y descargas":
     st.title("📂 Fuentes y descargas")
+
+    if territorio == "Leticia":
+        with st.expander("Estado de los archivos de mapas", expanded=False):
+            st.write(f"**Carpeta detectada:** `{CARPETA_MAPAS}`")
+            estado_mapas = []
+            for clave, nombre_base in MAPAS_LETICIA.items():
+                ruta = buscar_mapa(nombre_base)
+                estado_mapas.append(
+                    {
+                        "Mapa": clave.replace("_", " ").title(),
+                        "Archivo esperado": nombre_base,
+                        "Estado": "Encontrado" if ruta else "No encontrado",
+                    }
+                )
+            st.dataframe(
+                pd.DataFrame(estado_mapas),
+                use_container_width=True,
+                hide_index=True,
+            )
 
     fuentes = pd.DataFrame(
         {
