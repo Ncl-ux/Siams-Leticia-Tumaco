@@ -1,13 +1,25 @@
 from pathlib import Path
 from textwrap import dedent
+import math
+import unicodedata
 
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-VERSION_APP = "PROTOTIPO-SIAMS-V15-2026-09-02"
-FECHA_ACTUALIZACION = "2 de septiembre de 2026"
+# Dependencias del módulo de agua subterránea.
+# La aplicación sigue abriendo aunque todavía no estén instaladas;
+# en ese caso la propia sección indica qué falta.
+try:
+    import numpy as np
+    import xarray as xr
+except ImportError:
+    np = None
+    xr = None
+
+VERSION_APP = "PROTOTIPO-SIAMS-V17-TENDENCIAS-2026-09-05"
+FECHA_ACTUALIZACION = "5 de septiembre de 2026"
 
 # =========================================================
 # CONFIGURACIÓN GENERAL
@@ -304,6 +316,41 @@ st.markdown(
         line-height: 1.18 !important;
     }
 
+    /* RESULTADO DE TENDENCIAS - evita recorte del texto en st.metric */
+    .trend-result-card {
+        background: var(--secondary-background-color);
+        color: var(--text-color);
+        border: 1px solid var(--siams-borde);
+        border-radius: 16px;
+        padding: 0.95rem 1rem;
+        box-shadow: var(--siams-sombra);
+        min-height: 96px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        overflow: visible;
+    }
+
+    .trend-result-card .trend-label {
+        color: var(--text-color) !important;
+        font-size: 0.88rem;
+        line-height: 1.2;
+        opacity: 0.78;
+        margin-bottom: 0.45rem;
+    }
+
+    .trend-result-card .trend-value {
+        color: var(--text-color) !important;
+        font-size: clamp(1.02rem, 1.45vw, 1.35rem);
+        line-height: 1.25;
+        font-weight: 750;
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        overflow-wrap: anywhere !important;
+    }
+
     /* TABS, EXPANDERS, BOTONES E INPUTS */
     div[data-testid="stTabs"] button {
         font-size: 0.96rem;
@@ -527,9 +574,9 @@ UNAL_SEDES = pd.DataFrame([
         "Ciudad": "Arauca, Arauca",
         "lat": 7.012223,
         "lon": -70.743388,
-        "Estado": "Otra sede UNAL (contexto)",
-        "Descripcion": "Sede Orinoquía de la Universidad Nacional de Colombia.",
-        "Tamano": 11,
+        "Estado": "Territorio integrado en SIAMS",
+        "Descripcion": "Sede Orinoquía, incorporada al prototipo como territorio Arauca.",
+        "Tamano": 16,
     },
     {
         "Sede": "Tumaco",
@@ -545,9 +592,9 @@ UNAL_SEDES = pd.DataFrame([
         "Ciudad": "La Paz, Cesar",
         "lat": 10.390218,
         "lon": -73.200389,
-        "Estado": "Otra sede UNAL (contexto)",
-        "Descripcion": "Sede de La Paz de la Universidad Nacional de Colombia.",
-        "Tamano": 11,
+        "Estado": "Territorio integrado en SIAMS",
+        "Descripcion": "Sede de La Paz, incorporada al prototipo SIAMS.",
+        "Tamano": 16,
     },
 ])
 TERRITORIOS = {
@@ -641,6 +688,48 @@ TERRITORIOS = {
             "nitratos y microcuencas/arroyos estacionales en una misma lectura territorial."
         ),
     },
+    "Arauca": {
+        "region": "Orinoquía colombiana",
+        "departamento": "Arauca",
+        "sede": "Universidad Nacional de Colombia – Sede Orinoquía",
+        "lat": 7.012223,
+        "lon": -70.743388,
+        "area_principal": "Entorno de la Sede Orinoquía",
+        "contexto": "Municipio de Arauca y llanura aluvial",
+        "fuente_clima": "NASA POWER",
+        "estado_datos": "Módulo territorial habilitado; clima se activa al detectar el Excel procesado",
+        "descripcion": (
+            "Arauca se localiza en la Orinoquía colombiana, en un territorio de llanura con "
+            "fuerte influencia de los sistemas fluviales y marcada estacionalidad hidroclimática. "
+            "La Sede Orinoquía se incorpora al prototipo para ampliar la comparación entre regiones."
+        ),
+        "precipitacion": [], "temperatura": [], "humedad": [],
+        "hallazgo": (
+            "El territorio queda habilitado para integrar NASA POWER, cartografía regional y "
+            "la serie satelital de anomalías de almacenamiento de agua subterránea (GWSa)."
+        ),
+    },
+    "La Paz": {
+        "region": "Caribe continental",
+        "departamento": "Cesar",
+        "sede": "Universidad Nacional de Colombia – Sede de La Paz",
+        "lat": 10.390218,
+        "lon": -73.200389,
+        "area_principal": "Entorno de la Sede de La Paz",
+        "contexto": "Municipio de La Paz y valle del Cesar",
+        "fuente_clima": "NASA POWER",
+        "estado_datos": "Módulo territorial habilitado; clima se activa al detectar el Excel procesado",
+        "descripcion": (
+            "La Paz se localiza en el departamento del Cesar, en el Caribe continental colombiano. "
+            "Su incorporación permite ampliar el análisis hidroambiental hacia un territorio con "
+            "condiciones climáticas y geológicas distintas a las demás sedes priorizadas."
+        ),
+        "precipitacion": [], "temperatura": [], "humedad": [],
+        "hallazgo": (
+            "El territorio queda preparado para integrar clima, cartografía y el análisis regional "
+            "de anomalías de almacenamiento de agua subterránea mediante GRACE/GLDAS."
+        ),
+    },
 }
 
 
@@ -695,6 +784,30 @@ ESTADO_COMPONENTES = {
         ("IRCA", "Pendiente", "No se ha incorporado aún una serie IRCA georreferenciada."),
         ("Hidrogeoquímica", "En proceso", "Mapa de concentraciones de nitratos incorporado como antecedente."),
         ("Monitoreo", "Sin datos", "No se han incorporado series validadas de sondas o nivel."),
+    ],
+    "Arauca": [
+        ("Identificación y contexto", "Completo", "Sede Orinoquía, coordenadas y síntesis territorial incorporadas."),
+        ("Cartografía e hidrología", "Pendiente", "Falta incorporar cartografía temática regional validada."),
+        ("Clima", "En proceso", "La sección NASA POWER se activa automáticamente al detectar el Excel procesado."),
+        ("Geología", "Pendiente", "Falta incorporar cartografía geológica de referencia."),
+        ("Cobertura y relieve", "Pendiente", "Faltan capas de cobertura, relieve o pendientes."),
+        ("Estaciones y calidad", "En proceso", "Queda habilitado el inventario de datos y fuentes."),
+        ("Hidrogeología", "En proceso", "Se incorpora GWSa satelital cuando está disponible el NetCDF GRACE/GLDAS."),
+        ("IRCA", "Pendiente", "No se ha incorporado una base georreferenciada de calidad del agua."),
+        ("Hidrogeoquímica", "Pendiente", "No hay muestras hidrogeoquímicas integradas en esta versión."),
+        ("Monitoreo", "En proceso", "Queda preparado para integrar sondas y series validadas."),
+    ],
+    "La Paz": [
+        ("Identificación y contexto", "Completo", "Sede de La Paz, coordenadas y síntesis territorial incorporadas."),
+        ("Cartografía e hidrología", "Pendiente", "Falta incorporar cartografía temática regional validada."),
+        ("Clima", "En proceso", "La sección NASA POWER se activa automáticamente al detectar el Excel procesado."),
+        ("Geología", "Pendiente", "Falta incorporar cartografía geológica de referencia."),
+        ("Cobertura y relieve", "Pendiente", "Faltan capas de cobertura, relieve o pendientes."),
+        ("Estaciones y calidad", "En proceso", "Queda habilitado el inventario de datos y fuentes."),
+        ("Hidrogeología", "En proceso", "Se incorpora GWSa satelital cuando está disponible el NetCDF GRACE/GLDAS."),
+        ("IRCA", "Pendiente", "No se ha incorporado una base georreferenciada de calidad del agua."),
+        ("Hidrogeoquímica", "Pendiente", "No hay muestras hidrogeoquímicas integradas en esta versión."),
+        ("Monitoreo", "En proceso", "Queda preparado para integrar sondas y series validadas."),
     ],
 }
 
@@ -876,6 +989,491 @@ FUENTES_CLIMATICAS = pd.DataFrame({
 })
 
 # =========================================================
+# AGUA SUBTERRÁNEA · GRACE / GLDAS
+# =========================================================
+
+def encontrar_archivo_gws():
+    """Localiza el NetCDF de anomalías de almacenamiento subterráneo."""
+    carpeta_codigo = Path(__file__).resolve().parent
+    carpetas = [
+        carpeta_codigo,
+        carpeta_codigo / "DATOS GWS",
+        carpeta_codigo / "datos",
+        carpeta_codigo / "datos" / "gws",
+        carpeta_codigo / "datos" / "agua_subterranea",
+    ]
+
+    for carpeta in carpetas:
+        ruta = carpeta / "COL_GWS_estimations.nc"
+        if ruta.exists() and ruta.is_file():
+            return ruta
+
+    for carpeta in carpetas:
+        if carpeta.exists():
+            coincidencias = sorted(carpeta.glob("COL_GWS_estimations*.nc"))
+            if coincidencias:
+                return coincidencias[0]
+    return None
+
+
+ARCHIVO_GWS = encontrar_archivo_gws()
+
+
+@st.cache_resource(show_spinner=False)
+def cargar_dataset_gws(ruta_texto: str):
+    """Carga el NetCDF completo en memoria para evitar dejar el archivo abierto."""
+    if xr is None:
+        raise ImportError("Falta instalar xarray y un motor NetCDF (netCDF4 o h5netcdf).")
+    with xr.open_dataset(ruta_texto) as ds:
+        return ds.load()
+
+
+def distancia_haversine_km(lat1, lon1, lat2, lon2):
+    """Distancia geodésica aproximada en kilómetros, vectorizada con NumPy."""
+    radio = 6371.0088
+    lat1r = np.radians(lat1)
+    lon1r = np.radians(lon1)
+    lat2r = np.radians(lat2)
+    lon2r = np.radians(lon2)
+    dlat = lat2r - lat1r
+    dlon = lon2r - lon1r
+    a = np.sin(dlat / 2.0) ** 2 + np.cos(lat1r) * np.cos(lat2r) * np.sin(dlon / 2.0) ** 2
+    return 2.0 * radio * np.arcsin(np.sqrt(a))
+
+
+@st.cache_data(show_spinner=False)
+def extraer_gws_territorio(ruta_texto: str, lat_obj: float, lon_obj: float, radio_max_km: float = 120.0):
+    """
+    Extrae la serie del píxel válido más cercano.
+
+    No usa simplemente ``method='nearest'`` porque algunos píxeles de borde del
+    NetCDF están vacíos. También evita asignar a islas un píxel continental lejano.
+    """
+    if xr is None or np is None:
+        raise ImportError("Faltan dependencias para leer el NetCDF.")
+
+    ds = cargar_dataset_gws(ruta_texto)
+    if "GWS_anom" not in ds.data_vars:
+        raise KeyError("El NetCDF no contiene la variable GWS_anom.")
+
+    da = ds["GWS_anom"]
+    if not {"time", "lat", "lon"}.issubset(set(da.dims)):
+        raise ValueError("GWS_anom no tiene las dimensiones esperadas: time, lat y lon.")
+
+    latitudes = np.asarray(ds["lat"].values, dtype=float)
+    longitudes = np.asarray(ds["lon"].values, dtype=float)
+    lon_obj_norm = float(lon_obj)
+    if np.nanmin(longitudes) >= 0 and lon_obj_norm < 0:
+        lon_obj_norm = lon_obj_norm % 360
+
+    validos = np.asarray(da.notnull().any(dim="time").values, dtype=bool)
+    lat_grid, lon_grid = np.meshgrid(latitudes, longitudes, indexing="ij")
+    distancias = distancia_haversine_km(lat_obj, lon_obj_norm, lat_grid, lon_grid)
+    distancias = np.where(validos, distancias, np.inf)
+
+    if not np.isfinite(distancias).any():
+        return pd.DataFrame(), {"disponible": False, "motivo": "El archivo no contiene píxeles válidos."}
+
+    indice = np.unravel_index(np.nanargmin(distancias), distancias.shape)
+    i_lat, i_lon = int(indice[0]), int(indice[1])
+    distancia_km = float(distancias[i_lat, i_lon])
+
+    if distancia_km > radio_max_km:
+        return pd.DataFrame(), {
+            "disponible": False,
+            "motivo": (
+                f"El píxel válido más cercano está a {distancia_km:.0f} km. "
+                "No se asigna porque sería una extrapolación espacial poco representativa."
+            ),
+            "distancia_km": distancia_km,
+        }
+
+    serie = da.isel(lat=i_lat, lon=i_lon)
+    df = pd.DataFrame({
+        "Fecha": pd.to_datetime(ds["time"].values),
+        "GWSa (cm)": np.asarray(serie.values, dtype=float),
+    }).dropna(subset=["GWSa (cm)"]).sort_values("Fecha").reset_index(drop=True)
+
+    if df.empty:
+        return df, {"disponible": False, "motivo": "La celda seleccionada no contiene observaciones válidas."}
+
+    x_anios = (df["Fecha"] - df["Fecha"].min()).dt.total_seconds() / (365.25 * 24 * 3600)
+    pendiente = float(np.polyfit(x_anios, df["GWSa (cm)"], 1)[0]) if len(df) >= 2 else float("nan")
+
+    meta = {
+        "disponible": True,
+        "lat_pixel": float(latitudes[i_lat]),
+        "lon_pixel": float(longitudes[i_lon]),
+        "distancia_km": distancia_km,
+        "fecha_inicial": df["Fecha"].min(),
+        "fecha_final": df["Fecha"].max(),
+        "registros": int(len(df)),
+        "pendiente_cm_anio": pendiente,
+    }
+    return df, meta
+
+
+def climatologia_gws(df: pd.DataFrame) -> pd.DataFrame:
+    """Promedio multianual por mes de la GWSa extraída."""
+    temporal = df.copy()
+    temporal["Mes_num"] = temporal["Fecha"].dt.month
+    salida = (
+        temporal.groupby("Mes_num", as_index=False)["GWSa (cm)"]
+        .mean()
+        .sort_values("Mes_num")
+    )
+    salida["Mes"] = salida["Mes_num"].map(dict(enumerate(MESES, start=1)))
+    return salida[["Mes_num", "Mes", "GWSa (cm)"]]
+
+
+
+# =========================================================
+# ANÁLISIS DE TENDENCIAS · MANN-KENDALL + SEN
+# =========================================================
+
+VARIABLES_TENDENCIA = {
+    "Precipitación": {
+        "unidad": "mm",
+        "agregacion": "sum",
+        "aliases": [
+            "precipitacion_mm_dia", "precipitacion", "precipitation",
+            "prectotcorr", "prectot", "rainfall",
+        ],
+    },
+    "Temperatura media": {
+        "unidad": "°C",
+        "agregacion": "mean",
+        "aliases": ["temperatura_media_c", "temperatura_media", "t2m", "temperature_mean"],
+    },
+    "Temperatura máxima": {
+        "unidad": "°C",
+        "agregacion": "mean",
+        "aliases": ["temperatura_maxima_c", "temperatura_maxima", "t2m_max", "t2mmax", "temperature_max"],
+    },
+    "Temperatura mínima": {
+        "unidad": "°C",
+        "agregacion": "mean",
+        "aliases": ["temperatura_minima_c", "temperatura_minima", "t2m_min", "t2mmin", "temperature_min"],
+    },
+    "Humedad relativa": {
+        "unidad": "%",
+        "agregacion": "mean",
+        "aliases": ["humedad_relativa_pct", "humedad_relativa", "rh2m", "relative_humidity"],
+    },
+    "Viento a 2 m": {
+        "unidad": "m/s",
+        "agregacion": "mean",
+        "aliases": ["viento_2m_m_s", "viento_2m", "ws2m", "wind_speed_2m", "wind_speed"],
+    },
+    "Presión superficial": {
+        "unidad": "kPa",
+        "agregacion": "mean",
+        "aliases": ["presion_superficie_kpa", "presion_superficie", "ps", "surface_pressure"],
+    },
+    "Radiación solar": {
+        "unidad": "kWh/m²/día",
+        "agregacion": "mean",
+        "aliases": [
+            "radiacion_solar_kwh_m2_dia", "radiacion_solar", "allsky_sfc_sw_dwn",
+            "solar_radiation", "radiation",
+        ],
+    },
+}
+
+
+def normalizar_etiqueta(texto) -> str:
+    """Normaliza nombres de columnas sin depender de tildes, espacios o símbolos."""
+    base = unicodedata.normalize("NFKD", str(texto))
+    base = "".join(c for c in base if not unicodedata.combining(c)).casefold()
+    salida = []
+    for c in base:
+        salida.append(c if c.isalnum() else "_")
+    return "_".join(parte for parte in "".join(salida).split("_") if parte)
+
+
+def _fechas_desde_dataframe(df: pd.DataFrame):
+    """Busca fecha directa o columnas YEAR/MO/DY en una hoja de cálculo."""
+    mapa = {normalizar_etiqueta(c): c for c in df.columns}
+
+    for alias in ("fecha", "date", "datetime", "time"):
+        if alias in mapa:
+            serie = df[mapa[alias]]
+            if pd.api.types.is_numeric_dtype(serie):
+                numeros = pd.to_numeric(serie, errors="coerce")
+                mediana = numeros.dropna().median() if numeros.notna().any() else float("nan")
+                if pd.notna(mediana) and 20000 <= mediana <= 60000:
+                    return pd.Timestamp("1899-12-30") + pd.to_timedelta(numeros, unit="D")
+            return pd.to_datetime(serie, errors="coerce")
+
+    year_col = next((mapa[a] for a in ("year", "ano", "anio") if a in mapa), None)
+    month_col = next((mapa[a] for a in ("mo", "month", "mes") if a in mapa), None)
+    day_col = next((mapa[a] for a in ("dy", "day", "dia") if a in mapa), None)
+
+    if year_col is not None and month_col is not None:
+        anio = pd.to_numeric(df[year_col], errors="coerce")
+        mes = pd.to_numeric(df[month_col], errors="coerce")
+        dia = pd.to_numeric(df[day_col], errors="coerce") if day_col is not None else 1
+        return pd.to_datetime(
+            {"year": anio, "month": mes, "day": dia},
+            errors="coerce",
+        )
+    return None
+
+
+def _buscar_columna_variable(df: pd.DataFrame, aliases) -> str | None:
+    """Encuentra una variable usando coincidencia exacta normalizada y luego parcial."""
+    columnas = [(c, normalizar_etiqueta(c)) for c in df.columns]
+    aliases_norm = [normalizar_etiqueta(a) for a in aliases]
+
+    # Primero coincidencia exacta para evitar confundir T2M con T2M_MAX/T2M_MIN.
+    for alias in aliases_norm:
+        for original, norm in columnas:
+            if norm == alias:
+                return original
+
+    # Después coincidencia contenida para nombres descriptivos más largos.
+    for alias in aliases_norm:
+        if len(alias) < 4:
+            continue
+        for original, norm in columnas:
+            if alias in norm:
+                return original
+    return None
+
+
+@st.cache_data(show_spinner=False)
+def extraer_series_historicas_excel(ruta_texto: str):
+    """
+    Busca automáticamente series históricas dentro de un Excel procesado.
+
+    Se ignoran hojas de climatología/regímenes porque sus 12 meses NO constituyen
+    una serie temporal apropiada para Mann-Kendall. Se priorizan hojas con fechas
+    reales o con columnas YEAR/MO/DY.
+    """
+    ruta = Path(ruta_texto)
+    if not ruta.exists():
+        return {}
+
+    resultados = {}
+    xls = pd.ExcelFile(ruta)
+    excluir = ("regimen", "climatologia", "indicador", "control", "fuente", "resumen")
+
+    for hoja in xls.sheet_names:
+        hoja_norm = normalizar_etiqueta(hoja)
+        if any(token in hoja_norm for token in excluir):
+            continue
+        try:
+            df = pd.read_excel(ruta, sheet_name=hoja)
+        except Exception:
+            continue
+        if df.empty or len(df.columns) < 2:
+            continue
+
+        fechas = _fechas_desde_dataframe(df)
+        if fechas is None:
+            continue
+        fechas = pd.Series(fechas, index=df.index)
+        validas = fechas.notna()
+        if validas.sum() < 20:
+            continue
+        if fechas[validas].dt.year.nunique() < 3:
+            continue
+
+        for nombre, cfg in VARIABLES_TENDENCIA.items():
+            columna = _buscar_columna_variable(df, cfg["aliases"])
+            if columna is None:
+                continue
+            valores = pd.to_numeric(df[columna], errors="coerce")
+            serie = pd.DataFrame({"Fecha": fechas, "Valor": valores}).dropna()
+            serie = serie.sort_values("Fecha").drop_duplicates(subset=["Fecha"], keep="last")
+            if len(serie) < 20 or serie["Fecha"].dt.year.nunique() < 3:
+                continue
+
+            actual = resultados.get(nombre)
+            if actual is None or len(serie) > len(actual["serie"]):
+                resultados[nombre] = {
+                    "serie": serie.reset_index(drop=True),
+                    "unidad": cfg["unidad"],
+                    "agregacion": cfg["agregacion"],
+                    "hoja": hoja,
+                }
+    return resultados
+
+
+def agregar_serie_anual(serie: pd.DataFrame, agregacion: str) -> pd.DataFrame:
+    """Agrega una serie a escala anual y elimina años claramente incompletos."""
+    df = serie[["Fecha", "Valor"]].copy().dropna()
+    df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
+    df = df.dropna(subset=["Fecha", "Valor"])
+    if df.empty:
+        return pd.DataFrame(columns=["Año", "Valor", "N"])
+
+    df["Año"] = df["Fecha"].dt.year
+    conteos = df.groupby("Año")["Valor"].count()
+    if conteos.empty:
+        return pd.DataFrame(columns=["Año", "Valor", "N"])
+
+    # El número típico de observaciones por año permite trabajar tanto con datos
+    # diarios (~365) como mensuales (~12) sin fijar una frecuencia a mano.
+    positivos = conteos[conteos > 0]
+    esperado = float(positivos.median()) if not positivos.empty else 1.0
+    umbral = max(1.0, 0.75 * esperado)
+    anios_validos = conteos[conteos >= umbral].index
+    df = df[df["Año"].isin(anios_validos)]
+
+    if agregacion == "sum":
+        valores = df.groupby("Año")["Valor"].sum(min_count=1)
+    else:
+        valores = df.groupby("Año")["Valor"].mean()
+    n = df.groupby("Año")["Valor"].count()
+
+    salida = pd.DataFrame({"Año": valores.index.astype(int), "Valor": valores.values, "N": n.values})
+    return salida.dropna(subset=["Valor"]).sort_values("Año").reset_index(drop=True)
+
+
+def mann_kendall(valores, alpha: float = 0.05) -> dict:
+    """Prueba Mann-Kendall bilateral con corrección por empates, sin dependencias extra."""
+    y = np.asarray(valores, dtype=float)
+    y = y[np.isfinite(y)]
+    n = len(y)
+    if n < 5:
+        raise ValueError("Mann-Kendall requiere al menos 5 observaciones válidas.")
+
+    s = 0
+    for i in range(n - 1):
+        s += int(np.sign(y[i + 1:] - y[i]).sum())
+
+    _, conteos = np.unique(y, return_counts=True)
+    empates = conteos[conteos > 1]
+    var_s = (
+        n * (n - 1) * (2 * n + 5)
+        - np.sum(empates * (empates - 1) * (2 * empates + 5))
+    ) / 18.0
+
+    if var_s <= 0:
+        z = 0.0
+    elif s > 0:
+        z = (s - 1) / math.sqrt(var_s)
+    elif s < 0:
+        z = (s + 1) / math.sqrt(var_s)
+    else:
+        z = 0.0
+
+    # erfc entrega directamente la probabilidad bilateral de una normal estándar.
+    p = math.erfc(abs(z) / math.sqrt(2.0))
+    tau = s / (0.5 * n * (n - 1))
+    significativa = p < alpha
+
+    if significativa and tau > 0:
+        tendencia = "Creciente significativa"
+    elif significativa and tau < 0:
+        tendencia = "Decreciente significativa"
+    else:
+        tendencia = "Sin tendencia significativa"
+
+    return {
+        "n": n,
+        "S": float(s),
+        "var_S": float(var_s),
+        "Z": float(z),
+        "p": float(p),
+        "tau": float(tau),
+        "significativa": bool(significativa),
+        "tendencia": tendencia,
+        "alpha": float(alpha),
+    }
+
+
+def pendiente_sen(anios, valores) -> dict:
+    """Pendiente de Sen y ordenada robusta para una serie anual."""
+    x = np.asarray(anios, dtype=float)
+    y = np.asarray(valores, dtype=float)
+    mascara = np.isfinite(x) & np.isfinite(y)
+    x, y = x[mascara], y[mascara]
+    if len(y) < 2:
+        return {"pendiente": float("nan"), "intercepto": float("nan")}
+
+    pendientes = []
+    for i in range(len(y) - 1):
+        dx = x[i + 1:] - x[i]
+        validos = dx != 0
+        if validos.any():
+            pendientes.extend(((y[i + 1:][validos] - y[i]) / dx[validos]).tolist())
+
+    if not pendientes:
+        return {"pendiente": float("nan"), "intercepto": float("nan")}
+    pendiente = float(np.median(pendientes))
+    intercepto = float(np.median(y - pendiente * x))
+    return {"pendiente": pendiente, "intercepto": intercepto}
+
+
+def analizar_serie_tendencia(serie: pd.DataFrame, agregacion: str, alpha: float = 0.05):
+    anual = agregar_serie_anual(serie, agregacion)
+    if len(anual) < 5:
+        return anual, None
+    mk = mann_kendall(anual["Valor"].values, alpha=alpha)
+    sen = pendiente_sen(anual["Año"].values, anual["Valor"].values)
+    resultado = {**mk, **sen}
+    return anual, resultado
+
+
+def series_tendencia_territorio(nombre_territorio: str, info_territorio: dict):
+    """Reúne todas las series históricas reales disponibles para el territorio."""
+    disponibles = {}
+
+    # 1) Clima. Para tendencias se usa la serie histórica, nunca la climatología de 12 meses.
+    if nombre_territorio == "Tumaco":
+        archivo_clima = ARCHIVO_NASA_TUMACO
+    else:
+        archivo_clima = ARCHIVOS_CLIMA_NASA.get(nombre_territorio)
+
+    if archivo_clima is not None and Path(archivo_clima).exists():
+        try:
+            clima = extraer_series_historicas_excel(str(archivo_clima))
+            for variable, paquete in clima.items():
+                disponibles[variable] = {
+                    **paquete,
+                    "fuente": "NASA POWER",
+                    "archivo": Path(archivo_clima).name,
+                }
+        except Exception:
+            pass
+
+    # En Tumaco se intenta priorizar IDEAM cuando el Excel contiene la serie histórica completa.
+    if nombre_territorio == "Tumaco" and ARCHIVO_IDEAM_TUMACO is not None and Path(ARCHIVO_IDEAM_TUMACO).exists():
+        try:
+            ideam = extraer_series_historicas_excel(str(ARCHIVO_IDEAM_TUMACO))
+            for variable in ("Precipitación", "Temperatura media", "Temperatura máxima", "Temperatura mínima"):
+                if variable in ideam:
+                    disponibles[variable] = {
+                        **ideam[variable],
+                        "fuente": "IDEAM",
+                        "archivo": Path(ARCHIVO_IDEAM_TUMACO).name,
+                    }
+        except Exception:
+            pass
+
+    # 2) GWSa GRACE/GLDAS.
+    if ARCHIVO_GWS is not None and xr is not None and np is not None:
+        try:
+            df_gws, meta = extraer_gws_territorio(
+                str(ARCHIVO_GWS), info_territorio["lat"], info_territorio["lon"]
+            )
+            if meta.get("disponible", False) and not df_gws.empty:
+                disponibles["GWSa"] = {
+                    "serie": df_gws.rename(columns={"GWSa (cm)": "Valor"})[["Fecha", "Valor"]],
+                    "unidad": "cm",
+                    "agregacion": "mean",
+                    "fuente": "GRACE/GRACE-FO + GLDAS",
+                    "archivo": Path(ARCHIVO_GWS).name,
+                    "hoja": "NetCDF",
+                }
+        except Exception:
+            pass
+
+    return disponibles
+
+# =========================================================
 # FUNCIONES
 # =========================================================
 
@@ -1029,6 +1627,8 @@ MAPAS_POR_TERRITORIO = {
     "Tumaco": MAPAS_TUMACO,
     "Medellín": MAPAS_MEDELLIN,
     "San Andrés": MAPAS_SAN_ANDRES,
+    "Arauca": {},
+    "La Paz": {},
 }
 
 
@@ -1275,10 +1875,35 @@ ARCHIVO_CLIMA_SAN_ANDRES = encontrar_archivo_excel(
     ],
 )
 
+ARCHIVO_CLIMA_ARAUCA = encontrar_archivo_excel(
+    prefijos=["NASA_POWER_ARAUCA"],
+    nombres_preferidos=[
+        "NASA_POWER_ARAUCA_FINAL.xlsx",
+        "NASA_POWER_ARAUCA_FINAL (1).xlsx",
+    ],
+    subcarpetas=[
+        "DATOS CLIMA", "datos", "datos/arauca", "datos/arauca/clima",
+    ],
+)
+
+ARCHIVO_CLIMA_LA_PAZ = encontrar_archivo_excel(
+    prefijos=["NASA_POWER_LA_PAZ", "NASA_POWER_LAPAZ", "NASA_POWER_LA PAZ"],
+    nombres_preferidos=[
+        "NASA_POWER_LA_PAZ_FINAL.xlsx",
+        "NASA_POWER_LAPAZ_FINAL.xlsx",
+    ],
+    subcarpetas=[
+        "DATOS CLIMA", "datos", "datos/la_paz", "datos/la_paz/clima",
+        "datos/la paz", "datos/la paz/clima",
+    ],
+)
+
 ARCHIVOS_CLIMA_NASA = {
     "Leticia": ARCHIVO_CLIMA_LETICIA,
     "Medellín": ARCHIVO_CLIMA_MEDELLIN,
     "San Andrés": ARCHIVO_CLIMA_SAN_ANDRES,
+    "Arauca": ARCHIVO_CLIMA_ARAUCA,
+    "La Paz": ARCHIVO_CLIMA_LA_PAZ,
 }
 
 # Alias de compatibilidad para la sección de comparación.
@@ -1597,6 +2222,8 @@ def obtener_hallazgos_clave(nombre_territorio: str):
         "Tumaco": "Interacción permanente entre sistemas fluviales, estuarinos y marino-costeros.",
         "Medellín": "Contexto urbano-andino con quebradas, fuertes pendientes y amenaza por inundación.",
         "San Andrés": "La disponibilidad de agua dulce está estrechamente ligada a la lluvia y los acuíferos.",
+        "Arauca": "Territorio de llanura con marcada estacionalidad hidroclimática e influencia fluvial.",
+        "La Paz": "Territorio del Cesar incorporado para ampliar la comparación hidroambiental entre sedes.",
     }
     hallazgos.append(particularidades.get(nombre_territorio, ""))
 
@@ -1666,7 +2293,7 @@ def mostrar_mapa_sedes_unal() -> None:
     <div class="soft-box">
         <strong>¿Qué significan los colores?</strong><br>
         🟢 <strong>Verde:</strong> territorios que ya están integrados en el prototipo SIAMS
-        (Leticia, Tumaco, Medellín y San Andrés).<br>
+        (Leticia, Tumaco, Medellín, San Andrés, Arauca y La Paz).<br>
         ⚪ <strong>Gris:</strong> otras sedes de la Universidad Nacional que se muestran
         únicamente como contexto institucional y todavía no tienen un módulo territorial
         desarrollado dentro de esta versión del prototipo.
@@ -1675,7 +2302,7 @@ def mostrar_mapa_sedes_unal() -> None:
     st.markdown(dedent(html).strip(), unsafe_allow_html=True)
 
 def tabla_disponibilidad(nombre_territorio: str) -> pd.DataFrame:
-    if nombre_territorio in {"Leticia", "Medellín", "San Andrés"}:
+    if nombre_territorio in {"Leticia", "Medellín", "San Andrés", "Arauca", "La Paz"}:
         return pd.DataFrame({
             "Variable": [
                 "Precipitación", "Temperatura media", "Temperaturas extremas",
@@ -1719,16 +2346,9 @@ def tabla_disponibilidad(nombre_territorio: str) -> pd.DataFrame:
 st.sidebar.markdown("## 💧 SIAMS")
 st.sidebar.caption("Plataforma hidroambiental")
 
-modo_presentacion = st.sidebar.checkbox(
-    "🎤 Modo presentación",
-    value=False,
-    help="Oculta elementos técnicos y deja una vista más limpia para exponer.",
-)
-
-
 territorio = st.sidebar.selectbox(
     "Territorio",
-    ["Leticia", "Tumaco", "Medellín", "San Andrés"],
+    ["Leticia", "Tumaco", "Medellín", "San Andrés", "Arauca", "La Paz"],
 )
 
 grupo = st.sidebar.selectbox(
@@ -1755,11 +2375,13 @@ SUBMENUS = {
     ],
     "Clima y datos": [
         "Clima",
+        "Análisis de tendencias",
         "Estaciones y datos",
     ],
     "Subsuelo y calidad del agua": [
         "Geología",
         "Hidrogeología",
+        "Agua subterránea (GRACE)",
         "Hidrogeoquímica",
         "Calidad del agua e IRCA",
     ],
@@ -1796,29 +2418,18 @@ publico = st.sidebar.selectbox(
 st.sidebar.divider()
 st.sidebar.caption("Prototipo académico. Información sujeta a revisión.")
 st.sidebar.success(f"Versión activa: {VERSION_APP}")
-if not modo_presentacion:
-    with st.sidebar.expander("Diagnóstico de archivos", expanded=False):
-        st.write(f"**Script:** `{Path(__file__).name}`")
-        st.write(f"**Carpeta de mapas:** `{CARPETA_MAPAS}`")
-        if CARPETA_MAPAS.exists():
-            archivos_detectados = sorted(
-                archivo.name for archivo in CARPETA_MAPAS.iterdir() if archivo.is_file()
-            )
-            st.write("**Archivos detectados:**")
-            st.code("\n".join(archivos_detectados) if archivos_detectados else "Carpeta vacía", language=None)
-        else:
-            st.error("La carpeta de mapas no existe.")
-
-# PRESENTATION_HIDE_DOWNLOADS
-if modo_presentacion:
-    st.markdown(
-        """
-        <style>
-        .stDownloadButton { display: none !important; }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+with st.sidebar.expander("Diagnóstico de archivos", expanded=False):
+    st.write(f"**Script:** `{Path(__file__).name}`")
+    st.write(f"**Carpeta de mapas:** `{CARPETA_MAPAS}`")
+    if CARPETA_MAPAS.exists():
+        archivos_detectados = sorted(
+            archivo.name for archivo in CARPETA_MAPAS.iterdir() if archivo.is_file()
+        )
+        st.write("**Archivos detectados:**")
+        st.code("\n".join(archivos_detectados) if archivos_detectados else "Carpeta vacía", language=None)
+    else:
+        st.error("La carpeta de mapas no existe.")
+    st.write(f"**NetCDF GWSa:** `{Path(ARCHIVO_GWS).name if ARCHIVO_GWS else 'No encontrado'}`")
 
 info = territorio_actual(territorio)
 
@@ -1847,8 +2458,8 @@ if seccion == "Inicio":
 
     m0, m1, m2 = st.columns(3)
     m0.metric("Sedes UNAL ubicadas", f"{len(UNAL_SEDES)}")
-    m1.metric("Territorios activos en SIAMS", "4")
-    m2.metric("Cobertura actual", "Amazonía · Caribe · Andina · Pacífico")
+    m1.metric("Territorios activos en SIAMS", "6")
+    m2.metric("Cobertura actual", "Amazonía · Caribe · Andina · Pacífico · Orinoquía · Cesar")
 
     st.caption(
         "La localización nacional permite contextualizar el alcance territorial del prototipo "
@@ -1860,35 +2471,20 @@ if seccion == "Inicio":
         unsafe_allow_html=True,
     )
 
-    c1, c2, c3, c4 = st.columns(4)
+    fila1 = st.columns(3)
+    fila2 = st.columns(3)
 
-    with c1:
-        mostrar_tarjeta(
-            "Leticia",
-            "<strong>Clima completo</strong><br>Cartografía ambiental avanzada.",
-            "🌿",
-        )
-
-    with c2:
-        mostrar_tarjeta(
-            "Tumaco",
-            "<strong>Clima completo</strong><br>IDEAM + NASA POWER y cartografía regional.",
-            "🌊",
-        )
-
-    with c3:
-        mostrar_tarjeta(
-            "Medellín",
-            "<strong>Clima completo</strong><br>Geología, estructura ecológica e inundación.",
-            "🏙️",
-        )
-
-    with c4:
-        mostrar_tarjeta(
-            "San Andrés",
-            "<strong>Clima completo</strong><br>Hidrogeología y calidad del agua destacadas.",
-            "🏝️",
-        )
+    tarjetas_territorio = [
+        (fila1[0], "Leticia", "<strong>Clima completo</strong><br>Cartografía ambiental avanzada.", "🌿"),
+        (fila1[1], "Tumaco", "<strong>Clima completo</strong><br>IDEAM + NASA POWER y cartografía regional.", "🌊"),
+        (fila1[2], "Medellín", "<strong>Clima completo</strong><br>Geología, estructura ecológica e inundación.", "🏙️"),
+        (fila2[0], "San Andrés", "<strong>Clima completo</strong><br>Hidrogeología y calidad del agua destacadas.", "🏝️"),
+        (fila2[1], "Arauca", "<strong>Territorio habilitado</strong><br>GWSa GRACE y clima al detectar la base NASA.", "🌾"),
+        (fila2[2], "La Paz", "<strong>Territorio habilitado</strong><br>GWSa GRACE y módulos para ampliar datos.", "⛰️"),
+    ]
+    for columna, nombre, texto_tarjeta, icono in tarjetas_territorio:
+        with columna:
+            mostrar_tarjeta(nombre, texto_tarjeta, icono)
 
     st.markdown(
         '<div class="section-title">¿Qué contiene la plataforma?</div>',
@@ -1927,13 +2523,14 @@ if seccion == "Inicio":
     )
 
     cobertura = pd.DataFrame({
-        "Territorio": ["Leticia", "Tumaco", "Medellín", "San Andrés"],
-        "Clima": ["✅", "✅", "✅", "✅"],
-        "Hidrología": ["✅", "✅", "🟡", "✅"],
-        "Geología": ["✅", "✅", "✅", "✅"],
-        "Hidrogeología": ["🟡", "🟡", "—", "✅"],
-        "Calidad del agua": ["🟡", "—", "—", "🟡"],
-        "Monitoreo": ["—", "—", "—", "—"],
+        "Territorio": ["Leticia", "Tumaco", "Medellín", "San Andrés", "Arauca", "La Paz"],
+        "Clima": ["✅", "✅", "✅", "✅", "🟡", "🟡"],
+        "Hidrología": ["✅", "✅", "🟡", "✅", "—", "—"],
+        "Geología": ["✅", "✅", "✅", "✅", "—", "—"],
+        "Hidrogeología": ["🟡", "🟡", "—", "✅", "🟡", "🟡"],
+        "GWSa GRACE": ["✅", "✅", "✅", "—", "✅", "✅"],
+        "Calidad del agua": ["🟡", "—", "—", "🟡", "—", "—"],
+        "Monitoreo": ["—", "—", "—", "—", "🟡", "🟡"],
     })
 
     st.dataframe(
@@ -1962,7 +2559,7 @@ if seccion == "Inicio":
     )
 
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Territorios", "4")
+    m1.metric("Territorios", "6")
     m2.metric("Mapas incorporados", f"{mapas_encontrados}/{mapas_esperados}")
     m3.metric("Componentes completos", componentes_completos)
     m4.metric("Actualización", FECHA_ACTUALIZACION)
@@ -2369,7 +2966,7 @@ elif seccion == "Clima":
                 st.code(str(error), language=None)
 
     # -----------------------------------------------------
-    # LETICIA, MEDELLÍN Y SAN ANDRÉS: NASA POWER
+    # LETICIA, MEDELLÍN, SAN ANDRÉS, ARAUCA Y LA PAZ: NASA POWER
     # -----------------------------------------------------
     else:
         archivo_nasa = ARCHIVOS_CLIMA_NASA.get(territorio)
@@ -2395,6 +2992,8 @@ elif seccion == "Clima":
                 "Leticia": "NASA_POWER_LETICIA",
                 "Medellín": "NASA_POWER_MEDELLÍN",
                 "San Andrés": "NASA_POWER_SAN_ANDRES",
+                "Arauca": "NASA_POWER_ARAUCA",
+                "La Paz": "NASA_POWER_LA_PAZ",
             }
             st.warning(
                 f"No se encontró el Excel de NASA POWER para **{territorio}**. "
@@ -2551,6 +3150,171 @@ elif seccion == "Clima":
                         )
 
 # =========================================================
+# ANÁLISIS DE TENDENCIAS · MANN-KENDALL + SEN
+# =========================================================
+
+elif seccion == "Análisis de tendencias":
+    st.title(f"📈 Análisis de tendencias · {territorio}")
+    st.caption("Mann-Kendall + pendiente de Sen · series históricas reales")
+
+    st.markdown(dedent("""
+        <div class="soft-box">
+            <strong>¿Qué hace esta sección?</strong> Evalúa si una variable presenta una tendencia
+            monotónica creciente o decreciente en el tiempo. Mann-Kendall determina si la tendencia
+            es estadísticamente significativa y la pendiente de Sen estima cuánto cambia por año.
+            Para evitar confundir la estacionalidad normal de los meses con una tendencia de largo
+            plazo, el análisis se realiza sobre valores <strong>anuales</strong> obtenidos desde la
+            serie histórica original.
+        </div>
+        """).strip(), unsafe_allow_html=True)
+
+    if np is None:
+        st.error("Falta NumPy para ejecutar el análisis de tendencias.")
+        st.code("pip install numpy", language="bash")
+    else:
+        series_disp = series_tendencia_territorio(territorio, info)
+
+        if not series_disp:
+            st.warning(
+                "No se encontraron series históricas compatibles para este territorio. "
+                "La climatología de 12 meses no se usa para Mann-Kendall. Para activar clima, "
+                "el Excel debe conservar una hoja con fechas reales (o YEAR/MO/DY) y los datos diarios/mensuales."
+            )
+        else:
+            resumen_tendencias = []
+            for variable, paquete in series_disp.items():
+                try:
+                    anual, res = analizar_serie_tendencia(
+                        paquete["serie"], paquete["agregacion"], alpha=0.05
+                    )
+                    if res is None:
+                        continue
+                    resumen_tendencias.append({
+                        "Variable": variable,
+                        "Fuente": paquete["fuente"],
+                        "Periodo": f"{int(anual['Año'].min())}–{int(anual['Año'].max())}",
+                        "Años": len(anual),
+                        "Tau": res["tau"],
+                        "p-value": res["p"],
+                        "Pendiente Sen": res["pendiente"],
+                        "Unidad/año": f"{paquete['unidad']}/año",
+                        "Resultado": res["tendencia"],
+                    })
+                except Exception:
+                    continue
+
+            if not resumen_tendencias:
+                st.warning(
+                    "Se detectaron datos, pero ninguna variable tiene al menos cinco años válidos "
+                    "después del control de completitud anual."
+                )
+            else:
+                df_resumen_tend = pd.DataFrame(resumen_tendencias)
+
+                st.subheader("Resumen de tendencias disponibles")
+                tabla_tend = df_resumen_tend.copy()
+                tabla_tend["Tau"] = tabla_tend["Tau"].map(lambda x: f"{x:+.3f}")
+                tabla_tend["p-value"] = tabla_tend["p-value"].map(lambda x: f"{x:.4f}")
+                tabla_tend["Pendiente Sen"] = tabla_tend["Pendiente Sen"].map(lambda x: f"{x:+.4f}")
+                st.dataframe(tabla_tend, use_container_width=True, hide_index=True)
+
+                variables_validas = df_resumen_tend["Variable"].tolist()
+                seleccion = st.selectbox(
+                    "Variable para ver en detalle",
+                    variables_validas,
+                    key=f"variable_mk_{territorio}",
+                )
+                paquete = series_disp[seleccion]
+                anual, res = analizar_serie_tendencia(
+                    paquete["serie"], paquete["agregacion"], alpha=0.05
+                )
+
+                if res is not None:
+                    icono = "↗️" if res["significativa"] and res["tau"] > 0 else (
+                        "↘️" if res["significativa"] and res["tau"] < 0 else "➡️"
+                    )
+                    m1, m2, m3, m4 = st.columns(4)
+                    with m1:
+                        st.markdown(
+                            dedent(f"""
+                            <div class="trend-result-card">
+                                <div class="trend-label">Resultado</div>
+                                <div class="trend-value">{icono} {res['tendencia']}</div>
+                            </div>
+                            """).strip(),
+                            unsafe_allow_html=True,
+                        )
+                    m2.metric("Tau de Kendall", f"{res['tau']:+.3f}")
+                    m3.metric("p-value", f"{res['p']:.4f}")
+                    m4.metric(
+                        "Pendiente de Sen",
+                        f"{res['pendiente']:+.4f} {paquete['unidad']}/año",
+                    )
+
+                    tendencia_sen = res["intercepto"] + res["pendiente"] * anual["Año"].astype(float)
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(
+                        x=anual["Año"], y=anual["Valor"],
+                        mode="lines+markers", name=seleccion,
+                    ))
+                    fig.add_trace(go.Scatter(
+                        x=anual["Año"], y=tendencia_sen,
+                        mode="lines", name="Pendiente de Sen",
+                        line=dict(dash="dash"),
+                    ))
+                    fig.update_layout(
+                        title=f"{seleccion} · tendencia anual · {territorio}",
+                        xaxis_title="Año",
+                        yaxis_title=f"{seleccion} ({paquete['unidad']})",
+                        hovermode="x unified",
+                        legend=dict(orientation="h", y=-0.2),
+                        margin=dict(b=80),
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+
+                    if res["significativa"]:
+                        direccion = "aumenta" if res["tau"] > 0 else "disminuye"
+                        st.success(
+                            f"Con α = 0.05, Mann-Kendall identifica una tendencia "
+                            f"{('creciente' if res['tau'] > 0 else 'decreciente')} estadísticamente significativa. "
+                            f"La pendiente de Sen estima que {seleccion.lower()} {direccion} aproximadamente "
+                            f"{abs(res['pendiente']):.4f} {paquete['unidad']} por año."
+                        )
+                    else:
+                        sentido = "positiva" if res["pendiente"] > 0 else "negativa" if res["pendiente"] < 0 else "nula"
+                        st.info(
+                            f"La pendiente de Sen es {sentido} ({res['pendiente']:+.4f} {paquete['unidad']}/año), "
+                            f"pero Mann-Kendall no la considera estadísticamente significativa con α = 0.05. "
+                            "Por tanto, la plataforma no afirma que exista una tendencia de largo plazo."
+                        )
+
+                    st.caption(
+                        f"Fuente: {paquete['fuente']} · archivo: {paquete['archivo']} · "
+                        f"origen interno: {paquete.get('hoja', '—')} · "
+                        f"periodo analizado: {int(anual['Año'].min())}–{int(anual['Año'].max())} · "
+                        f"{len(anual)} años válidos."
+                    )
+
+                    with st.expander("Ver datos anuales utilizados", expanded=False):
+                        st.dataframe(anual.round(4), use_container_width=True, hide_index=True)
+
+                st.markdown(dedent("""
+                    <div class="warning-box">
+                        <strong>Limitaciones:</strong> Mann-Kendall identifica tendencias monotónicas,
+                        pero no demuestra su causa. La significancia puede verse afectada por
+                        autocorrelación, cambios de instrumento, vacíos de información o cambios en
+                        la fuente. Para estudios definitivos conviene revisar homogeneidad y, cuando
+                        corresponda, aplicar variantes que corrijan autocorrelación.
+                    </div>
+                    """).strip(), unsafe_allow_html=True)
+
+                st.caption(
+                    "El módulo queda preparado para incorporar en el futuro niveles de sonda, caudales "
+                    "y parámetros de calidad del agua cuando existan series temporales validadas."
+                )
+
+
+# =========================================================
 # HIDROLOGÍA
 # =========================================================
 
@@ -2594,13 +3358,18 @@ elif seccion == "Hidrología":
         )
         st.info("En San Andrés el componente hídrico superficial debe leerse junto con la hidrogeología, porque el acuífero es clave para el abastecimiento de agua dulce.")
 
-    else:  # Medellín
+    elif territorio == "Medellín":
         mostrar_mapa_imagen(
             "inundacion", "Amenaza por inundaciones en Medellín",
             "Alcaldía de Medellín – Plan de Ordenamiento Territorial (POT)",
             "La cartografía muestra sectores con distintos niveles de amenaza por inundación. Debe interpretarse según la escala y metodología del POT.",
         )
         st.caption("Para una siguiente versión conviene complementar este componente con la red hídrica y las microcuencas/quebradas del Valle de Aburrá.")
+    else:
+        st.info(
+            f"El módulo hidrológico de {territorio} ya está habilitado, pero todavía no tiene "
+            "cartografía temática validada. Se puede incorporar sin modificar la estructura de la página."
+        )
 
 # =========================================================
 # GEOLOGÍA
@@ -2624,8 +3393,10 @@ elif seccion == "Geología":
             mostrar_mapa_imagen("geologia", "Unidades geológicas de la cuenca hidrográfica del río Mira", "CORPONARIÑO – POMCA Río Mira")
         elif territorio == "San Andrés":
             mostrar_mapa_imagen("geologia", "Conformación geológica de la isla de San Andrés", "CORALINA")
-        else:
+        elif territorio == "Medellín":
             mostrar_mapa_imagen("geologia", "Plancha geológica 228 – Medellín", "Servicio Geológico Colombiano (SGC)")
+        else:
+            st.info(f"Todavía no se ha incorporado un mapa geológico validado para {territorio}.")
 
     with tab2:
         st.warning(
@@ -2710,6 +3481,179 @@ elif seccion == "Hidrogeología":
             información oficial, interpretación general y resultados propios del semillero.
         </div>
         """).strip(), unsafe_allow_html=True)
+
+# =========================================================
+# AGUA SUBTERRÁNEA · GRACE / GLDAS
+# =========================================================
+
+elif seccion == "Agua subterránea (GRACE)":
+    st.title(f"🌐 Agua subterránea satelital · {territorio}")
+    st.caption("Anomalías de almacenamiento de agua subterránea (GWSa) · GRACE/GRACE-FO + GLDAS")
+
+    st.markdown(dedent("""
+        <div class="soft-box">
+            <strong>¿Qué representa?</strong> GWSa indica cambios del almacenamiento de agua
+            subterránea respecto a una condición de referencia. No representa profundidad del
+            nivel freático ni el volumen total del acuífero. El producto es regional y debe
+            interpretarse junto con información hidrogeológica y mediciones de campo.
+        </div>
+        """).strip(), unsafe_allow_html=True)
+
+    if xr is None or np is None:
+        st.error("Faltan dependencias para leer el NetCDF.")
+        st.code("pip install xarray netCDF4 numpy", language="bash")
+    elif ARCHIVO_GWS is None:
+        st.warning(
+            "No se encontró `COL_GWS_estimations.nc`. Pon el archivo junto a `app.py` "
+            "o dentro de `datos/gws` o `datos/agua_subterranea`."
+        )
+    else:
+        try:
+            df_gws, meta_gws = extraer_gws_territorio(
+                str(ARCHIVO_GWS), info["lat"], info["lon"]
+            )
+
+            if not meta_gws.get("disponible", False) or df_gws.empty:
+                st.warning(
+                    f"No se publica una serie GWSa para **{territorio}** con este NetCDF. "
+                    f"{meta_gws.get('motivo', 'No hay cobertura válida cercana.')}"
+                )
+                if territorio == "San Andrés":
+                    st.info(
+                        "Esto es esperable para la isla: el archivo entregado cubre principalmente "
+                        "la Colombia continental. La página evita usar un píxel continental lejano "
+                        "como si representara San Andrés."
+                    )
+            else:
+                ultimo = df_gws.iloc[-1]
+                promedio = df_gws["GWSa (cm)"].mean()
+                minimo = df_gws["GWSa (cm)"].min()
+                maximo = df_gws["GWSa (cm)"].max()
+                pendiente = meta_gws["pendiente_cm_anio"]
+
+                m1, m2, m3, m4 = st.columns(4)
+                m1.metric("Última GWSa", f"{ultimo['GWSa (cm)']:.2f} cm", f"{ultimo['Fecha']:%Y-%m}")
+                m2.metric("Promedio histórico", f"{promedio:.2f} cm")
+                m3.metric("Mínimo / máximo", f"{minimo:.1f} / {maximo:.1f} cm")
+                m4.metric("Pendiente lineal exploratoria", f"{pendiente:+.3f} cm/año")
+
+                st.caption(
+                    f"Píxel utilizado: {meta_gws['lat_pixel']:.4f}, {meta_gws['lon_pixel']:.4f} · "
+                    f"distancia aproximada a la sede: {meta_gws['distancia_km']:.1f} km · "
+                    f"periodo: {meta_gws['fecha_inicial']:%Y-%m} a {meta_gws['fecha_final']:%Y-%m}."
+                )
+
+                tab_serie, tab_clim, tab_mapa, tab_metodo = st.tabs([
+                    "Serie histórica", "Comportamiento mensual", "Mapa por fecha", "Cómo interpretarlo"
+                ])
+
+                with tab_serie:
+                    fig = px.line(
+                        df_gws, x="Fecha", y="GWSa (cm)",
+                        title=f"Anomalía de almacenamiento de agua subterránea · {territorio}",
+                    )
+                    fig.add_hline(
+                        y=0, line_dash="dash",
+                        annotation_text="Referencia = 0 cm", annotation_position="top left",
+                    )
+                    fig.update_layout(
+                        xaxis_title="Fecha", yaxis_title="GWSa (cm)", hovermode="x unified"
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                    st.caption(
+                        "Valores positivos y negativos indican desviaciones respecto a la referencia; "
+                        "por sí solos no equivalen a una clasificación de sostenibilidad."
+                    )
+
+                    csv_gws = df_gws.to_csv(index=False).encode("utf-8-sig")
+                    st.download_button(
+                        "Descargar serie GWSa de esta sede",
+                        data=csv_gws,
+                        file_name=f"GWSa_{territorio.replace(' ', '_')}.csv",
+                        mime="text/csv",
+                        key=f"descargar_gwsa_{territorio}",
+                    )
+
+                with tab_clim:
+                    clim_gws = climatologia_gws(df_gws)
+                    fig = px.bar(
+                        clim_gws, x="Mes", y="GWSa (cm)",
+                        title=f"Climatología mensual de GWSa · {territorio}",
+                        text_auto=".2f",
+                    )
+                    fig.add_hline(y=0, line_dash="dash")
+                    fig.update_layout(yaxis_title="GWSa media (cm)", xaxis_title="Mes")
+                    st.plotly_chart(fig, use_container_width=True)
+
+                    fila_min = clim_gws.loc[clim_gws["GWSa (cm)"].idxmin()]
+                    fila_max = clim_gws.loc[clim_gws["GWSa (cm)"].idxmax()]
+                    st.info(
+                        f"En la climatología de este píxel, el promedio mensual más bajo ocurre en "
+                        f"**{fila_min['Mes']}** ({fila_min['GWSa (cm)']:.2f} cm) y el más alto en "
+                        f"**{fila_max['Mes']}** ({fila_max['GWSa (cm)']:.2f} cm)."
+                    )
+
+                with tab_mapa:
+                    ds_gws = cargar_dataset_gws(str(ARCHIVO_GWS))
+                    fechas = pd.to_datetime(ds_gws["time"].values)
+                    etiquetas = [f"{f:%Y-%m}" for f in fechas]
+                    etiqueta = st.select_slider(
+                        "Fecha del mapa", options=etiquetas, value=etiquetas[-1],
+                        key=f"fecha_mapa_gws_{territorio}",
+                    )
+                    indice_fecha = etiquetas.index(etiqueta)
+                    matriz = np.asarray(ds_gws["GWS_anom"].isel(time=indice_fecha).values, dtype=float)
+
+                    fig = go.Figure(data=go.Heatmap(
+                        z=matriz,
+                        x=np.asarray(ds_gws["lon"].values, dtype=float),
+                        y=np.asarray(ds_gws["lat"].values, dtype=float),
+                        colorscale="RdBu",
+                        zmid=0,
+                        colorbar=dict(title="GWSa (cm)"),
+                        hovertemplate="Lon %{x:.2f}<br>Lat %{y:.2f}<br>GWSa %{z:.2f} cm<extra></extra>",
+                    ))
+                    fig.add_trace(go.Scatter(
+                        x=[meta_gws["lon_pixel"]], y=[meta_gws["lat_pixel"]],
+                        mode="markers", name=f"Píxel de {territorio}",
+                        marker=dict(size=10, symbol="x", color="black"),
+                    ))
+                    fig.update_layout(
+                        title=f"Distribución espacial de GWSa · {etiqueta}",
+                        xaxis_title="Longitud", yaxis_title="Latitud",
+                        height=620, margin=dict(l=20, r=20, t=60, b=30),
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                    st.caption(
+                        "Visualización de la malla del NetCDF. Las celdas sin estimación aparecen vacías. "
+                        "No debe interpretarse como un mapa de profundidad del acuífero."
+                    )
+
+                with tab_metodo:
+                    st.markdown(
+                        """
+                        La metodología del artículo de Romero y Piña estima GWSa a partir de las
+                        variaciones de almacenamiento total observadas por GRACE/GRACE-FO y componentes
+                        terrestres de GLDAS. Para la plataforma se usa directamente el producto NetCDF
+                        entregado y se extrae el píxel válido más cercano a cada sede.
+
+                        **Decisiones del prototipo:**
+                        - No se muestra GWSa como nivel freático.
+                        - No se convierte automáticamente a recarga usando un Sy genérico.
+                        - El análisis formal de tendencia se consulta en **Clima y datos → Análisis de tendencias**, con Mann-Kendall + Sen.
+                        - No se calcula aún el índice de sostenibilidad, GGDI, resiliencia o vulnerabilidad.
+                        - Si no existe un píxel válido razonablemente cercano, la plataforma lo informa y no extrapola.
+                        """
+                    )
+                    st.caption(
+                        "Referencia metodológica: Romero, P. & Piña, A. (2025), "
+                        "GRACE-based analysis of groundwater sustainability in the tropics, "
+                        "Journal of Hydrology: Regional Studies."
+                    )
+
+        except Exception as error:
+            st.error("Se encontró el NetCDF, pero ocurrió un error al procesar GWSa.")
+            st.code(str(error), language=None)
 
 # =========================================================
 # HIDROGEOQUÍMICA
@@ -2841,8 +3785,10 @@ elif seccion == "Cobertura y relieve":
             "Se incorpora como contexto ambiental municipal para relacionar corredores, áreas de interés ecológico y el sistema hídrico con el entorno urbano.",
         )
         st.info("Para completar esta sección conviene agregar después un mapa de pendientes o un DEM recortado alrededor de la sede.")
-    else:
+    elif territorio == "San Andrés":
         st.info("Para San Andrés todavía no se incorporó una capa específica de cobertura o relieve. La versión actual prioriza geología, acuíferos, nitratos y microcuencas.")
+    else:
+        st.info(f"Para {territorio} todavía no se incorporaron capas validadas de cobertura o relieve.")
 
 # =========================================================
 # ESTACIONES Y DATOS
@@ -2906,8 +3852,9 @@ elif seccion == "Monitoreo y curvas":
     st.title(f"📡 Monitoreo y curvas – {territorio}")
 
     st.warning(
-        "Actualmente no se dispone de series de sondas o nivel validadas para este territorio. "
-        "Por esa razón se retiraron las gráficas demostrativas del prototipo."
+        "Esta sección corresponde al monitoreo con sondas o niveles medidos en campo. "
+        "Cuando no existan series validadas, no se publican gráficas demostrativas. "
+        "El producto satelital GWSa se consulta por separado en Subsuelo y calidad del agua."
     )
 
     c1, c2, c3 = st.columns(3)
@@ -2944,13 +3891,13 @@ elif seccion == "Monitoreo y curvas":
 
 elif seccion == "Comparar territorios":
 
-    st.title("⚖️ Comparación climática de los cuatro territorios")
+    st.title("⚖️ Comparación climática entre territorios")
 
     st.markdown(
         """
         <div class="soft-box">
             <strong>Criterio de comparación:</strong>
-            Leticia, Medellín y San Andrés utilizan NASA POWER como fuente climática principal.
+            Leticia, Medellín, San Andrés, Arauca y La Paz utilizan NASA POWER cuando el archivo procesado está disponible.
             En Tumaco, IDEAM se conserva como referencia principal para precipitación y temperatura,
             mientras que NASA POWER se usa como complemento para otras variables.
             La comparación es descriptiva porque las fuentes y periodos no son idénticos.
@@ -2963,9 +3910,9 @@ elif seccion == "Comparar territorios":
     fuentes_resumen = []
 
     # -----------------------------------------------------
-    # LETICIA / MEDELLÍN / SAN ANDRÉS
+    # TERRITORIOS NASA POWER
     # -----------------------------------------------------
-    for nombre in ("Leticia", "Medellín", "San Andrés"):
+    for nombre in ("Leticia", "Medellín", "San Andrés", "Arauca", "La Paz"):
 
         archivo = ARCHIVOS_CLIMA_NASA.get(nombre)
 
@@ -3121,7 +4068,7 @@ elif seccion == "Comparar territorios":
             )
 
             st.caption(
-                "Tumaco utiliza precipitación IDEAM; Leticia, Medellín y San Andrés utilizan NASA POWER."
+                "Tumaco utiliza precipitación IDEAM; los demás territorios usan NASA POWER cuando su archivo está disponible."
             )
 
         # -------------------------------------------------
@@ -3365,7 +4312,7 @@ elif seccion == "Comparar territorios":
     else:
 
         st.warning(
-            "No se encontraron suficientes archivos climáticos para construir la comparación de los cuatro territorios."
+            "No se encontraron suficientes archivos climáticos para construir la comparación entre territorios."
         )
 
 
@@ -3417,16 +4364,10 @@ elif seccion == "Metodología":
 
 elif seccion == "Fuentes y descargas":
 
-    if modo_presentacion:
-        st.info(
-            "🎤 Vista simplificada de presentación: se ocultan los botones de descarga "
-            "y el diagnóstico técnico del proyecto."
-        )
-
     st.title("📂 Fuentes y descargas")
 
     tab_archivos, tab_mapas, tab_fuentes = st.tabs([
-        "Archivos climáticos", "Estado de mapas", "Inventario de fuentes"
+        "Archivos de datos", "Estado de mapas", "Inventario de fuentes"
     ])
 
     with tab_archivos:
@@ -3437,8 +4378,11 @@ elif seccion == "Fuentes y descargas":
             ("NASA POWER · Leticia", ARCHIVO_CLIMA_LETICIA, "descarga_fuente_leticia"),
             ("NASA POWER · Medellín", ARCHIVO_CLIMA_MEDELLIN, "descarga_fuente_medellin"),
             ("NASA POWER · San Andrés", ARCHIVO_CLIMA_SAN_ANDRES, "descarga_fuente_san_andres"),
+            ("NASA POWER · Arauca", ARCHIVO_CLIMA_ARAUCA, "descarga_fuente_arauca"),
+            ("NASA POWER · La Paz", ARCHIVO_CLIMA_LA_PAZ, "descarga_fuente_la_paz"),
             ("NASA POWER · Tumaco", ARCHIVO_NASA_TUMACO, "descarga_fuente_nasa_tumaco"),
             ("IDEAM procesado · Tumaco", ARCHIVO_IDEAM_TUMACO, "descarga_fuente_ideam_tumaco"),
+            ("GWSa Colombia · GRACE/GLDAS", ARCHIVO_GWS, "descarga_fuente_gws"),
         ]
         estado = []
         for etiqueta, ruta, clave_boton in archivos:
@@ -3449,11 +4393,17 @@ elif seccion == "Fuentes y descargas":
             })
             if ruta is not None and Path(ruta).exists():
                 with open(ruta, "rb") as archivo:
+                    extension = Path(ruta).suffix.lower()
+                    mime = (
+                        "application/x-netcdf"
+                        if extension == ".nc"
+                        else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
                     st.download_button(
                         f"Descargar {etiqueta}",
                         data=archivo.read(),
                         file_name=Path(ruta).name,
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        mime=mime,
                         key=clave_boton,
                     )
         st.dataframe(pd.DataFrame(estado), use_container_width=True, hide_index=True)
@@ -3477,7 +4427,8 @@ elif seccion == "Fuentes y descargas":
             "Fuente": [
                 "IDEAM", "NASA POWER", "Instituto SINCHI", "Corpoamazonia",
                 "CORPONARIÑO / POMCA Río Mira", "Parques Nacionales", "SENA",
-                "CORALINA", "Servicio Geológico Colombiano", "Alcaldía de Medellín / POT", "SIAMS",
+                "CORALINA", "Servicio Geológico Colombiano", "Alcaldía de Medellín / POT",
+                "Romero & Piña (2025) · GRACE/GLDAS", "SIAMS",
             ],
             "Uso": [
                 "Series terrestres y control de completitud", "Variables climáticas continuas",
@@ -3486,13 +4437,15 @@ elif seccion == "Fuentes y descargas":
                 "Referencia académica de pozos e IRCA en Leticia",
                 "Geología, acuíferos, nitratos y microcuencas de San Andrés",
                 "Plancha geológica 228 de Medellín", "Estructura ecológica y amenaza por inundación de Medellín",
+                "Anomalías de almacenamiento de agua subterránea (GWSa) para Colombia",
                 "Procesamiento, decisiones de uso e integración web",
             ],
             "Condición": [
                 "Principal o complementaria según variable", "Principal o complementaria según variable",
                 "Referencia cartográfica", "Referencia cartográfica", "Referencia cartográfica",
                 "Referencia cartográfica", "Referencia académica complementaria", "Referencia cartográfica",
-                "Referencia cartográfica oficial", "Referencia cartográfica oficial", "Producto académico",
+                "Referencia cartográfica oficial", "Referencia cartográfica oficial",
+                "Producto científico satelital / modelo global", "Producto académico",
             ],
         })
         st.dataframe(fuentes, use_container_width=True, hide_index=True)
