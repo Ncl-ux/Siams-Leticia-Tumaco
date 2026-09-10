@@ -18,8 +18,8 @@ except ImportError:
     np = None
     xr = None
 
-VERSION_APP = "PROTOTIPO-SIAMS-V17-TENDENCIAS-2026-09-05"
-FECHA_ACTUALIZACION = "5 de septiembre de 2026"
+VERSION_APP = "PROTOTIPO-SIAMS-V18-ARAUCA-IDEAM-NASA-2026-09-09"
+FECHA_ACTUALIZACION = "9 de septiembre de 2026"
 
 # =========================================================
 # CONFIGURACIÓN GENERAL
@@ -572,8 +572,8 @@ UNAL_SEDES = pd.DataFrame([
     {
         "Sede": "Orinoquía",
         "Ciudad": "Arauca, Arauca",
-        "lat": 7.012223,
-        "lon": -70.743388,
+        "lat": 7.012222763876252,
+        "lon": -70.74338825990411,
         "Estado": "Territorio integrado en SIAMS",
         "Descripcion": "Sede Orinoquía, incorporada al prototipo como territorio Arauca.",
         "Tamano": 16,
@@ -590,8 +590,8 @@ UNAL_SEDES = pd.DataFrame([
     {
         "Sede": "La Paz",
         "Ciudad": "La Paz, Cesar",
-        "lat": 10.390218,
-        "lon": -73.200389,
+        "lat": 10.390218033322455,
+        "lon": -73.20038917337925,
         "Estado": "Territorio integrado en SIAMS",
         "Descripcion": "Sede de La Paz, incorporada al prototipo SIAMS.",
         "Tamano": 16,
@@ -692,12 +692,12 @@ TERRITORIOS = {
         "region": "Orinoquía colombiana",
         "departamento": "Arauca",
         "sede": "Universidad Nacional de Colombia – Sede Orinoquía",
-        "lat": 7.012223,
-        "lon": -70.743388,
+        "lat": 7.012222763876252,
+        "lon": -70.74338825990411,
         "area_principal": "Entorno de la Sede Orinoquía",
         "contexto": "Municipio de Arauca y llanura aluvial",
-        "fuente_clima": "NASA POWER",
-        "estado_datos": "Módulo territorial habilitado; clima se activa al detectar el Excel procesado",
+        "fuente_clima": "IDEAM + NASA POWER",
+        "estado_datos": "IDEAM procesado + NASA POWER; ambas fuentes se comparan sin fusionar series",
         "descripcion": (
             "Arauca se localiza en la Orinoquía colombiana, en un territorio de llanura con "
             "fuerte influencia de los sistemas fluviales y marcada estacionalidad hidroclimática. "
@@ -705,16 +705,16 @@ TERRITORIOS = {
         ),
         "precipitacion": [], "temperatura": [], "humedad": [],
         "hallazgo": (
-            "El territorio queda habilitado para integrar NASA POWER, cartografía regional y "
-            "la serie satelital de anomalías de almacenamiento de agua subterránea (GWSa)."
+            "IDEAM se utiliza como referencia terrestre para precipitación y temperatura; "
+            "NASA POWER se conserva para comparación y para viento, presión y radiación."
         ),
     },
     "La Paz": {
         "region": "Caribe continental",
         "departamento": "Cesar",
         "sede": "Universidad Nacional de Colombia – Sede de La Paz",
-        "lat": 10.390218,
-        "lon": -73.200389,
+        "lat": 10.390218033322455,
+        "lon": -73.20038917337925,
         "area_principal": "Entorno de la Sede de La Paz",
         "contexto": "Municipio de La Paz y valle del Cesar",
         "fuente_clima": "NASA POWER",
@@ -788,7 +788,7 @@ ESTADO_COMPONENTES = {
     "Arauca": [
         ("Identificación y contexto", "Completo", "Sede Orinoquía, coordenadas y síntesis territorial incorporadas."),
         ("Cartografía e hidrología", "Pendiente", "Falta incorporar cartografía temática regional validada."),
-        ("Clima", "En proceso", "La sección NASA POWER se activa automáticamente al detectar el Excel procesado."),
+        ("Clima", "Completo", "IDEAM procesado y NASA POWER se integran como fuentes separadas y comparables."),
         ("Geología", "Pendiente", "Falta incorporar cartografía geológica de referencia."),
         ("Cobertura y relieve", "Pendiente", "Faltan capas de cobertura, relieve o pendientes."),
         ("Estaciones y calidad", "En proceso", "Queda habilitado el inventario de datos y fuentes."),
@@ -1421,12 +1421,8 @@ def series_tendencia_territorio(nombre_territorio: str, info_territorio: dict):
     """Reúne todas las series históricas reales disponibles para el territorio."""
     disponibles = {}
 
-    # 1) Clima. Para tendencias se usa la serie histórica, nunca la climatología de 12 meses.
-    if nombre_territorio == "Tumaco":
-        archivo_clima = ARCHIVO_NASA_TUMACO
-    else:
-        archivo_clima = ARCHIVOS_CLIMA_NASA.get(nombre_territorio)
-
+    # 1) NASA POWER: conserva la serie histórica diaria en los Excel procesados.
+    archivo_clima = archivo_nasa_territorio(nombre_territorio)
     if archivo_clima is not None and Path(archivo_clima).exists():
         try:
             clima = extraer_series_historicas_excel(str(archivo_clima))
@@ -1439,21 +1435,26 @@ def series_tendencia_territorio(nombre_territorio: str, info_territorio: dict):
         except Exception:
             pass
 
-    # En Tumaco se intenta priorizar IDEAM cuando el Excel contiene la serie histórica completa.
-    if nombre_territorio == "Tumaco" and ARCHIVO_IDEAM_TUMACO is not None and Path(ARCHIVO_IDEAM_TUMACO).exists():
+    # 2) IDEAM: se intenta priorizar cuando el Excel conserva series históricas completas.
+    # El archivo compacto de Arauca puede no incluir hojas diarias; en ese caso NASA se mantiene.
+    archivo_ideam = ARCHIVOS_IDEAM.get(nombre_territorio)
+    if archivo_ideam is not None and Path(archivo_ideam).exists():
         try:
-            ideam = extraer_series_historicas_excel(str(ARCHIVO_IDEAM_TUMACO))
-            for variable in ("Precipitación", "Temperatura media", "Temperatura máxima", "Temperatura mínima"):
+            ideam = extraer_series_historicas_excel(str(archivo_ideam))
+            for variable in (
+                "Precipitación", "Temperatura media", "Temperatura máxima",
+                "Temperatura mínima", "Humedad relativa"
+            ):
                 if variable in ideam:
                     disponibles[variable] = {
                         **ideam[variable],
                         "fuente": "IDEAM",
-                        "archivo": Path(ARCHIVO_IDEAM_TUMACO).name,
+                        "archivo": Path(archivo_ideam).name,
                     }
         except Exception:
             pass
 
-    # 2) GWSa GRACE/GLDAS.
+    # 3) GWSa GRACE/GLDAS.
     if ARCHIVO_GWS is not None and xr is not None and np is not None:
         try:
             df_gws, meta = extraer_gws_territorio(
@@ -1557,26 +1558,41 @@ def interpretacion_nasa(nombre_territorio: str, df: pd.DataFrame) -> str:
     )
 
 
-def interpretacion_tumaco(df: pd.DataFrame, control: pd.DataFrame) -> str:
+def interpretacion_ideam_nasa(nombre_territorio: str, df: pd.DataFrame, control: pd.DataFrame) -> str:
     p_i = "Precipitación IDEAM (mm)"
     p_n = "Precipitación NASA (mm)"
     mes_pmax = df.loc[df[p_i].idxmax()]
     mes_pmin = df.loc[df[p_i].idxmin()]
     total_i = df[p_i].sum()
     total_n = df[p_n].sum()
-    diferencia = (total_n / total_i - 1) * 100 if total_i else float('nan')
+    diferencia = (total_n / total_i - 1) * 100 if total_i else float("nan")
     fila = control.loc[control["Variable"].astype(str).eq("precipitacion")]
-    comp = float(fila.iloc[0]["Completitud [%]"]) if not fila.empty else float('nan')
+    comp = float(fila.iloc[0]["Completitud [%]"]) if not fila.empty else float("nan")
+
+    if nombre_territorio == "Arauca":
+        nota = (
+            "En Arauca, la temperatura media IDEAM es derivada de Tmax y Tmin y la humedad media "
+            "usa una mínima inferida a partir del archivo entregado; esta última debe mantenerse "
+            "con advertencia hasta validar el metadato IDEAM."
+        )
+    else:
+        nota = (
+            "En Tumaco, NASA POWER funciona como complemento; para humedad se conserva como "
+            "referencia continua cuando la observación IDEAM es parcial."
+        )
+
+    signo = "mayor" if diferencia > 0 else "menor"
     return (
-        f"La precipitación observada por IDEAM presenta su máximo mensual en <strong>{mes_pmax['Mes']}</strong> "
+        f"La precipitación IDEAM presenta su máximo mensual en <strong>{mes_pmax['Mes']}</strong> "
         f"({mes_pmax[p_i]:.1f} mm) y el mínimo en <strong>{mes_pmin['Mes']}</strong> "
-        f"({mes_pmin[p_i]:.1f} mm). La serie de precipitación IDEAM tiene {comp:.2f} % de completitud. "
-        f"NASA POWER registra un acumulado climatológico {abs(diferencia):.1f} % menor, por lo que no se adopta como "
-        "fuente principal de lluvia. En temperatura, NASA funciona como complemento; en viento, presión y radiación, "
-        "es la fuente disponible dentro del prototipo."
+        f"({mes_pmin[p_i]:.1f} mm). La serie IDEAM usada tiene {comp:.2f} % de completitud. "
+        f"El acumulado climatológico NASA POWER es {abs(diferencia):.1f} % {signo} que el IDEAM. "
+        + nota
     )
 
 
+def interpretacion_tumaco(df: pd.DataFrame, control: pd.DataFrame) -> str:
+    return interpretacion_ideam_nasa("Tumaco", df, control)
 
 # =========================================================
 # IMPORT DE SEGURIDAD PARA RUTAS
@@ -1833,6 +1849,20 @@ ARCHIVO_IDEAM_TUMACO = encontrar_archivo_excel(
     ],
 )
 
+ARCHIVO_IDEAM_ARAUCA = encontrar_archivo_excel(
+    prefijos=["ANALISIS_HIDROMETEOROLOGICO_Arauca", "ANALISIS_HIDROMETEOROLOGICO_ARAUCA"],
+    nombres_preferidos=[
+        "ANALISIS_HIDROMETEOROLOGICO_Arauca.xlsx",
+        "ANALISIS_HIDROMETEOROLOGICO_ARAUCA.xlsx",
+    ],
+    subcarpetas=[
+        "DATOS CLIMA",
+        "datos",
+        "datos/arauca",
+        "datos/arauca/clima",
+    ],
+)
+
 
 ARCHIVO_CLIMA_MEDELLIN = encontrar_archivo_excel(
     prefijos=[
@@ -1908,6 +1938,18 @@ ARCHIVOS_CLIMA_NASA = {
 
 # Alias de compatibilidad para la sección de comparación.
 ARCHIVOS_NASA = ARCHIVOS_CLIMA_NASA
+
+# IDEAM procesado disponible por territorio. La Paz queda deliberadamente solo con NASA POWER.
+ARCHIVOS_IDEAM = {
+    "Tumaco": ARCHIVO_IDEAM_TUMACO,
+    "Arauca": ARCHIVO_IDEAM_ARAUCA,
+}
+
+def archivo_nasa_territorio(nombre_territorio: str):
+    """Devuelve el Excel NASA POWER asociado a cada territorio."""
+    if nombre_territorio == "Tumaco":
+        return ARCHIVO_NASA_TUMACO
+    return ARCHIVOS_CLIMA_NASA.get(nombre_territorio)
 
 
 @st.cache_data(show_spinner=False)
@@ -2004,8 +2046,8 @@ def cargar_ideam_tumaco(ruta_texto: str):
     return clim, indicadores, control, fuentes
 
 
-def decisiones_climaticas_tumaco(control: pd.DataFrame) -> pd.DataFrame:
-    """Construye la decisión de uso por variable con base en disponibilidad y calidad."""
+def decisiones_climaticas_ideam(control: pd.DataFrame, nombre_territorio: str) -> pd.DataFrame:
+    """Decisión de uso por variable para territorios con IDEAM + NASA POWER."""
     completitud = {}
     if control is not None and not control.empty:
         for _, fila in control.iterrows():
@@ -2015,28 +2057,29 @@ def decisiones_climaticas_tumaco(control: pd.DataFrame) -> pd.DataFrame:
         valor = completitud.get(clave)
         return f"{float(valor):.2f} %" if pd.notna(valor) else "—"
 
-    return pd.DataFrame({
-        "Variable": [
-            "Precipitación",
-            "Temperatura media",
-            "Temperatura máxima",
-            "Temperatura mínima",
-            "Humedad relativa",
-            "Viento",
-            "Presión",
-            "Radiación",
-        ],
-        "Completitud IDEAM": [
-            pct("precipitacion"),
-            pct("temperatura_media"),
-            pct("temperatura_maxima"),
-            pct("temperatura_minima"),
-            pct("humedad_relativa"),
-            "No disponible",
-            "No disponible",
-            "No disponible",
-        ],
-        "Fuente principal": [
+    if nombre_territorio == "Arauca":
+        fuente_principal = [
+            "IDEAM",
+            "IDEAM derivada",
+            "IDEAM",
+            "IDEAM",
+            "IDEAM con advertencia",
+            "NASA POWER",
+            "NASA POWER",
+            "NASA POWER",
+        ]
+        uso_otra = [
+            "NASA POWER para comparación; no reemplaza la lluvia observada",
+            "NASA POWER como contraste continuo; Tmedia IDEAM = (Tmax + Tmin) / 2",
+            "NASA POWER como comparación",
+            "NASA POWER como comparación",
+            "NASA POWER como contraste; validar la HR mínima inferida antes de publicación definitiva",
+            "IDEAM no disponible en el archivo procesado",
+            "IDEAM no disponible en el archivo procesado",
+            "IDEAM no disponible en el archivo procesado",
+        ]
+    else:
+        fuente_principal = [
             "IDEAM",
             "IDEAM",
             "IDEAM con cautela",
@@ -2045,8 +2088,8 @@ def decisiones_climaticas_tumaco(control: pd.DataFrame) -> pd.DataFrame:
             "NASA POWER",
             "NASA POWER",
             "NASA POWER",
-        ],
-        "Uso de la otra fuente": [
+        ]
+        uso_otra = [
             "NASA POWER para comparación; no reemplaza la lluvia observada",
             "NASA POWER como serie continua complementaria",
             "NASA POWER como apoyo por faltantes IDEAM",
@@ -2055,9 +2098,25 @@ def decisiones_climaticas_tumaco(control: pd.DataFrame) -> pd.DataFrame:
             "Sin contraste IDEAM en el archivo",
             "Sin contraste IDEAM en el archivo",
             "Sin contraste IDEAM en el archivo",
+        ]
+
+    return pd.DataFrame({
+        "Variable": [
+            "Precipitación", "Temperatura media", "Temperatura máxima",
+            "Temperatura mínima", "Humedad relativa", "Viento", "Presión", "Radiación",
         ],
+        "Completitud IDEAM": [
+            pct("precipitacion"), pct("temperatura_media"), pct("temperatura_maxima"),
+            pct("temperatura_minima"), pct("humedad_relativa"),
+            "No disponible", "No disponible", "No disponible",
+        ],
+        "Fuente principal": fuente_principal,
+        "Uso de la otra fuente": uso_otra,
     })
 
+
+def decisiones_climaticas_tumaco(control: pd.DataFrame) -> pd.DataFrame:
+    return decisiones_climaticas_ideam(control, "Tumaco")
 
 def periodo_texto(inicio, fin):
     if hasattr(inicio, "strftime") and hasattr(fin, "strftime"):
@@ -2185,20 +2244,20 @@ def obtener_hallazgos_clave(nombre_territorio: str):
     hallazgos = []
 
     try:
-        if nombre_territorio == "Tumaco":
-            if ARCHIVO_IDEAM_TUMACO is not None:
-                df_i, _, _, _ = cargar_ideam_tumaco(str(ARCHIVO_IDEAM_TUMACO))
-                if "Precipitación IDEAM (mm)" in df_i.columns:
-                    fila = df_i.loc[df_i["Precipitación IDEAM (mm)"].idxmax()]
-                    hallazgos.append(
-                        f"Mes más lluvioso: {fila['Mes']} "
-                        f"({fila['Precipitación IDEAM (mm)']:.1f} mm, IDEAM)."
-                    )
-                if "Temperatura media IDEAM (°C)" in df_i.columns:
-                    hallazgos.append(
-                        f"Temperatura media mensual aproximada: "
-                        f"{df_i['Temperatura media IDEAM (°C)'].mean():.1f} °C."
-                    )
+        archivo_ideam = ARCHIVOS_IDEAM.get(nombre_territorio)
+        if archivo_ideam is not None:
+            df_i, _, _, _ = cargar_ideam_tumaco(str(archivo_ideam))
+            if "Precipitación IDEAM (mm)" in df_i.columns:
+                fila = df_i.loc[df_i["Precipitación IDEAM (mm)"].idxmax()]
+                hallazgos.append(
+                    f"Mes más lluvioso: {fila['Mes']} "
+                    f"({fila['Precipitación IDEAM (mm)']:.1f} mm, IDEAM)."
+                )
+            if "Temperatura media IDEAM (°C)" in df_i.columns:
+                hallazgos.append(
+                    f"Temperatura media mensual aproximada: "
+                    f"{df_i['Temperatura media IDEAM (°C)'].mean():.1f} °C."
+                )
         else:
             archivo = ARCHIVOS_CLIMA_NASA.get(nombre_territorio)
             if archivo is not None:
@@ -2222,8 +2281,8 @@ def obtener_hallazgos_clave(nombre_territorio: str):
         "Tumaco": "Interacción permanente entre sistemas fluviales, estuarinos y marino-costeros.",
         "Medellín": "Contexto urbano-andino con quebradas, fuertes pendientes y amenaza por inundación.",
         "San Andrés": "La disponibilidad de agua dulce está estrechamente ligada a la lluvia y los acuíferos.",
-        "Arauca": "Territorio de llanura con marcada estacionalidad hidroclimática e influencia fluvial.",
-        "La Paz": "Territorio del Cesar incorporado para ampliar la comparación hidroambiental entre sedes.",
+        "Arauca": "IDEAM aporta observación terrestre y NASA POWER permite contraste climático continuo.",
+        "La Paz": "NASA POWER se usa como fuente climática única en esta versión del prototipo.",
     }
     hallazgos.append(particularidades.get(nombre_territorio, ""))
 
@@ -2239,7 +2298,7 @@ def mostrar_mapa_sedes_unal() -> None:
         "Otra sede UNAL (contexto)": "#7c8a87",
     }
 
-    fig = px.scatter_mapbox(
+    fig = px.scatter_map(
         df,
         lat="lat",
         lon="lon",
@@ -2262,7 +2321,7 @@ def mostrar_mapa_sedes_unal() -> None:
     )
 
     fig.update_layout(
-        mapbox_style="carto-positron",
+        map_style="carto-positron",
         margin=dict(l=0, r=0, t=0, b=0),
         legend=dict(
             title="Leyenda",
@@ -2302,7 +2361,28 @@ def mostrar_mapa_sedes_unal() -> None:
     st.markdown(dedent(html).strip(), unsafe_allow_html=True)
 
 def tabla_disponibilidad(nombre_territorio: str) -> pd.DataFrame:
-    if nombre_territorio in {"Leticia", "Medellín", "San Andrés", "Arauca", "La Paz"}:
+    if nombre_territorio == "Arauca":
+        return pd.DataFrame({
+            "Variable": [
+                "Precipitación", "Temperatura media", "Temperatura máxima",
+                "Temperatura mínima", "Humedad relativa", "Viento", "Presión", "Radiación",
+            ],
+            "IDEAM": [
+                "96.47 %", "97.80 % (derivada)", "98.54 %", "98.28 %",
+                "97.26 % (con advertencia)", "No disponible", "No disponible", "No disponible",
+            ],
+            "NASA POWER": ["Disponible"] * 8,
+            "Decisión": [
+                "IDEAM principal; NASA compara",
+                "IDEAM derivada; NASA compara",
+                "IDEAM principal; NASA compara",
+                "IDEAM principal; NASA compara",
+                "IDEAM con advertencia; NASA contrasta",
+                "NASA POWER", "NASA POWER", "NASA POWER",
+            ],
+        })
+
+    if nombre_territorio in {"Leticia", "Medellín", "San Andrés", "La Paz"}:
         return pd.DataFrame({
             "Variable": [
                 "Precipitación", "Temperatura media", "Temperaturas extremas",
@@ -2332,9 +2412,7 @@ def tabla_disponibilidad(nombre_territorio: str) -> pd.DataFrame:
             "IDEAM con cautela; NASA complementaria",
             "IDEAM con cautela; NASA complementaria",
             "Mostrar ambas con advertencia",
-            "NASA POWER",
-            "NASA POWER",
-            "NASA POWER",
+            "NASA POWER", "NASA POWER", "NASA POWER",
         ],
     })
 
@@ -2689,40 +2767,60 @@ elif seccion == "Clima":
     st.caption("SIAMS · análisis climático por fuente y calidad de datos")
 
     # -----------------------------------------------------
-    # TUMACO: IDEAM como observación + NASA POWER continuo
+    # TUMACO Y ARAUCA: IDEAM terrestre + NASA POWER continuo
     # -----------------------------------------------------
-    if territorio == "Tumaco":
+    if territorio in {"Tumaco", "Arauca"}:
+        archivo_ideam = ARCHIVOS_IDEAM.get(territorio)
+        archivo_nasa = archivo_nasa_territorio(territorio)
+
+        prefijo_ideam = (
+            "ANALISIS_HIDROMETEOROLOGICO_Tumaco*.xlsx"
+            if territorio == "Tumaco"
+            else "ANALISIS_HIDROMETEOROLOGICO_Arauca*.xlsx"
+        )
+        prefijo_nasa = f"NASA_POWER_{territorio.upper()}*.xlsx"
+
         faltantes = []
-        if ARCHIVO_IDEAM_TUMACO is None:
-            faltantes.append("ANALISIS_HIDROMETEOROLOGICO_Tumaco*.xlsx")
-        if ARCHIVO_NASA_TUMACO is None:
-            faltantes.append("NASA_POWER_TUMACO*.xlsx")
+        if archivo_ideam is None:
+            faltantes.append(prefijo_ideam)
+        if archivo_nasa is None:
+            faltantes.append(prefijo_nasa)
 
         if faltantes:
             st.error(
-                "Faltan los archivos climáticos de Tumaco junto a `app.py`: "
+                f"Faltan archivos climáticos de {territorio} junto a `app.py`: "
                 + ", ".join(faltantes)
             )
             st.info(
-                "La página no mezcla datos inventados. Cuando subas ambos Excel, "
-                "se activarán las comparaciones y decisiones por variable."
+                "La página no mezcla datos inventados. Cuando estén los Excel requeridos, "
+                "se activarán automáticamente las comparaciones IDEAM–NASA POWER."
             )
         else:
             try:
-                df_nasa, ind_nasa = cargar_nasa_tumaco(str(ARCHIVO_NASA_TUMACO))
+                df_nasa, ind_nasa = cargar_nasa_tumaco(str(archivo_nasa))
                 df_ideam, ind_ideam, control_ideam, fuentes_ideam = cargar_ideam_tumaco(
-                    str(ARCHIVO_IDEAM_TUMACO)
+                    str(archivo_ideam)
                 )
                 df = df_ideam.merge(df_nasa, on="Mes", how="inner")
 
                 st.success(
-                    f"IDEAM: `{ARCHIVO_IDEAM_TUMACO.name}` · "
-                    f"NASA POWER: `{ARCHIVO_NASA_TUMACO.name}`"
+                    f"IDEAM: `{Path(archivo_ideam).name}` · "
+                    f"NASA POWER: `{Path(archivo_nasa).name}`"
                 )
+
+                if territorio in {"Arauca", "La Paz"}:
+                    st.caption(
+                        f"Coordenadas de referencia de la sede en SIAMS: "
+                        f"{info['lat']:.6f}, {info['lon']:.6f}. "
+                        "Los Excel NASA procesados no almacenan las coordenadas de descarga."
+                    )
 
                 p_ideam_anual = df["Precipitación IDEAM (mm)"].sum()
                 p_nasa_anual = df["Precipitación NASA (mm)"].sum()
-                diferencia_p = (p_nasa_anual / p_ideam_anual - 1) * 100 if p_ideam_anual else float("nan")
+                diferencia_p = (
+                    (p_nasa_anual / p_ideam_anual - 1) * 100
+                    if p_ideam_anual else float("nan")
+                )
 
                 fila_p = control_ideam.loc[
                     control_ideam["Variable"].astype(str).eq("precipitacion")
@@ -2736,19 +2834,35 @@ elif seccion == "Clima":
                 m1.metric("Precipitación IDEAM", f"{p_ideam_anual:,.0f} mm/año")
                 m2.metric("Completitud P IDEAM", f"{completitud_p:.2f} %")
                 m3.metric("Precipitación NASA", f"{p_nasa_anual:,.0f} mm/año")
-                m4.metric("NASA frente a IDEAM", f"{diferencia_p:.1f} %")
+                m4.metric("NASA frente a IDEAM", f"{diferencia_p:+.1f} %")
 
-                st.markdown(dedent("""
-                    <div class="soft-box">
-                        <strong>Criterio adoptado:</strong> la precipitación IDEAM se usa como
-                        referencia principal por su alta completitud. NASA POWER se conserva
-                        para comparar y para variables sin observación terrestre suficiente.
-                        Las dos fuentes se muestran separadas y no se fusionan para rellenar faltantes.
-                    </div>
-                    """).strip(), unsafe_allow_html=True)
+                if territorio == "Arauca":
+                    criterio_texto = (
+                        "En Arauca, IDEAM se adopta como referencia terrestre para precipitación y "
+                        "temperatura. La temperatura media IDEAM es derivada de Tmax y Tmin. "
+                        "La humedad IDEAM se muestra con advertencia porque la serie mínima fue inferida "
+                        "a partir del archivo entregado. NASA POWER se conserva como contraste y como "
+                        "fuente para viento, presión y radiación."
+                    )
+                else:
+                    criterio_texto = (
+                        "En Tumaco, la precipitación IDEAM se usa como referencia principal por su "
+                        "alta completitud. NASA POWER se conserva para comparar y para variables sin "
+                        "observación terrestre suficiente. Las fuentes se muestran separadas y no se fusionan."
+                    )
 
                 st.markdown(
-                    f'<div class="interpretation-box"><strong>Síntesis automática:</strong><br>{interpretacion_tumaco(df, control_ideam)}</div>',
+                    dedent(f"""
+                    <div class="soft-box">
+                        <strong>Criterio adoptado:</strong> {criterio_texto}
+                    </div>
+                    """).strip(),
+                    unsafe_allow_html=True,
+                )
+
+                st.markdown(
+                    f'<div class="interpretation-box"><strong>Síntesis automática:</strong><br>'
+                    f'{interpretacion_ideam_nasa(territorio, df, control_ideam)}</div>',
                     unsafe_allow_html=True,
                 )
 
@@ -2778,7 +2892,7 @@ elif seccion == "Clima":
                         color="Fuente",
                         barmode="group",
                         text_auto=".1f",
-                        title="Régimen mensual multianual de precipitación",
+                        title=f"Régimen mensual multianual de precipitación · {territorio}",
                     )
                     fig.update_layout(
                         xaxis_title="Mes",
@@ -2789,11 +2903,12 @@ elif seccion == "Clima":
 
                     mes_max = df.loc[df["Precipitación IDEAM (mm)"].idxmax()]
                     mes_min = df.loc[df["Precipitación IDEAM (mm)"].idxmin()]
+                    relacion = "mayor" if diferencia_p > 0 else "menor"
                     st.info(
                         f"Con IDEAM, el máximo mensual ocurre en **{mes_max['Mes']}** "
                         f"({mes_max['Precipitación IDEAM (mm)']:.1f} mm) y el mínimo en "
                         f"**{mes_min['Mes']}** ({mes_min['Precipitación IDEAM (mm)']:.1f} mm). "
-                        f"La suma climatológica NASA es {abs(diferencia_p):.1f} % menor que la IDEAM."
+                        f"El acumulado NASA es {abs(diferencia_p):.1f} % {relacion} que el IDEAM."
                     )
 
                 with tab_t:
@@ -2814,7 +2929,7 @@ elif seccion == "Clima":
                     seleccion_t = st.selectbox(
                         "Variable de temperatura",
                         list(opciones_t),
-                        key="temperatura_tumaco",
+                        key=f"temperatura_ideam_nasa_{territorio}",
                     )
                     col_i, col_n = opciones_t[seleccion_t]
 
@@ -2826,7 +2941,7 @@ elif seccion == "Clima":
                         x=df["Mes"], y=df[col_n], mode="lines+markers", name="NASA POWER"
                     ))
                     fig.update_layout(
-                        title=f"{seleccion_t}: comparación mensual",
+                        title=f"{seleccion_t}: comparación mensual · {territorio}",
                         xaxis_title="Mes",
                         yaxis_title="Temperatura (°C)",
                         legend=dict(orientation="h", y=-0.2),
@@ -2835,9 +2950,15 @@ elif seccion == "Clima":
                     st.plotly_chart(fig, use_container_width=True)
 
                     diferencia_media = (df[col_n] - df[col_i]).mean()
+                    nota_t = (
+                        " En Arauca, la temperatura media IDEAM fue estimada como (Tmax + Tmin) / 2."
+                        if territorio == "Arauca" and seleccion_t == "Temperatura media"
+                        else ""
+                    )
                     st.caption(
                         f"Diferencia mensual promedio NASA − IDEAM: {diferencia_media:+.2f} °C. "
-                        "La comparación es regional porque las variables IDEAM provienen de estaciones específicas."
+                        "La comparación es regional porque IDEAM corresponde a estaciones terrestres específicas."
+                        + nota_t
                     )
 
                 with tab_hr:
@@ -2851,7 +2972,7 @@ elif seccion == "Clima":
                         mode="lines+markers", name="NASA POWER"
                     ))
                     fig.update_layout(
-                        title="Humedad relativa mensual",
+                        title=f"Humedad relativa mensual · {territorio}",
                         xaxis_title="Mes",
                         yaxis_title="Humedad relativa (%)",
                         yaxis=dict(range=[0, 100]),
@@ -2870,12 +2991,19 @@ elif seccion == "Clima":
                     diferencia_hr = (
                         df["Humedad NASA (%)"] - df["Humedad IDEAM (%)"]
                     ).mean()
-                    st.warning(
-                        f"La humedad IDEAM tiene {comp_hr:.2f} % de completitud. "
-                        f"NASA presenta en la climatología mensual una diferencia media de "
-                        f"{diferencia_hr:+.2f} puntos porcentuales frente a IDEAM. "
-                        "Por eso se muestran ambas fuentes con advertencia."
-                    )
+
+                    if territorio == "Arauca":
+                        st.warning(
+                            f"La humedad IDEAM tiene {comp_hr:.2f} % de completitud y NASA difiere "
+                            f"en promedio {diferencia_hr:+.2f} puntos porcentuales. La HR media IDEAM "
+                            "usa una serie mínima inferida; mantener esta advertencia hasta validar el metadato IDEAM."
+                        )
+                    else:
+                        st.warning(
+                            f"La humedad IDEAM tiene {comp_hr:.2f} % de completitud. NASA presenta "
+                            f"una diferencia media de {diferencia_hr:+.2f} puntos porcentuales frente a IDEAM. "
+                            "Por eso se muestran ambas fuentes con advertencia."
+                        )
 
                 with tab_otras:
                     opciones = {
@@ -2886,7 +3014,7 @@ elif seccion == "Clima":
                     seleccion = st.selectbox(
                         "Variable NASA POWER",
                         list(opciones),
-                        key="otras_nasa_tumaco",
+                        key=f"otras_nasa_{territorio}",
                     )
                     columna = opciones[seleccion]
                     fig = px.line(
@@ -2894,18 +3022,18 @@ elif seccion == "Clima":
                         x="Mes",
                         y=columna,
                         markers=True,
-                        title=f"Régimen mensual de {seleccion.lower()}",
+                        title=f"Régimen mensual de {seleccion.lower()} · {territorio}",
                     )
                     st.plotly_chart(fig, use_container_width=True)
                     st.caption(
-                        "Estas variables se presentan con NASA POWER porque el archivo IDEAM "
-                        "procesado no contiene series equivalentes para Tumaco."
+                        f"Estas variables se presentan con NASA POWER porque el archivo IDEAM procesado "
+                        f"de {territorio} no contiene series equivalentes."
                     )
 
                 with tab_calidad:
                     st.subheader("Decisión de uso por variable")
                     st.dataframe(
-                        decisiones_climaticas_tumaco(control_ideam),
+                        decisiones_climaticas_ideam(control_ideam, territorio),
                         use_container_width=True,
                         hide_index=True,
                     )
@@ -2941,32 +3069,33 @@ elif seccion == "Clima":
 
                     c1, c2 = st.columns(2)
                     with c1:
-                        with open(ARCHIVO_IDEAM_TUMACO, "rb") as archivo:
+                        with open(archivo_ideam, "rb") as archivo:
                             st.download_button(
                                 "Descargar base IDEAM procesada",
                                 data=archivo.read(),
-                                file_name=ARCHIVO_IDEAM_TUMACO.name,
+                                file_name=Path(archivo_ideam).name,
                                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                key="descarga_ideam_tumaco",
+                                key=f"descarga_ideam_{territorio}",
                             )
                     with c2:
-                        with open(ARCHIVO_NASA_TUMACO, "rb") as archivo:
+                        with open(archivo_nasa, "rb") as archivo:
                             st.download_button(
                                 "Descargar base NASA POWER",
                                 data=archivo.read(),
-                                file_name=ARCHIVO_NASA_TUMACO.name,
+                                file_name=Path(archivo_nasa).name,
                                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                key="descarga_nasa_tumaco",
+                                key=f"descarga_nasa_{territorio}",
                             )
 
             except Exception as error:
                 st.error(
-                    "Se encontraron los Excel de Tumaco, pero ocurrió un error al procesarlos."
+                    f"Se encontraron los Excel de {territorio}, pero ocurrió un error al procesarlos."
                 )
                 st.code(str(error), language=None)
 
     # -----------------------------------------------------
-    # LETICIA, MEDELLÍN, SAN ANDRÉS, ARAUCA Y LA PAZ: NASA POWER
+    # LETICIA, MEDELLÍN, SAN ANDRÉS Y LA PAZ: NASA POWER
+    # La Paz se deja deliberadamente solo con NASA POWER.
     # -----------------------------------------------------
     else:
         archivo_nasa = ARCHIVOS_CLIMA_NASA.get(territorio)
@@ -2977,8 +3106,14 @@ elif seccion == "Clima":
             try:
                 df, indicadores = cargar_clima_leticia(str(archivo_nasa))
                 st.success(
-                    f"Datos reales cargados desde `{archivo_nasa.name}` · Fuente: NASA POWER."
+                    f"Datos reales cargados desde `{Path(archivo_nasa).name}` · Fuente: NASA POWER."
                 )
+                if territorio == "La Paz":
+                    st.caption(
+                        f"Coordenadas oficiales de referencia de la Sede de La Paz en SIAMS: "
+                        f"{info['lat']:.6f}, {info['lon']:.6f}. "
+                        "El Excel NASA procesado no almacena la coordenada usada durante la descarga."
+                    )
             except Exception as error:
                 datos_reales = False
                 df = clima_prototipo(info) if info.get("precipitacion") else pd.DataFrame()
@@ -2992,8 +3127,7 @@ elif seccion == "Clima":
                 "Leticia": "NASA_POWER_LETICIA",
                 "Medellín": "NASA_POWER_MEDELLÍN",
                 "San Andrés": "NASA_POWER_SAN_ANDRES",
-                "Arauca": "NASA_POWER_ARAUCA",
-                "La Paz": "NASA_POWER_LA_PAZ",
+                "La Paz": "NASA_POWER_LAPAZ",
             }
             st.warning(
                 f"No se encontró el Excel de NASA POWER para **{territorio}**. "
@@ -3144,7 +3278,7 @@ elif seccion == "Clima":
                         st.download_button(
                             "Descargar base climática procesada",
                             data=archivo_excel.read(),
-                            file_name=archivo_nasa.name,
+                            file_name=Path(archivo_nasa).name,
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             key=f"descarga_clima_{territorio}",
                         )
@@ -3797,14 +3931,13 @@ elif seccion == "Cobertura y relieve":
 elif seccion == "Estaciones y datos":
     st.title(f"📚 Estaciones y disponibilidad de datos – {territorio}")
 
-    if territorio == "Tumaco" and ARCHIVO_IDEAM_TUMACO is not None:
+    archivo_ideam = ARCHIVOS_IDEAM.get(territorio)
+    if territorio in {"Tumaco", "Arauca"} and archivo_ideam is not None:
         try:
-            _, _, control_ideam, fuentes_ideam = cargar_ideam_tumaco(
-                str(ARCHIVO_IDEAM_TUMACO)
-            )
+            _, _, control_ideam, fuentes_ideam = cargar_ideam_tumaco(str(archivo_ideam))
             st.subheader("Resumen de decisión por variable")
             st.dataframe(
-                decisiones_climaticas_tumaco(control_ideam),
+                decisiones_climaticas_ideam(control_ideam, territorio),
                 use_container_width=True,
                 hide_index=True,
             )
@@ -3825,8 +3958,14 @@ elif seccion == "Estaciones y datos":
                 use_container_width=True,
                 hide_index=True,
             )
+
+            if territorio == "Arauca":
+                st.warning(
+                    "En Arauca, la temperatura media es derivada de Tmax y Tmin. La humedad relativa "
+                    "media usa una serie mínima inferida; validar ese metadato IDEAM antes de publicación definitiva."
+                )
         except Exception as error:
-            st.error("No fue posible leer el inventario IDEAM de Tumaco.")
+            st.error(f"No fue posible leer el inventario IDEAM de {territorio}.")
             st.code(str(error), language=None)
     else:
         st.dataframe(
@@ -3837,10 +3976,9 @@ elif seccion == "Estaciones y datos":
 
     st.markdown(
         """
-        Para cada estación se documentan nombre, código, tipo, estado, coordenadas,
-        variable, periodo, registros, completitud y criterio de uso. En Tumaco, las
-        variables no necesariamente provienen de la misma estación; esto debe conservarse
-        visible al interpretar comparaciones con NASA POWER.
+        Para cada estación se documentan nombre, código, variable, periodo, registros,
+        completitud y criterio de uso. Las fuentes IDEAM y NASA POWER se conservan separadas:
+        una comparación entre ambas no implica que las series hayan sido fusionadas.
         """
     )
 
@@ -3897,10 +4035,10 @@ elif seccion == "Comparar territorios":
         """
         <div class="soft-box">
             <strong>Criterio de comparación:</strong>
-            Leticia, Medellín, San Andrés, Arauca y La Paz utilizan NASA POWER cuando el archivo procesado está disponible.
-            En Tumaco, IDEAM se conserva como referencia principal para precipitación y temperatura,
-            mientras que NASA POWER se usa como complemento para otras variables.
-            La comparación es descriptiva porque las fuentes y periodos no son idénticos.
+            Leticia, Medellín, San Andrés y La Paz utilizan NASA POWER cuando el archivo procesado está disponible.
+            Tumaco y Arauca utilizan IDEAM como referencia terrestre para precipitación y temperatura,
+            mientras que NASA POWER se usa como contraste y para variables sin observación terrestre equivalente.
+            En Arauca la humedad IDEAM se muestra con advertencia metodológica. Las fuentes no se fusionan.
         </div>
         """,
         unsafe_allow_html=True,
@@ -3910,22 +4048,18 @@ elif seccion == "Comparar territorios":
     fuentes_resumen = []
 
     # -----------------------------------------------------
-    # TERRITORIOS NASA POWER
+    # TERRITORIOS NASA POWER COMO FUENTE PRINCIPAL
     # -----------------------------------------------------
-    for nombre in ("Leticia", "Medellín", "San Andrés", "Arauca", "La Paz"):
-
+    for nombre in ("Leticia", "Medellín", "San Andrés", "La Paz"):
         archivo = ARCHIVOS_CLIMA_NASA.get(nombre)
-
         if archivo is None:
             continue
 
         try:
             df_nasa, _ = cargar_clima_leticia(str(archivo))
-
             temporal = df_nasa.copy()
             temporal["Territorio"] = nombre
             temporal["Fuente principal"] = "NASA POWER"
-
             datasets.append(temporal)
 
             fuentes_resumen.append({
@@ -3935,88 +4069,83 @@ elif seccion == "Comparar territorios":
                 "Humedad": "NASA POWER",
                 "Viento / presión / radiación": "NASA POWER",
             })
-
         except Exception:
             pass
 
     # -----------------------------------------------------
-    # TUMACO
+    # TUMACO Y ARAUCA: IDEAM + NASA POWER
     # -----------------------------------------------------
-    if ARCHIVO_IDEAM_TUMACO is not None:
+    for nombre in ("Tumaco", "Arauca"):
+        archivo_i = ARCHIVOS_IDEAM.get(nombre)
+        archivo_n = archivo_nasa_territorio(nombre)
+
+        if archivo_i is None:
+            # Si IDEAM falta pero NASA existe, no se elimina el territorio de la comparación.
+            if archivo_n is not None:
+                try:
+                    df_n, _ = cargar_clima_leticia(str(archivo_n))
+                    temporal = df_n.copy()
+                    temporal["Territorio"] = nombre
+                    temporal["Fuente principal"] = "NASA POWER (IDEAM no detectado)"
+                    datasets.append(temporal)
+                    fuentes_resumen.append({
+                        "Territorio": nombre,
+                        "Precipitación": "NASA POWER (fallback)",
+                        "Temperatura": "NASA POWER (fallback)",
+                        "Humedad": "NASA POWER (fallback)",
+                        "Viento / presión / radiación": "NASA POWER",
+                    })
+                except Exception:
+                    pass
+            continue
 
         try:
-            df_tumaco_ideam, _, _, _ = cargar_ideam_tumaco(
-                str(ARCHIVO_IDEAM_TUMACO)
-            )
+            df_i, _, _, _ = cargar_ideam_tumaco(str(archivo_i))
+            combinado = df_i.copy()
 
-            df_tumaco = df_tumaco_ideam.copy()
-
-            # Agregar NASA Tumaco para humedad, viento, presión y radiación si existe.
-            if ARCHIVO_NASA_TUMACO is not None:
+            if archivo_n is not None:
                 try:
-                    df_tumaco_nasa, _ = cargar_nasa_tumaco(
-                        str(ARCHIVO_NASA_TUMACO)
-                    )
-                    df_tumaco = df_tumaco.merge(
-                        df_tumaco_nasa,
-                        on="Mes",
-                        how="left",
-                    )
+                    df_n, _ = cargar_nasa_tumaco(str(archivo_n))
+                    combinado = combinado.merge(df_n, on="Mes", how="left")
                 except Exception:
                     pass
 
+            if nombre == "Arauca":
+                humedad = (
+                    combinado["Humedad IDEAM (%)"]
+                    if "Humedad IDEAM (%)" in combinado.columns else pd.NA
+                )
+                fuente_hr = "IDEAM con advertencia + contraste NASA"
+            else:
+                humedad = (
+                    combinado["Humedad NASA (%)"]
+                    if "Humedad NASA (%)" in combinado.columns
+                    else combinado.get("Humedad IDEAM (%)", pd.NA)
+                )
+                fuente_hr = "NASA POWER + contraste IDEAM"
+
             temporal = pd.DataFrame({
-                "Mes": df_tumaco["Mes"],
-                "Precipitación mensual (mm)": df_tumaco["Precipitación IDEAM (mm)"],
-                "Temperatura media (°C)": df_tumaco["Temperatura media IDEAM (°C)"],
-                "Temperatura máxima (°C)": (
-                    df_tumaco["Temperatura máxima IDEAM (°C)"]
-                    if "Temperatura máxima IDEAM (°C)" in df_tumaco.columns
-                    else pd.NA
-                ),
-                "Temperatura mínima (°C)": (
-                    df_tumaco["Temperatura mínima IDEAM (°C)"]
-                    if "Temperatura mínima IDEAM (°C)" in df_tumaco.columns
-                    else pd.NA
-                ),
-                "Humedad relativa (%)": (
-                    df_tumaco["Humedad NASA (%)"]
-                    if "Humedad NASA (%)" in df_tumaco.columns
-                    else (
-                        df_tumaco["Humedad IDEAM (%)"]
-                        if "Humedad IDEAM (%)" in df_tumaco.columns
-                        else pd.NA
-                    )
-                ),
-                "Viento a 2 m (m/s)": (
-                    df_tumaco["Viento a 2 m NASA (m/s)"]
-                    if "Viento a 2 m NASA (m/s)" in df_tumaco.columns
-                    else pd.NA
-                ),
-                "Presión superficial (kPa)": (
-                    df_tumaco["Presión NASA (kPa)"]
-                    if "Presión NASA (kPa)" in df_tumaco.columns
-                    else pd.NA
-                ),
-                "Radiación solar (kWh/m²/día)": (
-                    df_tumaco["Radiación NASA (kWh/m²/día)"]
-                    if "Radiación NASA (kWh/m²/día)" in df_tumaco.columns
-                    else pd.NA
-                ),
-                "Territorio": "Tumaco",
+                "Mes": combinado["Mes"],
+                "Precipitación mensual (mm)": combinado["Precipitación IDEAM (mm)"],
+                "Temperatura media (°C)": combinado["Temperatura media IDEAM (°C)"],
+                "Temperatura máxima (°C)": combinado.get("Temperatura máxima IDEAM (°C)", pd.NA),
+                "Temperatura mínima (°C)": combinado.get("Temperatura mínima IDEAM (°C)", pd.NA),
+                "Humedad relativa (%)": humedad,
+                "Viento a 2 m (m/s)": combinado.get("Viento a 2 m NASA (m/s)", pd.NA),
+                "Presión superficial (kPa)": combinado.get("Presión NASA (kPa)", pd.NA),
+                "Radiación solar (kWh/m²/día)": combinado.get("Radiación NASA (kWh/m²/día)", pd.NA),
+                "Territorio": nombre,
                 "Fuente principal": "IDEAM + NASA POWER",
             })
-
             datasets.append(temporal)
 
             fuentes_resumen.append({
-                "Territorio": "Tumaco",
+                "Territorio": nombre,
                 "Precipitación": "IDEAM",
                 "Temperatura": "IDEAM",
-                "Humedad": "NASA POWER + contraste IDEAM",
+                "Humedad": fuente_hr,
                 "Viento / presión / radiación": "NASA POWER",
             })
-
         except Exception:
             pass
 
@@ -4024,29 +4153,18 @@ elif seccion == "Comparar territorios":
     # VISUALIZACIÓN
     # -----------------------------------------------------
     if datasets:
+        comparar = pd.concat(datasets, ignore_index=True, sort=False)
 
-        comparar = pd.concat(
-            datasets,
-            ignore_index=True,
-            sort=False,
-        )
+        tab_p, tab_t, tab_hr, tab_otras, tab_resumen, tab_fuentes = st.tabs([
+            "Precipitación",
+            "Temperatura",
+            "Humedad",
+            "Viento, presión y radiación",
+            "Resumen anual",
+            "Fuentes",
+        ])
 
-        tab_p, tab_t, tab_hr, tab_otras, tab_resumen, tab_fuentes = st.tabs(
-            [
-                "Precipitación",
-                "Temperatura",
-                "Humedad",
-                "Viento, presión y radiación",
-                "Resumen anual",
-                "Fuentes",
-            ]
-        )
-
-        # -------------------------------------------------
-        # PRECIPITACIÓN
-        # -------------------------------------------------
         with tab_p:
-
             fig = px.bar(
                 comparar,
                 x="Mes",
@@ -4055,27 +4173,17 @@ elif seccion == "Comparar territorios":
                 barmode="group",
                 title="Régimen mensual de precipitación",
             )
-
             fig.update_layout(
                 xaxis_title="Mes",
                 yaxis_title="Precipitación mensual (mm)",
                 legend_title_text="Territorio",
             )
-
-            st.plotly_chart(
-                fig,
-                use_container_width=True,
-            )
-
+            st.plotly_chart(fig, use_container_width=True)
             st.caption(
-                "Tumaco utiliza precipitación IDEAM; los demás territorios usan NASA POWER cuando su archivo está disponible."
+                "Tumaco y Arauca usan precipitación IDEAM; Leticia, Medellín, San Andrés y La Paz usan NASA POWER."
             )
 
-        # -------------------------------------------------
-        # TEMPERATURA
-        # -------------------------------------------------
         with tab_t:
-
             fig = px.line(
                 comparar,
                 x="Mes",
@@ -4084,22 +4192,15 @@ elif seccion == "Comparar territorios":
                 markers=True,
                 title="Temperatura media mensual",
             )
-
             fig.update_layout(
                 xaxis_title="Mes",
                 yaxis_title="Temperatura media (°C)",
                 legend_title_text="Territorio",
             )
+            st.plotly_chart(fig, use_container_width=True)
 
-            st.plotly_chart(
-                fig,
-                use_container_width=True,
-            )
-
-            # Rango térmico mensual por territorio
             resumen_temp = (
-                comparar
-                .groupby("Territorio")
+                comparar.groupby("Territorio")
                 .agg(
                     Temperatura_media_C=("Temperatura media (°C)", "mean"),
                     Temperatura_min_media_C=("Temperatura media (°C)", "min"),
@@ -4107,29 +4208,14 @@ elif seccion == "Comparar territorios":
                 )
                 .reset_index()
             )
-
             resumen_temp["Amplitud_media_mensual_C"] = (
-                resumen_temp["Temperatura_max_media_C"]
-                - resumen_temp["Temperatura_min_media_C"]
+                resumen_temp["Temperatura_max_media_C"] - resumen_temp["Temperatura_min_media_C"]
             )
+            st.dataframe(resumen_temp.round(2), use_container_width=True, hide_index=True)
 
-            st.dataframe(
-                resumen_temp.round(2),
-                use_container_width=True,
-                hide_index=True,
-            )
-
-        # -------------------------------------------------
-        # HUMEDAD
-        # -------------------------------------------------
         with tab_hr:
-
-            datos_hr = comparar.dropna(
-                subset=["Humedad relativa (%)"]
-            )
-
+            datos_hr = comparar.dropna(subset=["Humedad relativa (%)"])
             if not datos_hr.empty:
-
                 fig = px.line(
                     datos_hr,
                     x="Mes",
@@ -4138,51 +4224,34 @@ elif seccion == "Comparar territorios":
                     markers=True,
                     title="Humedad relativa mensual",
                 )
-
                 fig.update_layout(
                     xaxis_title="Mes",
                     yaxis_title="Humedad relativa (%)",
                     yaxis=dict(range=[0, 100]),
                     legend_title_text="Territorio",
                 )
-
-                st.plotly_chart(
-                    fig,
-                    use_container_width=True,
-                )
-
+                st.plotly_chart(fig, use_container_width=True)
                 st.caption(
-                    "En Tumaco se usa NASA POWER como referencia continua de humedad, con IDEAM como contraste cuando está disponible."
+                    "Arauca usa IDEAM con advertencia metodológica; Tumaco prioriza NASA POWER para humedad continua."
                 )
-
             else:
                 st.info("No hay datos de humedad disponibles para comparar.")
 
-        # -------------------------------------------------
-        # OTRAS VARIABLES
-        # -------------------------------------------------
         with tab_otras:
-
             opciones = {
                 "Viento a 2 m": "Viento a 2 m (m/s)",
                 "Presión superficial": "Presión superficial (kPa)",
                 "Radiación solar": "Radiación solar (kWh/m²/día)",
             }
-
             seleccion = st.selectbox(
                 "Variable",
                 list(opciones.keys()),
-                key="comparacion_otras_4_territorios",
+                key="comparacion_otras_territorios",
             )
-
             columna = opciones[seleccion]
-
-            datos_variable = comparar.dropna(
-                subset=[columna]
-            )
+            datos_variable = comparar.dropna(subset=[columna])
 
             if not datos_variable.empty:
-
                 fig = px.line(
                     datos_variable,
                     x="Mes",
@@ -4191,130 +4260,68 @@ elif seccion == "Comparar territorios":
                     markers=True,
                     title=f"{seleccion} · comparación entre territorios",
                 )
-
-                fig.update_layout(
-                    xaxis_title="Mes",
-                    legend_title_text="Territorio",
-                )
-
-                st.plotly_chart(
-                    fig,
-                    use_container_width=True,
-                )
-
+                fig.update_layout(xaxis_title="Mes", legend_title_text="Territorio")
+                st.plotly_chart(fig, use_container_width=True)
                 st.caption(
-                    "Estas variables se comparan principalmente con NASA POWER para mantener una fuente homogénea entre territorios."
+                    "Viento, presión y radiación se comparan con NASA POWER para mantener una fuente homogénea."
                 )
-
             else:
-                st.info(
-                    f"No hay suficientes datos de {seleccion.lower()} para construir la comparación."
-                )
+                st.info(f"No hay suficientes datos de {seleccion.lower()} para construir la comparación.")
 
-        # -------------------------------------------------
-        # RESUMEN ANUAL
-        # -------------------------------------------------
         with tab_resumen:
-
             resumen = (
-                comparar
-                .groupby("Territorio")
+                comparar.groupby("Territorio")
                 .agg(
-                    Precipitacion_anual_mm=(
-                        "Precipitación mensual (mm)",
-                        "sum",
-                    ),
-                    Temperatura_media_C=(
-                        "Temperatura media (°C)",
-                        "mean",
-                    ),
-                    Humedad_media_pct=(
-                        "Humedad relativa (%)",
-                        "mean",
-                    ),
-                    Viento_medio_m_s=(
-                        "Viento a 2 m (m/s)",
-                        "mean",
-                    ),
-                    Presion_media_kPa=(
-                        "Presión superficial (kPa)",
-                        "mean",
-                    ),
-                    Radiacion_media_kWh_m2_dia=(
-                        "Radiación solar (kWh/m²/día)",
-                        "mean",
-                    ),
+                    Precipitacion_anual_mm=("Precipitación mensual (mm)", "sum"),
+                    Temperatura_media_C=("Temperatura media (°C)", "mean"),
+                    Humedad_media_pct=("Humedad relativa (%)", "mean"),
+                    Viento_medio_m_s=("Viento a 2 m (m/s)", "mean"),
+                    Presion_media_kPa=("Presión superficial (kPa)", "mean"),
+                    Radiacion_media_kWh_m2_dia=("Radiación solar (kWh/m²/día)", "mean"),
                 )
                 .reset_index()
             )
-
-            st.dataframe(
-                resumen.round(2),
-                use_container_width=True,
-                hide_index=True,
-            )
+            st.dataframe(resumen.round(2), use_container_width=True, hide_index=True)
 
             if not resumen.empty:
-                mas_lluvioso = resumen.loc[
-                    resumen["Precipitacion_anual_mm"].idxmax()
-                ]
-
-                mas_calido = resumen.loc[
-                    resumen["Temperatura_media_C"].idxmax()
-                ]
-
-                mas_humedo = resumen.dropna(
-                    subset=["Humedad_media_pct"]
-                )
+                mas_lluvioso = resumen.loc[resumen["Precipitacion_anual_mm"].idxmax()]
+                mas_calido = resumen.loc[resumen["Temperatura_media_C"].idxmax()]
+                mas_humedo = resumen.dropna(subset=["Humedad_media_pct"])
 
                 c1, c2, c3 = st.columns(3)
-
                 c1.metric(
                     "Mayor precipitación anual",
                     mas_lluvioso["Territorio"],
                     f"{mas_lluvioso['Precipitacion_anual_mm']:.0f} mm",
                 )
-
                 c2.metric(
                     "Mayor temperatura media",
                     mas_calido["Territorio"],
                     f"{mas_calido['Temperatura_media_C']:.1f} °C",
                 )
-
                 if not mas_humedo.empty:
-                    fila_h = mas_humedo.loc[
-                        mas_humedo["Humedad_media_pct"].idxmax()
-                    ]
+                    fila_h = mas_humedo.loc[mas_humedo["Humedad_media_pct"].idxmax()]
                     c3.metric(
                         "Mayor humedad media",
                         fila_h["Territorio"],
                         f"{fila_h['Humedad_media_pct']:.1f} %",
                     )
 
-        # -------------------------------------------------
-        # FUENTES
-        # -------------------------------------------------
         with tab_fuentes:
-
             st.subheader("Fuente principal por variable")
-
             st.dataframe(
                 pd.DataFrame(fuentes_resumen),
                 use_container_width=True,
                 hide_index=True,
             )
-
             st.warning(
                 "Las diferencias observadas no deben interpretarse únicamente como diferencias climáticas. "
                 "También influyen la fuente de datos, el periodo de análisis y la escala espacial de cada producto."
             )
-
     else:
-
         st.warning(
             "No se encontraron suficientes archivos climáticos para construir la comparación entre territorios."
         )
-
 
 # =========================================================
 # METODOLOGÍA
@@ -4382,6 +4389,7 @@ elif seccion == "Fuentes y descargas":
             ("NASA POWER · La Paz", ARCHIVO_CLIMA_LA_PAZ, "descarga_fuente_la_paz"),
             ("NASA POWER · Tumaco", ARCHIVO_NASA_TUMACO, "descarga_fuente_nasa_tumaco"),
             ("IDEAM procesado · Tumaco", ARCHIVO_IDEAM_TUMACO, "descarga_fuente_ideam_tumaco"),
+            ("IDEAM procesado · Arauca", ARCHIVO_IDEAM_ARAUCA, "descarga_fuente_ideam_arauca"),
             ("GWSa Colombia · GRACE/GLDAS", ARCHIVO_GWS, "descarga_fuente_gws"),
         ]
         estado = []
