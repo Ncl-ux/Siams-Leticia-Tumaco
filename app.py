@@ -2,8 +2,12 @@ from pathlib import Path
 from textwrap import dedent
 import math
 import unicodedata
+import base64
+import subprocess
+import tempfile
 
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -18,8 +22,8 @@ except ImportError:
     np = None
     xr = None
 
-VERSION_APP = "PROTOTIPO-SIAMS-V18-ARAUCA-IDEAM-NASA-2026-09-09"
-FECHA_ACTUALIZACION = "9 de septiembre de 2026"
+VERSION_APP = "PROTOTIPO-SIAMS-V22-GGDI-2026-09-11"
+FECHA_ACTUALIZACION = "11 de septiembre de 2026"
 
 # =========================================================
 # CONFIGURACIÓN GENERAL
@@ -436,6 +440,60 @@ st.markdown(
         object-fit: contain;
     }
 
+    /* NAVEGADOR DE UBICACIÓN · SEDE BOGOTÁ */
+    .location-shell {
+        background: var(--secondary-background-color);
+        color: var(--text-color);
+        border: 1px solid var(--siams-borde);
+        border-radius: 20px;
+        padding: 1rem 1.1rem 1.15rem 1.1rem;
+        box-shadow: var(--siams-sombra);
+        margin: 0.8rem 0 1rem 0;
+    }
+
+    .location-progress {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.55rem;
+        flex-wrap: wrap;
+        margin: 0.55rem 0 1rem 0;
+    }
+
+    .location-step {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 30px;
+        height: 30px;
+        padding: 0 0.55rem;
+        border-radius: 999px;
+        border: 1px solid var(--siams-borde);
+        background: var(--secondary-background-color);
+        color: var(--text-color) !important;
+        font-size: 0.78rem;
+        font-weight: 800;
+    }
+
+    .location-step.active {
+        background: color-mix(in srgb, var(--primary-color) 18%, var(--secondary-background-color));
+        border-color: var(--primary-color);
+    }
+
+    .location-arrow {
+        opacity: 0.55;
+        color: var(--text-color) !important;
+        font-weight: 800;
+    }
+
+    .location-caption {
+        color: var(--text-color) !important;
+        opacity: 0.78;
+        font-size: 0.92rem;
+        line-height: 1.5;
+        margin-top: 0.35rem;
+    }
+
     /* RESPONSIVE */
     @media (max-width: 900px) {
         .block-container {
@@ -520,9 +578,9 @@ UNAL_SEDES = pd.DataFrame([
         "Ciudad": "Bogotá D.C.",
         "lat": 4.6386,
         "lon": -74.0841,
-        "Estado": "Otra sede UNAL (contexto)",
-        "Descripcion": "Sede Bogotá de la Universidad Nacional de Colombia.",
-        "Tamano": 11,
+        "Estado": "Territorio integrado en SIAMS",
+        "Descripcion": "Sede Bogotá, incorporada al prototipo con un piloto cartográfico de ubicación por niveles.",
+        "Tamano": 16,
     },
     {
         "Sede": "Medellín",
@@ -598,6 +656,29 @@ UNAL_SEDES = pd.DataFrame([
     },
 ])
 TERRITORIOS = {
+    "Bogotá": {
+        "region": "Región Andina",
+        "departamento": "Bogotá D.C.",
+        "sede": "Universidad Nacional de Colombia – Sede Bogotá",
+        "lat": 4.6386,
+        "lon": -74.0841,
+        "area_principal": "Campus Ciudad Universitaria",
+        "contexto": "Bogotá D.C. y entorno metropolitano",
+        "fuente_clima": "Pendiente de integración",
+        "estado_datos": "Piloto cartográfico de ubicación habilitado",
+        "descripcion": (
+            "La Sede Bogotá se incorpora al prototipo SIAMS mediante un módulo de ubicación "
+            "multiescala que permite pasar de Colombia a Bogotá, luego al campus y finalmente "
+            "a una vista web interactiva de la Ciudad Universitaria."
+        ),
+        "precipitacion": [],
+        "temperatura": [],
+        "humedad": [],
+        "hallazgo": (
+            "La ubicación de la sede se presenta como una secuencia cartográfica de tres escalas "
+            "complementada con un mapa interactivo para navegación, zoom y consulta espacial."
+        ),
+    },
     "Leticia": {
         "region": "Amazonía colombiana",
         "departamento": "Amazonas",
@@ -738,6 +819,18 @@ TERRITORIOS = {
 # =========================================================
 
 ESTADO_COMPONENTES = {
+    "Bogotá": [
+        ("Identificación y contexto", "Completo", "Sede, coordenadas y contexto territorial incorporados."),
+        ("Cartografía e hidrología", "En proceso", "Piloto de ubicación multiescala incorporado; hidrología temática queda para una fase posterior."),
+        ("Clima", "Pendiente", "No se ha integrado todavía una base climática específica para Bogotá."),
+        ("Geología", "Pendiente", "No se ha incorporado todavía cartografía geológica específica."),
+        ("Cobertura y relieve", "Pendiente", "No se han incorporado aún capas temáticas de cobertura o relieve."),
+        ("Estaciones y calidad", "Pendiente", "Inventario de estaciones y control de datos por consolidar."),
+        ("Hidrogeología", "Pendiente", "Componente por desarrollar."),
+        ("IRCA", "Pendiente", "Componente por desarrollar."),
+        ("Hidrogeoquímica", "Pendiente", "Componente por desarrollar."),
+        ("Monitoreo", "Sin datos", "No se han incorporado series validadas de monitoreo."),
+    ],
     "Leticia": [
         ("Identificación y contexto", "Completo", "Sede, localización y síntesis territorial incorporadas."),
         ("Cartografía e hidrología", "Completo", "Mapas regionales de hidrografía, humedales e inundación."),
@@ -787,12 +880,12 @@ ESTADO_COMPONENTES = {
     ],
     "Arauca": [
         ("Identificación y contexto", "Completo", "Sede Orinoquía, coordenadas y síntesis territorial incorporadas."),
-        ("Cartografía e hidrología", "Pendiente", "Falta incorporar cartografía temática regional validada."),
+        ("Cartografía e hidrología", "En proceso", "Se incorporan mapas IDEAM de oferta hídrica, demanda industrial y vertimientos como contexto regional y nacional."),
         ("Clima", "Completo", "IDEAM procesado y NASA POWER se integran como fuentes separadas y comparables."),
-        ("Geología", "Pendiente", "Falta incorporar cartografía geológica de referencia."),
-        ("Cobertura y relieve", "Pendiente", "Faltan capas de cobertura, relieve o pendientes."),
+        ("Geología", "En proceso", "Mapa Geológico de Colombia 2023 incorporado como referencia regional; falta cartografía de mayor detalle para el entorno de la sede."),
+        ("Cobertura y relieve", "Pendiente", "Faltan capas de cobertura, relieve o pendientes específicas para Arauca."),
         ("Estaciones y calidad", "En proceso", "Queda habilitado el inventario de datos y fuentes."),
-        ("Hidrogeología", "En proceso", "Se incorpora GWSa satelital cuando está disponible el NetCDF GRACE/GLDAS."),
+        ("Hidrogeología", "En proceso", "Se incorporan el sistema acuífero Arauca-Arauquita, PEXAS y mapas IDEAM de puntos y concesiones; GWSa complementa la lectura regional."),
         ("IRCA", "Pendiente", "No se ha incorporado una base georreferenciada de calidad del agua."),
         ("Hidrogeoquímica", "Pendiente", "No hay muestras hidrogeoquímicas integradas en esta versión."),
         ("Monitoreo", "En proceso", "Queda preparado para integrar sondas y series validadas."),
@@ -960,6 +1053,64 @@ METADATOS_MAPAS = {
             "limitacion": "El mapa representa drenajes estacionales y límites de microcuenca según la fuente original.",
         },
     },
+    "Arauca": {
+        "demanda_industria": {
+            "entidad": "IDEAM",
+            "producto": "Demanda de agua de la industria manufacturera por departamento",
+            "alcance": "Nacional, con lectura departamental",
+            "actualidad": "2021",
+            "limitacion": "Es un indicador departamental; no representa la demanda puntual del municipio ni de la Sede Orinoquía.",
+        },
+        "vertimientos_industria": {
+            "entidad": "IDEAM",
+            "producto": "Vertimientos de aguas residuales de la industria manufacturera",
+            "alcance": "Nacional, con lectura departamental",
+            "actualidad": "2021",
+            "limitacion": "La información es agregada por departamento y debe interpretarse como contexto de presión sobre el recurso hídrico.",
+        },
+        "anomalia_oferta_alta": {
+            "entidad": "IDEAM – Estudio Nacional del Agua",
+            "producto": "Anomalía de la Oferta Hídrica Superficial en condiciones altas",
+            "alcance": "Nacional por unidades hidrográficas",
+            "actualidad": "ENA 2014",
+            "limitacion": "Es una referencia histórica de escala nacional y no sustituye un análisis hidrológico local actualizado de Arauca.",
+        },
+        "puntos_agua_subterranea": {
+            "entidad": "IDEAM – Estudio Nacional del Agua",
+            "producto": "Distribución de puntos de agua subterránea por Autoridad Ambiental",
+            "alcance": "Nacional por autoridad ambiental",
+            "actualidad": "ENA 2014",
+            "limitacion": "Representa el número de puntos inventariados por autoridad ambiental, no la ubicación individual de cada pozo o aljibe.",
+        },
+        "volumen_concesionado": {
+            "entidad": "IDEAM – Estudio Nacional del Agua",
+            "producto": "Volúmenes de agua subterránea concesionada objeto de cobro TUA",
+            "alcance": "Nacional",
+            "actualidad": "ENA 2014",
+            "limitacion": "Es información histórica agregada; no equivale a extracción real actual ni a disponibilidad del acuífero.",
+        },
+        "criterio_hidrogeologico": {
+            "entidad": "Servicio Geológico Colombiano – PEXAS",
+            "producto": "Programa de Exploración de Aguas Subterráneas – criterio de demanda e hidrogeológico",
+            "alcance": "Regional, con visualización sobre Arauca y departamentos vecinos",
+            "actualidad": "2005",
+            "limitacion": "La capa es de planificación y exploración regional y no reemplaza una caracterización hidrogeológica local del sistema acuífero.",
+        },
+        "geologia": {
+            "entidad": "Servicio Geológico Colombiano (SGC)",
+            "producto": "Mapa Geológico de Colombia 2023",
+            "alcance": "Nacional",
+            "actualidad": "2023",
+            "limitacion": "La escala nacional sirve como contexto regional; para la sede se requiere cartografía geológica de mayor detalle.",
+        },
+        "sistema_acuifero": {
+            "entidad": "IDEAM",
+            "producto": "SAP3.3 Sistema Acuífero Arauca-Arauquita",
+            "alcance": "Arauca-Arauquita",
+            "actualidad": "Anexo 7 de Aguas Subterráneas consultado",
+            "limitacion": "La propia ficha reporta información hidrogeológica local limitada y varios campos como NRI; debe presentarse como delimitación y antecedente, no como caracterización completa.",
+        },
+    },
 }
 
 FUENTES_CLIMATICAS = pd.DataFrame({
@@ -1124,6 +1275,87 @@ def climatologia_gws(df: pd.DataFrame) -> pd.DataFrame:
     )
     salida["Mes"] = salida["Mes_num"].map(dict(enumerate(MESES, start=1)))
     return salida[["Mes_num", "Mes", "GWSa (cm)"]]
+
+
+def calcular_ggdi(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
+    """
+    Calcula el GRACE Groundwater Drought Index (GGDI) para la serie de una sede.
+
+    Metodología implementada:
+    1) climatología mensual de GWSa usando todos los años disponibles;
+    2) GSD = GWSa observada - climatología del mismo mes;
+    3) GGDI = GSD / desviación estándar de toda la serie GSD.
+
+    El índice es adimensional. Valores positivos indican almacenamiento por encima
+    de lo esperado para ese mes y valores negativos indican déficit relativo.
+    """
+    if np is None:
+        raise ImportError("Falta NumPy para calcular GGDI.")
+    if df is None or df.empty:
+        return pd.DataFrame(), {"disponible": False, "motivo": "No hay datos GWSa."}
+
+    temporal = df[["Fecha", "GWSa (cm)"]].copy()
+    temporal["Fecha"] = pd.to_datetime(temporal["Fecha"], errors="coerce")
+    temporal["GWSa (cm)"] = pd.to_numeric(temporal["GWSa (cm)"], errors="coerce")
+    temporal = temporal.dropna(subset=["Fecha", "GWSa (cm)"]).sort_values("Fecha")
+
+    if temporal.empty or temporal["Fecha"].dt.year.nunique() < 2:
+        return pd.DataFrame(), {
+            "disponible": False,
+            "motivo": "Se requieren al menos dos años para construir una climatología mensual.",
+        }
+
+    temporal["Año"] = temporal["Fecha"].dt.year.astype(int)
+    temporal["Mes_num"] = temporal["Fecha"].dt.month.astype(int)
+    temporal["Mes"] = temporal["Mes_num"].map(dict(enumerate(MESES, start=1)))
+
+    climatologia = (
+        temporal.groupby("Mes_num")["GWSa (cm)"]
+        .mean()
+        .rename("GWSa climatológica (cm)")
+    )
+    temporal = temporal.join(climatologia, on="Mes_num")
+
+    temporal["GSD (cm)"] = (
+        temporal["GWSa (cm)"] - temporal["GWSa climatológica (cm)"]
+    )
+
+    sigma_gsd = float(temporal["GSD (cm)"].std(ddof=1))
+    if not np.isfinite(sigma_gsd) or sigma_gsd <= 0:
+        return pd.DataFrame(), {
+            "disponible": False,
+            "motivo": "La desviación estándar de GSD es nula o no válida.",
+        }
+
+    temporal["GGDI"] = temporal["GSD (cm)"] / sigma_gsd
+    temporal["Condición GGDI"] = np.where(
+        temporal["GGDI"] < 0,
+        "Déficit respecto a lo normal del mes",
+        np.where(
+            temporal["GGDI"] > 0,
+            "Por encima de lo normal del mes",
+            "Condición mensual normal",
+        ),
+    )
+
+    meta = {
+        "disponible": True,
+        "sigma_gsd_cm": sigma_gsd,
+        "registros": int(len(temporal)),
+        "anios": int(temporal["Año"].nunique()),
+        "fecha_inicial": temporal["Fecha"].min(),
+        "fecha_final": temporal["Fecha"].max(),
+        "ggdi_min": float(temporal["GGDI"].min()),
+        "ggdi_max": float(temporal["GGDI"].max()),
+        "porcentaje_deficit": float((temporal["GGDI"] < 0).mean() * 100.0),
+    }
+
+    columnas = [
+        "Fecha", "Año", "Mes_num", "Mes",
+        "GWSa (cm)", "GWSa climatológica (cm)",
+        "GSD (cm)", "GGDI", "Condición GGDI",
+    ]
+    return temporal[columnas].reset_index(drop=True), meta
 
 
 
@@ -1638,40 +1870,66 @@ MAPAS_SAN_ANDRES = {
     "microcuencas": "mapa_microcuencas_arroyos_san_andres",
 }
 
+MAPAS_ARAUCA = {
+    "demanda_industria": "mapa_demanda_agua_industria_manufacturera_arauca_2021",
+    "vertimientos_industria": "mapa_vertimientos_industria_manufacturera_arauca_2021",
+    "anomalia_oferta_alta": "mapa_anomalia_oferta_hidrica_superficial_arauca_ena2014",
+    "puntos_agua_subterranea": "mapa_puntos_agua_subterranea_arauca_ena2014",
+    "volumen_concesionado": "mapa_volumen_agua_subterranea_concesionada_arauca_ena2014",
+    "criterio_hidrogeologico": "mapa_criterio_demanda_hidrogeologico_arauca_pexas_2005",
+    "geologia": "mapa_geologico_colombia_2023_arauca",
+    "sistema_acuifero": "mapa_sistema_acuifero_arauca_arauquita",
+}
+
+# Piloto de ubicación multiescala de la Sede Bogotá.
+# Se usan directamente los PDF originales, conservando exactamente sus nombres.
+MAPAS_BOGOTA = {
+    "ubicacion_colombia": "Mapa Bogotá escala 10.000.000.pdf",
+    "ubicacion_region": "Mapa Bogotá escala 1.500.000.pdf",
+    "ubicacion_campus": "Mapa Campus escala 10.000.pdf",
+}
+
+
 MAPAS_POR_TERRITORIO = {
+    "Bogotá": MAPAS_BOGOTA,
     "Leticia": MAPAS_LETICIA,
     "Tumaco": MAPAS_TUMACO,
     "Medellín": MAPAS_MEDELLIN,
     "San Andrés": MAPAS_SAN_ANDRES,
-    "Arauca": {},
+    "Arauca": MAPAS_ARAUCA,
     "La Paz": {},
 }
 
 
 def encontrar_carpeta_mapas() -> Path:
-    """Busca la carpeta de mapas tanto junto al código como en Documentos."""
+    """Devuelve la carpeta principal de mapas temáticos.
+
+    Los mapas antiguos del proyecto están dentro de ``SIAMS MAPAS``.
+    Los PDF del piloto de Bogotá pueden estar directamente junto a ``app.py``.
+    El buscador de mapas revisa ambas ubicaciones para mantener compatibilidad.
+    """
     carpeta_codigo = Path(__file__).resolve().parent
+    carpeta_siams = carpeta_codigo / "SIAMS MAPAS"
 
-    candidatas = [
-        carpeta_codigo / "SIAMS MAPAS",
-        carpeta_codigo / "mapas",
-        carpeta_codigo / "datos" / "mapas",
-        carpeta_codigo / "datos" / "leticia" / "mapas",
-        carpeta_codigo / "datos" / "tumaco" / "mapas",
-        Path.home() / "Documents" / "SIAMS MAPAS",
-        Path.home() / "Documentos" / "SIAMS MAPAS",
-    ]
+    if carpeta_siams.exists() and carpeta_siams.is_dir():
+        return carpeta_siams
 
-    for carpeta in candidatas:
-        if carpeta.exists() and carpeta.is_dir():
-            return carpeta
-
-    # Si ninguna existe, se devuelve la primera para mostrar una ruta clara en el aviso.
-    return candidatas[0]
+    return carpeta_codigo
 
 
+CARPETA_PROYECTO = Path(__file__).resolve().parent
 CARPETA_MAPAS = encontrar_carpeta_mapas()
+
+# Se buscan mapas en ambos lugares:
+# 1) SIAMS MAPAS -> cartografía temática existente.
+# 2) carpeta de app.py -> PDF del piloto de Bogotá y compatibilidad.
+CARPETAS_BUSQUEDA_MAPAS = []
+for _carpeta in (CARPETA_MAPAS, CARPETA_PROYECTO):
+    if _carpeta not in CARPETAS_BUSQUEDA_MAPAS:
+        CARPETAS_BUSQUEDA_MAPAS.append(_carpeta)
+
 EXTENSIONES_IMAGEN = (".png", ".jpg", ".jpeg", ".webp", ".PNG", ".JPG", ".JPEG", ".WEBP")
+EXTENSIONES_MAPA = EXTENSIONES_IMAGEN + (".pdf", ".PDF")
 
 
 # =========================================================
@@ -1929,6 +2187,7 @@ ARCHIVO_CLIMA_LA_PAZ = encontrar_archivo_excel(
 )
 
 ARCHIVOS_CLIMA_NASA = {
+    "Bogotá": None,
     "Leticia": ARCHIVO_CLIMA_LETICIA,
     "Medellín": ARCHIVO_CLIMA_MEDELLIN,
     "San Andrés": ARCHIVO_CLIMA_SAN_ANDRES,
@@ -2135,21 +2394,606 @@ def clima_prototipo(info: dict) -> pd.DataFrame:
 
 
 def buscar_mapa(nombre_base: str):
-    """Devuelve la ruta de una imagen sin depender de su extensión."""
-    for extension in EXTENSIONES_IMAGEN:
-        ruta = CARPETA_MAPAS / f"{nombre_base}{extension}"
-        if ruta.exists():
-            return ruta
+    """Busca mapas en ``SIAMS MAPAS`` y también junto a ``app.py``.
 
-    # También permite pequeñas variaciones de mayúsculas/minúsculas en el nombre.
-    if CARPETA_MAPAS.exists():
-        objetivo = nombre_base.casefold()
-        for archivo in CARPETA_MAPAS.iterdir():
-            if archivo.is_file() and archivo.stem.casefold() == objetivo:
-                if archivo.suffix.casefold() in {".png", ".jpg", ".jpeg", ".webp"}:
-                    return archivo
+    Esto conserva los mapas temáticos existentes en la subcarpeta y, al mismo
+    tiempo, permite que los PDF del piloto de Bogotá permanezcan en la raíz del
+    proyecto sin mover ni renombrar archivos.
+    """
+    objetivo = Path(nombre_base).name.casefold()
+    objetivo_stem = Path(nombre_base).stem.casefold()
+
+    for carpeta in CARPETAS_BUSQUEDA_MAPAS:
+        if not carpeta.exists() or not carpeta.is_dir():
+            continue
+
+        # Nombre completo, útil cuando nombre_base ya incluye .pdf/.png.
+        ruta_directa = carpeta / nombre_base
+        if ruta_directa.exists() and ruta_directa.is_file():
+            return ruta_directa
+
+        # Nombre base sin extensión.
+        for extension in EXTENSIONES_MAPA:
+            ruta = carpeta / f"{nombre_base}{extension}"
+            if ruta.exists() and ruta.is_file():
+                return ruta
+
+        # Coincidencia tolerante a mayúsculas/minúsculas.
+        for archivo in carpeta.iterdir():
+            if not archivo.is_file():
+                continue
+            if archivo.name.casefold() == objetivo:
+                return archivo
+            if (
+                archivo.stem.casefold() == objetivo_stem
+                and archivo.suffix.casefold() in {".png", ".jpg", ".jpeg", ".webp", ".pdf"}
+            ):
+                return archivo
 
     return None
+
+
+def mostrar_pdf_mapa(ruta_pdf: Path, altura: int = 900) -> None:
+    """Muestra un PDF de una sola página sin depender de un iframe del navegador.
+
+    Se conserva el PDF original como fuente. Para visualizarlo dentro de Streamlit,
+    primero se intenta el visor nativo ``st.pdf``. Si no está disponible, la primera
+    página se rasteriza temporalmente en memoria (PyMuPDF, pypdfium2 o pdftoppm).
+    Así se evita el cuadro blanco que algunos navegadores muestran con PDF embebidos.
+    """
+    ruta_pdf = Path(ruta_pdf)
+
+    # 1) Visor PDF nativo de Streamlit, cuando está disponible.
+    if hasattr(st, "pdf"):
+        try:
+            st.pdf(str(ruta_pdf), height=altura)
+            return
+        except Exception:
+            pass
+
+    imagen_png = None
+    errores = []
+
+    # 2) PyMuPDF / fitz.
+    try:
+        import fitz
+
+        documento = fitz.open(str(ruta_pdf))
+        pagina = documento.load_page(0)
+        # ~200 ppp para que el mapa siga siendo legible al ampliar.
+        matriz = fitz.Matrix(2.8, 2.8)
+        pix = pagina.get_pixmap(matrix=matriz, alpha=False)
+        imagen_png = pix.tobytes("png")
+        documento.close()
+    except Exception as error:
+        errores.append(f"PyMuPDF: {error}")
+
+    # 3) pypdfium2, si está instalado.
+    if imagen_png is None:
+        try:
+            import io
+            import pypdfium2 as pdfium
+
+            documento = pdfium.PdfDocument(str(ruta_pdf))
+            pagina = documento[0]
+            bitmap = pagina.render(scale=2.8)
+            pil_image = bitmap.to_pil()
+            buffer = io.BytesIO()
+            pil_image.save(buffer, format="PNG")
+            imagen_png = buffer.getvalue()
+            pagina.close()
+            documento.close()
+        except Exception as error:
+            errores.append(f"pypdfium2: {error}")
+
+    # 4) Poppler/pdftoppm, disponible en muchos Codespaces Linux.
+    if imagen_png is None:
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                salida_base = Path(tmp) / "mapa_bogota"
+                subprocess.run(
+                    [
+                        "pdftoppm",
+                        "-png",
+                        "-f", "1",
+                        "-singlefile",
+                        "-r", "200",
+                        str(ruta_pdf),
+                        str(salida_base),
+                    ],
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                salida_png = salida_base.with_suffix(".png")
+                if salida_png.exists():
+                    imagen_png = salida_png.read_bytes()
+        except Exception as error:
+            errores.append(f"pdftoppm: {error}")
+
+    if imagen_png is not None:
+        st.image(
+            imagen_png,
+            caption=f"{ruta_pdf.name} · vista generada directamente desde el PDF original",
+            use_container_width=True,
+        )
+        st.caption(
+            "El archivo fuente sigue siendo PDF. La página se convierte temporalmente solo para "
+            "mostrarla correctamente dentro del prototipo."
+        )
+    else:
+        st.error(
+            "El PDF sí fue encontrado, pero este Codespace no tiene un visor/rasterizador de PDF disponible."
+        )
+        st.code(
+            'python -m pip install "streamlit[pdf]" pymupdf',
+            language="bash",
+        )
+        with open(ruta_pdf, "rb") as archivo_pdf:
+            st.download_button(
+                "Abrir / descargar PDF original",
+                data=archivo_pdf.read(),
+                file_name=ruta_pdf.name,
+                mime="application/pdf",
+                key=f"pdf_bogota_{ruta_pdf.name}",
+            )
+        with st.expander("Ver diagnóstico del visor PDF", expanded=False):
+            st.code("\n".join(errores) if errores else "Sin diagnóstico adicional", language=None)
+
+
+def _circulo_geografico(lat_centro: float, lon_centro: float, radio_km: float, puntos: int = 96):
+    """Genera un círculo geográfico aproximado para visualizar un radio de contexto."""
+    latitudes = []
+    longitudes = []
+    radio_tierra_km = 6371.0088
+    lat0 = math.radians(lat_centro)
+    lon0 = math.radians(lon_centro)
+    distancia_angular = radio_km / radio_tierra_km
+
+    for i in range(puntos + 1):
+        rumbo = 2 * math.pi * i / puntos
+        lat = math.asin(
+            math.sin(lat0) * math.cos(distancia_angular)
+            + math.cos(lat0) * math.sin(distancia_angular) * math.cos(rumbo)
+        )
+        lon = lon0 + math.atan2(
+            math.sin(rumbo) * math.sin(distancia_angular) * math.cos(lat0),
+            math.cos(distancia_angular) - math.sin(lat0) * math.sin(lat),
+        )
+        latitudes.append(math.degrees(lat))
+        longitudes.append(math.degrees(lon))
+
+    return latitudes, longitudes
+
+
+def mostrar_mapa_interactivo_bogota() -> None:
+    """Mapa web navegable de la Sede Bogotá sin requerir token de Mapbox."""
+    lat_sede = TERRITORIOS["Bogotá"]["lat"]
+    lon_sede = TERRITORIOS["Bogotá"]["lon"]
+
+    c1, c2, c3 = st.columns([1.05, 1.05, 1.4])
+    with c1:
+        vista = st.selectbox(
+            "Vista inicial",
+            ["Campus", "Bogotá", "Región"],
+            key="bogota_vista_interactiva",
+        )
+    with c2:
+        estilo_nombre = st.selectbox(
+            "Mapa base",
+            ["Claro", "OpenStreetMap", "Oscuro"],
+            key="bogota_estilo_interactivo",
+        )
+    with c3:
+        radio_km = st.slider(
+            "Radio de contexto",
+            min_value=0.5,
+            max_value=10.0,
+            value=1.5,
+            step=0.5,
+            format="%.1f km",
+            key="bogota_radio_interactivo",
+        )
+
+    zoom_por_vista = {
+        "Campus": 14.6,
+        "Bogotá": 10.4,
+        "Región": 7.7,
+    }
+    estilos = {
+        "Claro": "carto-positron",
+        "OpenStreetMap": "open-street-map",
+        "Oscuro": "carto-darkmatter",
+    }
+
+    lat_circulo, lon_circulo = _circulo_geografico(
+        lat_sede, lon_sede, radio_km
+    )
+
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scattermap(
+            lat=lat_circulo,
+            lon=lon_circulo,
+            mode="lines",
+            name=f"Radio de contexto: {radio_km:.1f} km",
+            hoverinfo="skip",
+            line=dict(width=2),
+        )
+    )
+
+    fig.add_trace(
+        go.Scattermap(
+            lat=[lat_sede],
+            lon=[lon_sede],
+            mode="markers",
+            name="Sede Bogotá",
+            marker=dict(size=18),
+            text=[
+                "Universidad Nacional de Colombia<br>"
+                "Sede Bogotá · Ciudad Universitaria"
+            ],
+            hovertemplate="<b>%{text}</b><br>Lat: %{lat:.5f}<br>Lon: %{lon:.5f}<extra></extra>",
+        )
+    )
+
+    fig.update_layout(
+        map=dict(
+            style=estilos[estilo_nombre],
+            center=dict(lat=lat_sede, lon=lon_sede),
+            zoom=zoom_por_vista[vista],
+        ),
+        height=650,
+        margin=dict(l=0, r=0, t=10, b=0),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=0.01,
+            xanchor="center",
+            x=0.5,
+            bgcolor="rgba(255,255,255,0.85)",
+        ),
+        paper_bgcolor="rgba(0,0,0,0)",
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True,
+        config={
+            "displayModeBar": True,
+            "scrollZoom": True,
+            "displaylogo": False,
+        },
+        key="mapa_interactivo_sede_bogota",
+    )
+
+    st.caption(
+        "Mapa web interactivo del piloto: permite mover, acercar, alejar y consultar la sede. "
+        "El radio es únicamente una ayuda visual de contexto y no representa un límite oficial del campus."
+    )
+
+
+
+def mostrar_mapa_interactivo_territorio(nombre_territorio: str, info_territorio: dict) -> None:
+    """Mapa web interactivo reutilizable para las sedes SIAMS distintas de Bogotá.
+
+    Bogotá conserva su piloto multiescala con los PDF originales. Esta función
+    usa las coordenadas ya definidas en TERRITORIOS para Leticia, Tumaco,
+    Medellín, San Andrés, Arauca y La Paz.
+    """
+    lat_sede = float(info_territorio["lat"])
+    lon_sede = float(info_territorio["lon"])
+
+    # Zoom ajustado por territorio para que la sede, la ciudad y la región
+    # se vean con una escala razonable desde el primer momento.
+    zoom_por_territorio = {
+        "Leticia": {
+            "Sede": 14.2,
+            "Ciudad / municipio": 11.0,
+            "Región": 8.0,
+        },
+        "Tumaco": {
+            "Sede": 14.0,
+            "Ciudad / municipio": 11.0,
+            "Región": 8.0,
+        },
+        "Medellín": {
+            "Sede": 14.0,
+            "Ciudad / municipio": 10.5,
+            "Región": 8.3,
+        },
+        "San Andrés": {
+            "Sede": 14.0,
+            "Ciudad / municipio": 11.2,
+            "Región": 9.4,
+        },
+        "Arauca": {
+            "Sede": 14.0,
+            "Ciudad / municipio": 11.0,
+            "Región": 8.0,
+        },
+        "La Paz": {
+            "Sede": 14.0,
+            "Ciudad / municipio": 11.0,
+            "Región": 8.2,
+        },
+    }
+
+    zooms = zoom_por_territorio.get(
+        nombre_territorio,
+        {
+            "Sede": 14.0,
+            "Ciudad / municipio": 10.5,
+            "Región": 8.0,
+        },
+    )
+
+    radios_default = {
+        "Leticia": 5.0,
+        "Tumaco": 5.0,
+        "Medellín": 3.0,
+        "San Andrés": 3.0,
+        "Arauca": 5.0,
+        "La Paz": 5.0,
+    }
+
+    c1, c2, c3 = st.columns([1.05, 1.05, 1.4])
+
+    with c1:
+        vista = st.selectbox(
+            "Vista inicial",
+            ["Sede", "Ciudad / municipio", "Región"],
+            key=f"vista_interactiva_{nombre_territorio}",
+        )
+
+    with c2:
+        estilo_nombre = st.selectbox(
+            "Mapa base",
+            ["Claro", "OpenStreetMap", "Oscuro"],
+            key=f"estilo_interactivo_{nombre_territorio}",
+        )
+
+    with c3:
+        radio_km = st.slider(
+            "Radio de contexto",
+            min_value=1.0,
+            max_value=50.0,
+            value=float(radios_default.get(nombre_territorio, 5.0)),
+            step=1.0,
+            format="%.0f km",
+            key=f"radio_interactivo_{nombre_territorio}",
+        )
+
+    estilos = {
+        "Claro": "carto-positron",
+        "OpenStreetMap": "open-street-map",
+        "Oscuro": "carto-darkmatter",
+    }
+
+    lat_circulo, lon_circulo = _circulo_geografico(
+        lat_sede,
+        lon_sede,
+        radio_km,
+    )
+
+    fig = go.Figure()
+
+    # Radio de contexto visual.
+    fig.add_trace(
+        go.Scattermap(
+            lat=lat_circulo,
+            lon=lon_circulo,
+            mode="lines",
+            name=f"Radio: {radio_km:.0f} km",
+            hoverinfo="skip",
+            line=dict(width=2),
+        )
+    )
+
+    # Punto de la sede.
+    fig.add_trace(
+        go.Scattermap(
+            lat=[lat_sede],
+            lon=[lon_sede],
+            mode="markers",
+            name=nombre_territorio,
+            marker=dict(size=19),
+            text=[
+                f"<b>{info_territorio['sede']}</b><br>"
+                f"{nombre_territorio} · {info_territorio['departamento']}<br>"
+                f"Latitud: {lat_sede:.6f}<br>"
+                f"Longitud: {lon_sede:.6f}"
+            ],
+            hovertemplate="%{text}<extra></extra>",
+        )
+    )
+
+    fig.update_layout(
+        map=dict(
+            style=estilos[estilo_nombre],
+            center=dict(lat=lat_sede, lon=lon_sede),
+            zoom=zooms[vista],
+        ),
+        height=650,
+        margin=dict(l=0, r=0, t=10, b=0),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=0.01,
+            xanchor="center",
+            x=0.5,
+            bgcolor="rgba(255,255,255,0.85)",
+        ),
+        paper_bgcolor="rgba(0,0,0,0)",
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True,
+        config={
+            "displayModeBar": True,
+            "scrollZoom": True,
+            "displaylogo": False,
+        },
+        key=f"mapa_interactivo_{nombre_territorio}",
+    )
+
+    st.caption(
+        "Puedes mover el mapa, acercar o alejar y consultar el punto de la sede. "
+        "El círculo es únicamente una referencia visual del radio seleccionado; "
+        "no representa un límite oficial de la sede ni del área de estudio."
+    )
+
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+        mostrar_tarjeta(
+            "Sede de referencia",
+            info_territorio["sede"],
+            "📍",
+        )
+
+    with c2:
+        mostrar_tarjeta(
+            "Coordenadas",
+            f"{lat_sede:.6f}, {lon_sede:.6f}",
+            "🧭",
+        )
+
+    with c3:
+        mostrar_tarjeta(
+            "Contexto",
+            info_territorio["contexto"],
+            "🌎",
+        )
+
+
+def mostrar_navegador_ubicacion_bogota() -> None:
+    """Navegador por niveles: Colombia → Bogotá → Campus → mapa interactivo."""
+    st.markdown(
+        dedent("""
+        <div class="soft-box">
+            <strong>Piloto de ubicación multiescala.</strong>
+            Usa los botones para pasar de la ubicación nacional a la regional, después al campus
+            y finalmente a una vista web interactiva. Los tres primeros niveles corresponden a
+            los mapas cartográficos preparados en QGIS.
+        </div>
+        """).strip(),
+        unsafe_allow_html=True,
+    )
+
+    if "nivel_ubicacion_bogota" not in st.session_state:
+        st.session_state["nivel_ubicacion_bogota"] = "Colombia"
+
+    botones = [
+        ("🇨🇴 Colombia", "Colombia"),
+        ("🏙️ Bogotá", "Bogotá"),
+        ("🏫 Campus", "Campus"),
+        ("🌎 Interactivo", "Interactivo"),
+    ]
+    columnas = st.columns(4)
+
+    for columna, (etiqueta, valor) in zip(columnas, botones):
+        with columna:
+            if st.button(
+                etiqueta,
+                use_container_width=True,
+                key=f"btn_ubicacion_bogota_{valor}",
+            ):
+                st.session_state["nivel_ubicacion_bogota"] = valor
+
+    nivel = st.session_state["nivel_ubicacion_bogota"]
+
+    pasos = ["Colombia", "Bogotá", "Campus", "Interactivo"]
+    piezas = []
+    for i, paso in enumerate(pasos):
+        clase = "location-step active" if paso == nivel else "location-step"
+        piezas.append(f'<span class="{clase}">{i + 1}. {paso}</span>')
+        if i < len(pasos) - 1:
+            piezas.append('<span class="location-arrow">→</span>')
+
+    st.markdown(
+        '<div class="location-progress">' + "".join(piezas) + "</div>",
+        unsafe_allow_html=True,
+    )
+
+    configuracion = {
+        "Colombia": {
+            "clave": "ubicacion_colombia",
+            "titulo": "Nivel 1 · Colombia",
+            "detalle": "Ubicación de Bogotá D.C. dentro del contexto nacional.",
+            "escala": "Escala cartográfica: 1:10.000.000",
+        },
+        "Bogotá": {
+            "clave": "ubicacion_region",
+            "titulo": "Nivel 2 · Bogotá y contexto regional",
+            "detalle": "Acercamiento al Distrito Capital y su entorno regional.",
+            "escala": "Escala cartográfica: 1:1.500.000",
+        },
+        "Campus": {
+            "clave": "ubicacion_campus",
+            "titulo": "Nivel 3 · Campus Ciudad Universitaria",
+            "detalle": "Detalle de la Sede Bogotá y su entorno inmediato.",
+            "escala": "Escala cartográfica: 1:10.000",
+        },
+    }
+
+    st.markdown('<div class="location-shell">', unsafe_allow_html=True)
+
+    if nivel == "Interactivo":
+        st.markdown("### 🌎 Explorador interactivo de la Sede Bogotá")
+        mostrar_mapa_interactivo_bogota()
+    else:
+        cfg = configuracion[nivel]
+        st.markdown(f"### {cfg['titulo']}")
+        st.caption(f"{cfg['detalle']} · {cfg['escala']}")
+
+        nombre_archivo = MAPAS_BOGOTA[cfg["clave"]]
+        ruta = buscar_mapa(nombre_archivo)
+
+        if ruta is None:
+            st.warning(
+                f"No se encontró `{nombre_archivo}` junto a `app.py`."
+            )
+            st.code(str(CARPETA_MAPAS), language=None)
+            st.info(
+                "Pon los tres PDF originales al mismo nivel que `app.py`, conservando exactamente "
+                "los nombres con los que los exportaste desde QGIS."
+            )
+        else:
+            if ruta.suffix.casefold() == ".pdf":
+                mostrar_pdf_mapa(ruta, altura=900)
+            else:
+                st.image(
+                    str(ruta),
+                    caption=f"{cfg['titulo']} · {cfg['escala']}",
+                    use_container_width=True,
+                )
+            st.caption(f"Archivo: {ruta.name} · {cfg['escala']}")
+
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        mostrar_tarjeta(
+            "Sede",
+            "Universidad Nacional de Colombia – Sede Bogotá.",
+            "📍",
+        )
+    with c2:
+        mostrar_tarjeta(
+            "Navegación",
+            "Colombia → Bogotá → Campus → explorador interactivo.",
+            "🧭",
+        )
+    with c3:
+        mostrar_tarjeta(
+            "Uso del piloto",
+            "Ubicación institucional y contexto espacial; no sustituye cartografía temática oficial.",
+            "🗺️",
+        )
 
 
 def mostrar_mapa_imagen(
@@ -2277,6 +3121,7 @@ def obtener_hallazgos_clave(nombre_territorio: str):
         pass
 
     particularidades = {
+        "Bogotá": "Piloto cartográfico multiescala con navegación desde Colombia hasta la Ciudad Universitaria.",
         "Leticia": "Alta humedad y fuerte relación con el sistema fluvial amazónico.",
         "Tumaco": "Interacción permanente entre sistemas fluviales, estuarinos y marino-costeros.",
         "Medellín": "Contexto urbano-andino con quebradas, fuertes pendientes y amenaza por inundación.",
@@ -2352,7 +3197,7 @@ def mostrar_mapa_sedes_unal() -> None:
     <div class="soft-box">
         <strong>¿Qué significan los colores?</strong><br>
         🟢 <strong>Verde:</strong> territorios que ya están integrados en el prototipo SIAMS
-        (Leticia, Tumaco, Medellín, San Andrés, Arauca y La Paz).<br>
+        (Bogotá, Leticia, Tumaco, Medellín, San Andrés, Arauca y La Paz).<br>
         ⚪ <strong>Gris:</strong> otras sedes de la Universidad Nacional que se muestran
         únicamente como contexto institucional y todavía no tienen un módulo territorial
         desarrollado dentro de esta versión del prototipo.
@@ -2361,6 +3206,24 @@ def mostrar_mapa_sedes_unal() -> None:
     st.markdown(dedent(html).strip(), unsafe_allow_html=True)
 
 def tabla_disponibilidad(nombre_territorio: str) -> pd.DataFrame:
+    if nombre_territorio == "Bogotá":
+        return pd.DataFrame({
+            "Variable": [
+                "Precipitación", "Temperatura", "Humedad relativa",
+                "Viento", "Presión", "Radiación", "Calidad del agua",
+            ],
+            "Estado": ["Pendiente"] * 7,
+            "Uso actual": [
+                "No integrado en esta fase",
+                "No integrado en esta fase",
+                "No integrado en esta fase",
+                "No integrado en esta fase",
+                "No integrado en esta fase",
+                "No integrado en esta fase",
+                "No integrado en esta fase",
+            ],
+        })
+
     if nombre_territorio == "Arauca":
         return pd.DataFrame({
             "Variable": [
@@ -2426,7 +3289,7 @@ st.sidebar.caption("Plataforma hidroambiental")
 
 territorio = st.sidebar.selectbox(
     "Territorio",
-    ["Leticia", "Tumaco", "Medellín", "San Andrés", "Arauca", "La Paz"],
+    ["Bogotá", "Leticia", "Tumaco", "Medellín", "San Andrés", "Arauca", "La Paz"],
 )
 
 grupo = st.sidebar.selectbox(
@@ -2498,15 +3361,16 @@ st.sidebar.caption("Prototipo académico. Información sujeta a revisión.")
 st.sidebar.success(f"Versión activa: {VERSION_APP}")
 with st.sidebar.expander("Diagnóstico de archivos", expanded=False):
     st.write(f"**Script:** `{Path(__file__).name}`")
-    st.write(f"**Carpeta de mapas:** `{CARPETA_MAPAS}`")
-    if CARPETA_MAPAS.exists():
-        archivos_detectados = sorted(
-            archivo.name for archivo in CARPETA_MAPAS.iterdir() if archivo.is_file()
-        )
-        st.write("**Archivos detectados:**")
-        st.code("\n".join(archivos_detectados) if archivos_detectados else "Carpeta vacía", language=None)
-    else:
-        st.error("La carpeta de mapas no existe.")
+    st.write(f"**Carpeta de mapas temáticos:** `{CARPETA_MAPAS}`")
+    st.write(f"**Raíz del proyecto:** `{CARPETA_PROYECTO}`")
+    archivos_detectados = []
+    for carpeta_revision in CARPETAS_BUSQUEDA_MAPAS:
+        if carpeta_revision.exists() and carpeta_revision.is_dir():
+            for archivo in carpeta_revision.iterdir():
+                if archivo.is_file() and archivo.suffix.casefold() in {".png", ".jpg", ".jpeg", ".webp", ".pdf"}:
+                    archivos_detectados.append(f"{carpeta_revision.name}/{archivo.name}")
+    st.write("**Mapas detectados:**")
+    st.code("\n".join(sorted(archivos_detectados)) if archivos_detectados else "Ningún mapa detectado", language=None)
     st.write(f"**NetCDF GWSa:** `{Path(ARCHIVO_GWS).name if ARCHIVO_GWS else 'No encontrado'}`")
 
 info = territorio_actual(territorio)
@@ -2536,8 +3400,8 @@ if seccion == "Inicio":
 
     m0, m1, m2 = st.columns(3)
     m0.metric("Sedes UNAL ubicadas", f"{len(UNAL_SEDES)}")
-    m1.metric("Territorios activos en SIAMS", "6")
-    m2.metric("Cobertura actual", "Amazonía · Caribe · Andina · Pacífico · Orinoquía · Cesar")
+    m1.metric("Territorios activos en SIAMS", f"{len(TERRITORIOS)}")
+    m2.metric("Cobertura actual", "Bogotá D.C. · Amazonía · Caribe · Andina · Pacífico · Orinoquía · Cesar")
 
     st.caption(
         "La localización nacional permite contextualizar el alcance territorial del prototipo "
@@ -2551,14 +3415,16 @@ if seccion == "Inicio":
 
     fila1 = st.columns(3)
     fila2 = st.columns(3)
+    fila3 = st.columns(3)
 
     tarjetas_territorio = [
-        (fila1[0], "Leticia", "<strong>Clima completo</strong><br>Cartografía ambiental avanzada.", "🌿"),
-        (fila1[1], "Tumaco", "<strong>Clima completo</strong><br>IDEAM + NASA POWER y cartografía regional.", "🌊"),
-        (fila1[2], "Medellín", "<strong>Clima completo</strong><br>Geología, estructura ecológica e inundación.", "🏙️"),
-        (fila2[0], "San Andrés", "<strong>Clima completo</strong><br>Hidrogeología y calidad del agua destacadas.", "🏝️"),
-        (fila2[1], "Arauca", "<strong>Territorio habilitado</strong><br>GWSa GRACE y clima al detectar la base NASA.", "🌾"),
-        (fila2[2], "La Paz", "<strong>Territorio habilitado</strong><br>GWSa GRACE y módulos para ampliar datos.", "⛰️"),
+        (fila1[0], "Bogotá", "<strong>Piloto de ubicación</strong><br>Mapas por niveles + explorador interactivo.", "📍"),
+        (fila1[1], "Leticia", "<strong>Clima completo</strong><br>Cartografía ambiental avanzada.", "🌿"),
+        (fila1[2], "Tumaco", "<strong>Clima completo</strong><br>IDEAM + NASA POWER y cartografía regional.", "🌊"),
+        (fila2[0], "Medellín", "<strong>Clima completo</strong><br>Geología, estructura ecológica e inundación.", "🏙️"),
+        (fila2[1], "San Andrés", "<strong>Clima completo</strong><br>Hidrogeología y calidad del agua destacadas.", "🏝️"),
+        (fila2[2], "Arauca", "<strong>Clima + cartografía en proceso</strong><br>IDEAM, NASA POWER, geología e hidrogeología regional.", "🌾"),
+        (fila3[0], "La Paz", "<strong>Territorio habilitado</strong><br>GWSa GRACE y módulos para ampliar datos.", "⛰️"),
     ]
     for columna, nombre, texto_tarjeta, icono in tarjetas_territorio:
         with columna:
@@ -2585,7 +3451,7 @@ if seccion == "Inicio":
     with c3:
         mostrar_tarjeta(
             "Subsuelo y agua",
-            "Geología, hidrogeología, hidrogeoquímica y calidad del agua.",
+            "Geología, hidrogeología, GWSa, GGDI, hidrogeoquímica y calidad del agua.",
             "🪨",
         )
     with c4:
@@ -2601,14 +3467,16 @@ if seccion == "Inicio":
     )
 
     cobertura = pd.DataFrame({
-        "Territorio": ["Leticia", "Tumaco", "Medellín", "San Andrés", "Arauca", "La Paz"],
-        "Clima": ["✅", "✅", "✅", "✅", "🟡", "🟡"],
-        "Hidrología": ["✅", "✅", "🟡", "✅", "—", "—"],
-        "Geología": ["✅", "✅", "✅", "✅", "—", "—"],
-        "Hidrogeología": ["🟡", "🟡", "—", "✅", "🟡", "🟡"],
-        "GWSa GRACE": ["✅", "✅", "✅", "—", "✅", "✅"],
-        "Calidad del agua": ["🟡", "—", "—", "🟡", "—", "—"],
-        "Monitoreo": ["—", "—", "—", "—", "🟡", "🟡"],
+        "Territorio": ["Bogotá", "Leticia", "Tumaco", "Medellín", "San Andrés", "Arauca", "La Paz"],
+        "Ubicación": ["✅", "✅", "✅", "✅", "✅", "✅", "✅"],
+        "Clima": ["—", "✅", "✅", "✅", "✅", "✅", "🟡"],
+        "Hidrología": ["🟡", "✅", "✅", "🟡", "✅", "🟡", "—"],
+        "Geología": ["—", "✅", "✅", "✅", "✅", "🟡", "—"],
+        "Hidrogeología": ["—", "🟡", "🟡", "—", "✅", "🟡", "🟡"],
+        "GWSa GRACE": ["—", "✅", "✅", "✅", "—", "✅", "✅"],
+        "GGDI": ["—", "✅", "✅", "✅", "—", "✅", "✅"],
+        "Calidad del agua": ["—", "🟡", "—", "—", "🟡", "—", "—"],
+        "Monitoreo": ["—", "—", "—", "—", "—", "🟡", "🟡"],
     })
 
     st.dataframe(
@@ -2637,7 +3505,7 @@ if seccion == "Inicio":
     )
 
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Territorios", "6")
+    m1.metric("Territorios", f"{len(TERRITORIOS)}")
     m2.metric("Mapas incorporados", f"{mapas_encontrados}/{mapas_esperados}")
     m3.metric("Componentes completos", componentes_completos)
     m4.metric("Actualización", FECHA_ACTUALIZACION)
@@ -2715,48 +3583,29 @@ elif seccion == "Resumen territorial":
 elif seccion == "Mapa y territorio":
     st.title(f"🗺️ Ubicación territorial de {territorio}")
 
-    st.write(
-        "Este mapa interactivo ubica la sede de referencia. Los mapas temáticos "
-        "completos se presentan en las secciones de hidrología, cobertura, relieve, "
-        "geología, hidrogeología e IRCA."
-    )
+    if territorio == "Bogotá":
+        # Bogotá conserva el piloto multiescala y los PDF originales.
+        mostrar_navegador_ubicacion_bogota()
 
-    mapa = pd.DataFrame(
-        {
-            "lat": [info["lat"]],
-            "lon": [info["lon"]],
-        }
-    )
-
-    st.map(mapa, zoom=12 if territorio == "San Andrés" else (11 if territorio in {"Leticia", "Medellín"} else 10))
-
-    c1, c2, c3 = st.columns(3)
-
-    with c1:
-        mostrar_tarjeta(
-            "Sede de referencia",
-            info["sede"],
-            "📍",
+    else:
+        st.write(
+            "Este visor interactivo ubica la sede de referencia y permite explorar "
+            "su contexto espacial con distintos niveles de acercamiento. Los mapas "
+            "temáticos completos continúan en las secciones de hidrología, cobertura, "
+            "relieve, geología, hidrogeología e IRCA."
         )
 
-    with c2:
-        mostrar_tarjeta(
-            "Área principal",
-            f"Análisis ambiental de referencia: {info['area_principal']}.",
-            "🧭",
+        mostrar_mapa_interactivo_territorio(
+            territorio,
+            info,
         )
 
-    with c3:
-        mostrar_tarjeta(
-            "Contexto",
-            info["contexto"],
-            "🌎",
+        st.info(
+            "El visor interactivo funciona como herramienta de ubicación y exploración. "
+            "Los mapas temáticos existentes del proyecto se mantienen como productos "
+            "cartográficos independientes dentro de sus respectivas secciones."
         )
 
-    st.info(
-        "Los mapas temáticos disponibles fueron incorporados como imágenes de "
-        "referencia para evitar cargar capas SIG pesadas dentro del prototipo."
-    )
 
 # =========================================================
 # CLIMA
@@ -3499,6 +4348,42 @@ elif seccion == "Hidrología":
             "La cartografía muestra sectores con distintos niveles de amenaza por inundación. Debe interpretarse según la escala y metodología del POT.",
         )
         st.caption("Para una siguiente versión conviene complementar este componente con la red hídrica y las microcuencas/quebradas del Valle de Aburrá.")
+    elif territorio == "Arauca":
+        st.subheader("Contexto hídrico y presión sobre el recurso")
+        mostrar_mapa_imagen(
+            "anomalia_oferta_alta",
+            "Anomalía de la Oferta Hídrica Superficial en condiciones altas",
+            "IDEAM – Estudio Nacional del Agua 2014",
+            "El mapa permite ubicar a Arauca dentro del comportamiento nacional de la oferta hídrica superficial bajo condiciones altas. Se usa como contexto histórico y regional, no como análisis local actualizado.",
+        )
+
+        c1, c2 = st.columns(2)
+        with c1:
+            with st.expander("Ver demanda de agua de la industria manufacturera · 2021", expanded=False):
+                mostrar_mapa_imagen(
+                    "demanda_industria",
+                    "Demanda de agua de la industria manufacturera por departamento",
+                    "IDEAM · 2021",
+                    "Mapa departamental útil para comparar la presión asociada a la industria manufacturera. No representa consumos puntuales de la Sede Orinoquía.",
+                )
+        with c2:
+            with st.expander("Ver vertimientos de la industria manufacturera · 2021", expanded=False):
+                mostrar_mapa_imagen(
+                    "vertimientos_industria",
+                    "Vertimientos de aguas residuales de la industria manufacturera",
+                    "IDEAM · 2021",
+                    "Referencia departamental de presión por vertimientos industriales. Debe leerse junto con información local de calidad y cuerpos receptores cuando esté disponible.",
+                )
+
+        st.caption(
+            "Los tres productos son de escala nacional o departamental. Se presentan como contexto para Arauca y no como cartografía detallada del entorno inmediato de la sede."
+        )
+
+    elif territorio == "Bogotá":
+        st.info(
+            "Bogotá ya cuenta con el piloto de ubicación multiescala en **Territorio → Mapa y territorio**. "
+            "La cartografía hidrológica temática queda para una siguiente fase."
+        )
     else:
         st.info(
             f"El módulo hidrológico de {territorio} ya está habilitado, pero todavía no tiene "
@@ -3529,13 +4414,20 @@ elif seccion == "Geología":
             mostrar_mapa_imagen("geologia", "Conformación geológica de la isla de San Andrés", "CORALINA")
         elif territorio == "Medellín":
             mostrar_mapa_imagen("geologia", "Plancha geológica 228 – Medellín", "Servicio Geológico Colombiano (SGC)")
+        elif territorio == "Arauca":
+            mostrar_mapa_imagen(
+                "geologia",
+                "Mapa Geológico de Colombia 2023 · referencia para Arauca",
+                "Servicio Geológico Colombiano (SGC)",
+                "Se usa como marco geológico regional. La escala nacional permite ubicar las grandes unidades, pero no reemplaza cartografía de detalle para la Sede Orinoquía o el municipio de Arauca.",
+            )
         else:
             st.info(f"Todavía no se ha incorporado un mapa geológico validado para {territorio}.")
 
     with tab2:
         st.warning(
-            "La imagen geológica ya está incorporada, pero todavía no se ha transcrito y validado "
-            "la tabla completa de códigos, edades y litologías de la leyenda. Para evitar errores, "
+            "La cartografía geológica se presenta como referencia visual. Todavía no se ha transcrito y validado "
+            "para cada territorio la tabla completa de códigos, edades y litologías de la leyenda. Para evitar errores, "
             "el prototipo no inventa unidades geológicas."
         )
         st.markdown(
@@ -3609,6 +4501,42 @@ elif seccion == "Hidrogeología":
             "La cartografía clasifica sectores con vulnerabilidad extrema, alta y moderada, y aporta una lectura directa del riesgo hidrogeológico de la isla.",
         )
 
+    elif territorio == "Arauca":
+        st.subheader("Sistema Acuífero Arauca-Arauquita")
+        mostrar_mapa_imagen(
+            "sistema_acuifero",
+            "SAP3.3 Sistema Acuífero Arauca-Arauquita",
+            "IDEAM – Anexo 7 de Aguas Subterráneas",
+            "La ficha delimita el sistema acuífero y resume la información disponible. La propia fuente señala que faltan estudios locales de caracterización hidrogeológica y reporta varios campos como NRI.",
+        )
+
+        st.subheader("Contexto hidrogeológico regional")
+        c1, c2 = st.columns(2)
+        with c1:
+            with st.expander("Ver criterio de demanda e hidrogeológico · PEXAS 2005", expanded=False):
+                mostrar_mapa_imagen(
+                    "criterio_hidrogeologico",
+                    "Programa de Exploración de Aguas Subterráneas – criterio de demanda e hidrogeológico",
+                    "Servicio Geológico Colombiano – PEXAS · 2005",
+                    "La visualización muestra áreas priorizadas o evaluadas a escala regional. Es útil para contextualizar Arauca, pero no constituye por sí sola una delimitación actual del acuífero.",
+                )
+        with c2:
+            with st.expander("Ver distribución de puntos de agua subterránea · ENA 2014", expanded=False):
+                mostrar_mapa_imagen(
+                    "puntos_agua_subterranea",
+                    "Distribución de puntos de agua subterránea por Autoridad Ambiental",
+                    "IDEAM – Estudio Nacional del Agua 2014",
+                    "El mapa resume el número de puntos inventariados por autoridad ambiental; no corresponde a un inventario georreferenciado de pozos individuales dentro de Arauca.",
+                )
+
+        with st.expander("Ver volúmenes de agua subterránea concesionada · ENA 2014", expanded=False):
+            mostrar_mapa_imagen(
+                "volumen_concesionado",
+                "Volúmenes de agua subterránea concesionada objeto de cobro TUA",
+                "IDEAM – Estudio Nacional del Agua 2014",
+                "Se incorpora como antecedente nacional de uso concesionado del agua subterránea. La información es histórica y agregada, por lo que no debe interpretarse como extracción actual del sistema Arauca-Arauquita.",
+            )
+
     st.markdown(dedent("""
         <div class="warning-box">
             <strong>Nota:</strong> La plataforma debe diferenciar claramente entre
@@ -3622,7 +4550,7 @@ elif seccion == "Hidrogeología":
 
 elif seccion == "Agua subterránea (GRACE)":
     st.title(f"🌐 Agua subterránea satelital · {territorio}")
-    st.caption("Anomalías de almacenamiento de agua subterránea (GWSa) · GRACE/GRACE-FO + GLDAS")
+    st.caption("GWSa + índice de sequía de agua subterránea (GGDI) · GRACE/GRACE-FO + GLDAS")
 
     st.markdown(dedent("""
         <div class="soft-box">
@@ -3677,8 +4605,12 @@ elif seccion == "Agua subterránea (GRACE)":
                     f"periodo: {meta_gws['fecha_inicial']:%Y-%m} a {meta_gws['fecha_final']:%Y-%m}."
                 )
 
-                tab_serie, tab_clim, tab_mapa, tab_metodo = st.tabs([
-                    "Serie histórica", "Comportamiento mensual", "Mapa por fecha", "Cómo interpretarlo"
+                tab_serie, tab_clim, tab_ggdi, tab_mapa, tab_metodo = st.tabs([
+                    "Serie histórica",
+                    "Comportamiento mensual",
+                    "GGDI",
+                    "Mapa por fecha",
+                    "Cómo interpretarlo",
                 ])
 
                 with tab_serie:
@@ -3727,6 +4659,194 @@ elif seccion == "Agua subterránea (GRACE)":
                         f"**{fila_max['Mes']}** ({fila_max['GWSa (cm)']:.2f} cm)."
                     )
 
+                with tab_ggdi:
+                    df_ggdi, meta_ggdi = calcular_ggdi(df_gws)
+
+                    if not meta_ggdi.get("disponible", False) or df_ggdi.empty:
+                        st.warning(
+                            "No fue posible calcular GGDI para esta sede. "
+                            + meta_ggdi.get("motivo", "")
+                        )
+                    else:
+                        st.markdown(dedent("""
+                            <div class="soft-box">
+                                <strong>GGDI · GRACE Groundwater Drought Index.</strong><br>
+                                Para cada registro mensual se compara la GWSa observada con la
+                                climatología de ese mismo mes. Primero se calcula
+                                <strong>GSD = GWSa observada − GWSa climatológica</strong> y después
+                                se normaliza como <strong>GGDI = GSD / σ(GSD)</strong>.<br><br>
+                                <strong>GGDI &gt; 0:</strong> almacenamiento por encima de lo habitual
+                                para ese mes. <strong>GGDI &lt; 0:</strong> déficit respecto a lo habitual.
+                                El índice es adimensional y no representa profundidad del nivel freático.
+                            </div>
+                        """).strip(), unsafe_allow_html=True)
+
+                        ultimo_ggdi = df_ggdi.iloc[-1]
+                        fila_min_ggdi = df_ggdi.loc[df_ggdi["GGDI"].idxmin()]
+
+                        g1, g2, g3, g4 = st.columns(4)
+                        g1.metric(
+                            "GGDI más reciente",
+                            f"{ultimo_ggdi['GGDI']:+.2f}",
+                            f"{ultimo_ggdi['Fecha']:%Y-%m}",
+                        )
+                        g2.metric(
+                            "Mínimo histórico",
+                            f"{meta_ggdi['ggdi_min']:+.2f}",
+                            f"{fila_min_ggdi['Fecha']:%Y-%m}",
+                        )
+                        g3.metric(
+                            "Meses con GGDI < 0",
+                            f"{meta_ggdi['porcentaje_deficit']:.1f} %",
+                        )
+                        g4.metric(
+                            "σ de GSD",
+                            f"{meta_ggdi['sigma_gsd_cm']:.2f} cm",
+                        )
+
+                        fig = go.Figure()
+                        fig.add_trace(go.Scatter(
+                            x=df_ggdi["Fecha"],
+                            y=df_ggdi["GGDI"],
+                            mode="lines",
+                            name="GGDI",
+                        ))
+                        fig.add_hline(
+                            y=0,
+                            line_dash="dash",
+                            annotation_text="Condición mensual de referencia",
+                            annotation_position="top left",
+                        )
+                        fig.update_layout(
+                            title=f"Serie temporal del GGDI · {territorio}",
+                            xaxis_title="Fecha",
+                            yaxis_title="GGDI (adimensional)",
+                            hovermode="x unified",
+                        )
+                        st.plotly_chart(
+                            fig,
+                            use_container_width=True,
+                            key=f"ggdi_serie_{territorio}",
+                        )
+
+                        st.subheader("Revisar un año observado contra su climatología")
+                        anios_ggdi = sorted(df_ggdi["Año"].unique().tolist())
+                        anio_default = anios_ggdi[-1]
+                        anio_sel = st.selectbox(
+                            "Año observado",
+                            anios_ggdi,
+                            index=len(anios_ggdi) - 1,
+                            key=f"anio_ggdi_{territorio}",
+                        )
+                        df_anio = df_ggdi[df_ggdi["Año"] == anio_sel].copy()
+
+                        fig_comp = go.Figure()
+                        fig_comp.add_trace(go.Scatter(
+                            x=df_anio["Mes"],
+                            y=df_anio["GWSa (cm)"],
+                            mode="lines+markers",
+                            name=f"GWSa observada {anio_sel}",
+                        ))
+                        fig_comp.add_trace(go.Scatter(
+                            x=df_anio["Mes"],
+                            y=df_anio["GWSa climatológica (cm)"],
+                            mode="lines+markers",
+                            name="Climatología mensual",
+                            line=dict(dash="dash"),
+                        ))
+                        fig_comp.update_layout(
+                            title=f"GWSa observada vs. referencia mensual · {anio_sel}",
+                            xaxis_title="Mes",
+                            yaxis_title="GWSa (cm)",
+                            hovermode="x unified",
+                            legend=dict(orientation="h", y=-0.2),
+                            margin=dict(b=80),
+                        )
+                        st.plotly_chart(
+                            fig_comp,
+                            use_container_width=True,
+                            key=f"ggdi_comparacion_{territorio}_{anio_sel}",
+                        )
+
+                        fig_anio = px.bar(
+                            df_anio,
+                            x="Mes",
+                            y="GGDI",
+                            title=f"GGDI mensual · {anio_sel} · {territorio}",
+                            text_auto=".2f",
+                        )
+                        fig_anio.add_hline(y=0, line_dash="dash")
+                        fig_anio.update_layout(
+                            xaxis_title="Mes",
+                            yaxis_title="GGDI (adimensional)",
+                        )
+                        st.plotly_chart(
+                            fig_anio,
+                            use_container_width=True,
+                            key=f"ggdi_barras_{territorio}_{anio_sel}",
+                        )
+
+                        st.subheader("Déficit histórico más fuerte por mes")
+                        min_mensual = (
+                            df_ggdi.groupby(["Mes_num", "Mes"], as_index=False)["GGDI"]
+                            .min()
+                            .sort_values("Mes_num")
+                        )
+                        fig_min = px.bar(
+                            min_mensual,
+                            x="Mes",
+                            y="GGDI",
+                            title=f"Mínimo histórico del GGDI para cada mes · {territorio}",
+                            text_auto=".2f",
+                        )
+                        fig_min.add_hline(y=0, line_dash="dash")
+                        fig_min.update_layout(
+                            xaxis_title="Mes",
+                            yaxis_title="GGDI mínimo",
+                        )
+                        st.plotly_chart(
+                            fig_min,
+                            use_container_width=True,
+                            key=f"ggdi_min_mensual_{territorio}",
+                        )
+
+                        st.caption(
+                            f"GGDI calculado con {meta_ggdi['registros']} registros mensuales "
+                            f"y {meta_ggdi['anios']} años disponibles, desde "
+                            f"{meta_ggdi['fecha_inicial']:%Y-%m} hasta "
+                            f"{meta_ggdi['fecha_final']:%Y-%m}. La climatología se calcula "
+                            "por separado para enero, febrero, marzo, etc., usando toda la serie disponible."
+                        )
+
+                        with st.expander("Ver cálculo mensual de GWSa → climatología → GSD → GGDI", expanded=False):
+                            tabla_ggdi = df_ggdi.copy()
+                            tabla_ggdi["Fecha"] = tabla_ggdi["Fecha"].dt.strftime("%Y-%m")
+                            st.dataframe(
+                                tabla_ggdi.round({
+                                    "GWSa (cm)": 3,
+                                    "GWSa climatológica (cm)": 3,
+                                    "GSD (cm)": 3,
+                                    "GGDI": 3,
+                                }),
+                                use_container_width=True,
+                                hide_index=True,
+                            )
+
+                        csv_ggdi = df_ggdi.to_csv(index=False).encode("utf-8-sig")
+                        st.download_button(
+                            "Descargar serie GGDI de esta sede",
+                            data=csv_ggdi,
+                            file_name=f"GGDI_{territorio.replace(' ', '_')}.csv",
+                            mime="text/csv",
+                            key=f"descargar_ggdi_{territorio}",
+                        )
+
+                        st.warning(
+                            "Interpretación del prototipo: se usa el signo del GGDI para distinguir "
+                            "condiciones por encima o por debajo de la referencia mensual. No se agregan "
+                            "categorías arbitrarias de severidad que no estén definidas en la metodología utilizada."
+                        )
+
                 with tab_mapa:
                     ds_gws = cargar_dataset_gws(str(ARCHIVO_GWS))
                     fechas = pd.to_datetime(ds_gws["time"].values)
@@ -3769,13 +4889,16 @@ elif seccion == "Agua subterránea (GRACE)":
                         La metodología del artículo de Romero y Piña estima GWSa a partir de las
                         variaciones de almacenamiento total observadas por GRACE/GRACE-FO y componentes
                         terrestres de GLDAS. Para la plataforma se usa directamente el producto NetCDF
-                        entregado y se extrae el píxel válido más cercano a cada sede.
+                        entregado y se extrae el píxel válido más cercano a cada sede. A partir de esa
+                        serie se construye la climatología mensual, se calcula GSD y se normaliza para
+                        obtener GGDI.
 
                         **Decisiones del prototipo:**
                         - No se muestra GWSa como nivel freático.
                         - No se convierte automáticamente a recarga usando un Sy genérico.
                         - El análisis formal de tendencia se consulta en **Clima y datos → Análisis de tendencias**, con Mann-Kendall + Sen.
-                        - No se calcula aún el índice de sostenibilidad, GGDI, resiliencia o vulnerabilidad.
+                        - El GGDI se calcula a partir de la GWSa observada, la climatología mensual y la desviación estándar de GSD.
+                        - No se calcula aún el índice integrado de sostenibilidad, resiliencia o vulnerabilidad.
                         - Si no existe un píxel válido razonablemente cercano, la plataforma lo informa y no extrapola.
                         """
                     )
@@ -4417,7 +5540,7 @@ elif seccion == "Fuentes y descargas":
         st.dataframe(pd.DataFrame(estado), use_container_width=True, hide_index=True)
 
     with tab_mapas:
-        st.write(f"**Carpeta detectada:** `{CARPETA_MAPAS}`")
+        st.write(f"**Ubicación detectada:** `{CARPETA_MAPAS}`")
         estado_mapas = []
         for nombre_territorio, mapas in MAPAS_POR_TERRITORIO.items():
             for clave, nombre_base in mapas.items():
@@ -4436,7 +5559,8 @@ elif seccion == "Fuentes y descargas":
                 "IDEAM", "NASA POWER", "Instituto SINCHI", "Corpoamazonia",
                 "CORPONARIÑO / POMCA Río Mira", "Parques Nacionales", "SENA",
                 "CORALINA", "Servicio Geológico Colombiano", "Alcaldía de Medellín / POT",
-                "Romero & Piña (2025) · GRACE/GLDAS", "SIAMS",
+                "Romero & Piña (2025) · GRACE/GLDAS", "Cartografía de ubicación · Sede Bogotá",
+                "SGC – PEXAS", "IDEAM – ENA / Anexo 7", "SIAMS",
             ],
             "Uso": [
                 "Series terrestres y control de completitud", "Variables climáticas continuas",
@@ -4446,6 +5570,9 @@ elif seccion == "Fuentes y descargas":
                 "Geología, acuíferos, nitratos y microcuencas de San Andrés",
                 "Plancha geológica 228 de Medellín", "Estructura ecológica y amenaza por inundación de Medellín",
                 "Anomalías de almacenamiento de agua subterránea (GWSa) para Colombia",
+                "Ubicación nacional, regional y de campus para el piloto de la Sede Bogotá",
+                "Criterios regionales de exploración y demanda hidrogeológica en Arauca",
+                "Oferta hídrica, presión sobre el recurso, aguas subterráneas y sistema Arauca-Arauquita",
                 "Procesamiento, decisiones de uso e integración web",
             ],
             "Condición": [
@@ -4453,7 +5580,8 @@ elif seccion == "Fuentes y descargas":
                 "Referencia cartográfica", "Referencia cartográfica", "Referencia cartográfica",
                 "Referencia cartográfica", "Referencia académica complementaria", "Referencia cartográfica",
                 "Referencia cartográfica oficial", "Referencia cartográfica oficial",
-                "Producto científico satelital / modelo global", "Producto académico",
+                "Producto científico satelital / modelo global", "Elaboración cartográfica del proyecto",
+                "Referencia cartográfica oficial", "Referencia cartográfica y ficha técnica oficial", "Producto académico",
             ],
         })
         st.dataframe(fuentes, use_container_width=True, hide_index=True)
