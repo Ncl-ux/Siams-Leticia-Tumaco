@@ -1920,6 +1920,283 @@ def encontrar_carpeta_mapas() -> Path:
 CARPETA_PROYECTO = Path(__file__).resolve().parent
 CARPETA_MAPAS = encontrar_carpeta_mapas()
 
+# =========================================================
+# ANIMACIONES SWOT · GIF
+# =========================================================
+# Los GIF se guardan en una carpeta llamada ``Gif`` al mismo nivel de app.py.
+CARPETA_GIFS = CARPETA_PROYECTO / "Gif"
+
+GIFS_SWOT_POR_TERRITORIO = {
+    "Leticia": [
+        {
+            "titulo": "Río Amazonas · variación temporal del ancho",
+            "archivo": "R_o_Amazonas_Leticia_SWOT_Ancho.gif",
+            "descripcion": "Animación temporal del ancho observado por SWOT en reaches seleccionados del río Amazonas.",
+        },
+    ],
+    "Tumaco": [
+        {
+            "titulo": "Río Rosario · variación temporal del ancho",
+            "archivo": "R_o_Rosario_Tumaco_SWOT_Ancho.gif",
+            "descripcion": "Animación temporal del ancho observado por SWOT en reaches seleccionados del río Rosario.",
+        },
+        {
+            "titulo": "Río Mira · variación temporal del ancho",
+            "archivo": "R_o_Mira_Tumaco_SWOT_Ancho.gif",
+            "descripcion": "Animación temporal del ancho observado por SWOT en reaches seleccionados del río Mira.",
+        },
+    ],
+    "Medellín": [
+        {
+            "titulo": "Río Medellín · variación temporal del ancho",
+            "archivo": "R_o_Medell_n_Medell_n_SWOT_Ancho.gif",
+            "descripcion": "Animación temporal del ancho observado por SWOT en reaches seleccionados del río Medellín.",
+        },
+    ],
+    "Arauca": [
+        {
+            "titulo": "Río Arauca · variación temporal del ancho",
+            "archivo": "Rio_Arauca_SWOT_Profesional.gif",
+            "descripcion": "Animación temporal del ancho observado por SWOT en reaches seleccionados del río Arauca.",
+        },
+    ],
+}
+
+
+def buscar_gif_swot(nombre_archivo: str):
+    """Localiza un GIF SWOT dentro de la carpeta ``Gif``.
+
+    Primero usa el nombre exacto configurado y luego intenta una coincidencia
+    tolerante a mayúsculas/minúsculas para evitar errores simples al subir archivos.
+    """
+    if not CARPETA_GIFS.exists() or not CARPETA_GIFS.is_dir():
+        return None
+
+    ruta_directa = CARPETA_GIFS / nombre_archivo
+    if ruta_directa.exists() and ruta_directa.is_file():
+        return ruta_directa
+
+    objetivo = Path(nombre_archivo).name.casefold()
+    for archivo in CARPETA_GIFS.iterdir():
+        if archivo.is_file() and archivo.suffix.casefold() == ".gif":
+            if archivo.name.casefold() == objetivo:
+                return archivo
+    return None
+
+
+def mostrar_gifs_swot(nombre_territorio: str) -> None:
+    """Muestra las animaciones SWOT configuradas para el territorio activo."""
+    configuracion = GIFS_SWOT_POR_TERRITORIO.get(nombre_territorio, [])
+    if not configuracion:
+        return
+
+    st.markdown(
+        '<div class="section-title">Dinámica fluvial observada por SWOT</div>',
+        unsafe_allow_html=True,
+    )
+    st.write(
+        "Estas animaciones resumen la variación temporal del ancho del cauce en los "
+        "reaches seleccionados. La geometría del río es esquemática; los valores numéricos "
+        "mostrados en cada fecha corresponden a las observaciones procesadas."
+    )
+
+    # Si hay más de un río para el mismo territorio (por ejemplo Tumaco), se usan
+    # pestañas para mantener la página compacta y facilitar la comparación.
+    if len(configuracion) > 1:
+        pestanas = st.tabs([item["titulo"].split(" · ")[0] for item in configuracion])
+        pares = zip(pestanas, configuracion)
+    else:
+        pares = [(None, configuracion[0])]
+
+    for pestana, item in pares:
+        contenedor = pestana if pestana is not None else st.container()
+        with contenedor:
+            ruta = buscar_gif_swot(item["archivo"])
+            if ruta is None:
+                st.warning(
+                    f"No se encontró `{item['archivo']}` dentro de la carpeta `Gif`."
+                )
+                st.caption(f"Ruta esperada: {CARPETA_GIFS / item['archivo']}")
+                continue
+
+            st.markdown(f"### {item['titulo']}")
+            st.image(
+                str(ruta),
+                caption=f"{item['descripcion']} · Fuente: HydroWeb / SWOT",
+                use_container_width=True,
+            )
+            st.caption(f"Archivo: Gif/{ruta.name}")
+
+    st.markdown(
+        dedent("""
+        <div class="soft-box">
+            <strong>Lectura del producto:</strong> el GIF permite seguir la evolución temporal
+            del ancho medido por SWOT para cada reach seleccionado. Se utiliza como recurso
+            visual de exploración y no sustituye la descarga ni el análisis de la serie numérica original.
+        </div>
+        """).strip(),
+        unsafe_allow_html=True,
+    )
+
+
+# =========================================================
+# TARJETAS TÉCNICAS SWOT · PNG
+# =========================================================
+# Las tarjetas se guardan en una carpeta llamada exactamente
+# ``Tarjeta Tecnica Swot`` al mismo nivel de app.py.
+CARPETA_TARJETAS_SWOT = CARPETA_PROYECTO / "Tarjeta Tecnica Swot"
+
+TARJETAS_SWOT_POR_TERRITORIO = {
+    "Leticia": [
+        {
+            "rio": "Río Amazonas",
+            "archivos": {
+                "WSE": "01_WSE_Leticia_SWOT.png",
+                "Ancho": "02_Ancho_Leticia_SWOT.png",
+                "Área": "03_Area_Leticia_SWOT.png",
+                "Pendiente": "04_Pendiente_Leticia_SWOT.png",
+            },
+        },
+    ],
+    "Tumaco": [
+        {
+            "rio": "Río Mira",
+            "archivos": {
+                "WSE": "01_WSE_Tumaco_SWOT.png",
+                "Ancho": "02_Ancho_Tumaco_SWOT.png",
+                "Área": "03_Area_Tumaco_SWOT.png",
+                "Pendiente": "04_Pendiente_Tumaco_SWOT.png",
+            },
+        },
+        {
+            "rio": "Río Rosario",
+            "archivos": {
+                "WSE": "01_WSE_Tumaco_SWOT Rosario.png",
+                "Ancho": "02_Ancho_Tumaco_SWOT Rosario.png",
+                "Área": "03_Area_Tumaco_SWOT Rosario.png",
+                "Pendiente": "04_Pendiente_Tumaco_SWOT Rosario.png",
+            },
+        },
+    ],
+    "Medellín": [
+        {
+            "rio": "Río Medellín",
+            "archivos": {
+                "WSE": "01_WSE_Medellin_SWOT.png",
+                "Ancho": "02_Ancho_Medellin_SWOT.png",
+                "Área": "03_Area_Medellin_SWOT.png",
+                "Pendiente": "04_Pendiente_Medellin_SWOT.png",
+            },
+        },
+    ],
+    "Arauca": [
+        {
+            "rio": "Río Arauca",
+            "archivos": {
+                "WSE": "01_WSE_Arauca_SWOT.png",
+                "Ancho": "02_Ancho_Arauca_SWOT.png",
+                "Área": "03_Area_Arauca_SWOT.png",
+                "Pendiente": "04_Pendiente_Arauca_SWOT.png",
+            },
+        },
+    ],
+}
+
+
+def buscar_tarjeta_swot(nombre_archivo: str):
+    """Localiza una tarjeta técnica SWOT dentro de ``Tarjeta Tecnica Swot``.
+
+    Además del nombre exacto, compara el nombre normalizado para tolerar diferencias
+    menores de mayúsculas, tildes, guiones bajos y espacios.
+    """
+    if not CARPETA_TARJETAS_SWOT.exists() or not CARPETA_TARJETAS_SWOT.is_dir():
+        return None
+
+    ruta_directa = CARPETA_TARJETAS_SWOT / nombre_archivo
+    if ruta_directa.exists() and ruta_directa.is_file():
+        return ruta_directa
+
+    objetivo = normalizar_etiqueta(Path(nombre_archivo).stem)
+    for archivo in CARPETA_TARJETAS_SWOT.iterdir():
+        if not archivo.is_file() or archivo.suffix.casefold() not in {".png", ".jpg", ".jpeg", ".webp"}:
+            continue
+        if normalizar_etiqueta(archivo.stem) == objetivo:
+            return archivo
+    return None
+
+
+def _mostrar_tarjetas_rio_swot(nombre_territorio: str, cfg_rio: dict) -> None:
+    """Muestra las cuatro tarjetas de un río sin alargar verticalmente la página."""
+    nombres_variables = list(cfg_rio["archivos"].keys())
+    pestanas = st.tabs(nombres_variables)
+
+    descripciones = {
+        "WSE": "Elevación de la superficie del agua (Water Surface Elevation).",
+        "Ancho": "Ancho del cauce estimado por SWOT para los reaches seleccionados.",
+        "Área": "Área superficial del agua asociada a los reaches seleccionados.",
+        "Pendiente": "Pendiente longitudinal de la superficie del agua reportada por SWOT.",
+    }
+
+    for pestana, variable in zip(pestanas, nombres_variables):
+        with pestana:
+            nombre_archivo = cfg_rio["archivos"][variable]
+            ruta = buscar_tarjeta_swot(nombre_archivo)
+            if ruta is None:
+                st.warning(
+                    f"No se encontró `{nombre_archivo}` dentro de `Tarjeta Tecnica Swot`."
+                )
+                st.caption(f"Ruta esperada: {CARPETA_TARJETAS_SWOT / nombre_archivo}")
+                continue
+
+            st.image(
+                str(ruta),
+                caption=(
+                    f"{cfg_rio['rio']} · {descripciones.get(variable, variable)} "
+                    "Fuente: HydroWeb / SWOT"
+                ),
+                use_container_width=True,
+            )
+            st.caption(f"Archivo: Tarjeta Tecnica Swot/{ruta.name}")
+
+
+def mostrar_tarjetas_swot(nombre_territorio: str) -> None:
+    """Muestra las tarjetas técnicas SWOT disponibles para el territorio activo."""
+    rios = TARJETAS_SWOT_POR_TERRITORIO.get(nombre_territorio, [])
+    if not rios:
+        return
+
+    st.markdown(
+        '<div class="section-title">Fichas técnicas de variables SWOT</div>',
+        unsafe_allow_html=True,
+    )
+    st.write(
+        "Consulta las fichas de **WSE, ancho, área y pendiente** construidas para los "
+        "reaches seleccionados. Cada ficha resume el comportamiento de la variable y "
+        "sirve como complemento de la animación temporal del ancho."
+    )
+
+    if len(rios) > 1:
+        # Tumaco tiene dos sistemas fluviales: Mira y Rosario.
+        tabs_rios = st.tabs([cfg["rio"] for cfg in rios])
+        for tab_rio, cfg_rio in zip(tabs_rios, rios):
+            with tab_rio:
+                _mostrar_tarjetas_rio_swot(nombre_territorio, cfg_rio)
+    else:
+        st.markdown(f"### {rios[0]['rio']}")
+        _mostrar_tarjetas_rio_swot(nombre_territorio, rios[0])
+
+    st.markdown(
+        dedent("""
+        <div class="soft-box">
+            <strong>Cómo leer estas fichas:</strong> WSE representa la elevación de la superficie
+            del agua; ancho y área describen la geometría superficial observada; y pendiente
+            representa el gradiente longitudinal de la superficie del agua. Los productos se
+            presentan por reach y deben interpretarse con los indicadores de calidad de SWOT.
+        </div>
+        """).strip(),
+        unsafe_allow_html=True,
+    )
+
 # Se buscan mapas en ambos lugares:
 # 1) SIAMS MAPAS -> cartografía temática existente.
 # 2) carpeta de app.py -> PDF del piloto de Bogotá y compatibilidad.
@@ -3371,6 +3648,28 @@ with st.sidebar.expander("Diagnóstico de archivos", expanded=False):
                     archivos_detectados.append(f"{carpeta_revision.name}/{archivo.name}")
     st.write("**Mapas detectados:**")
     st.code("\n".join(sorted(archivos_detectados)) if archivos_detectados else "Ningún mapa detectado", language=None)
+    gifs_detectados = []
+    if CARPETA_GIFS.exists() and CARPETA_GIFS.is_dir():
+        gifs_detectados = sorted(
+            archivo.name for archivo in CARPETA_GIFS.iterdir()
+            if archivo.is_file() and archivo.suffix.casefold() == ".gif"
+        )
+    st.write(f"**Carpeta GIF:** `{CARPETA_GIFS}`")
+    st.write("**GIF SWOT detectados:**")
+    st.code("\n".join(gifs_detectados) if gifs_detectados else "Ningún GIF detectado", language=None)
+
+    tarjetas_detectadas = []
+    if CARPETA_TARJETAS_SWOT.exists() and CARPETA_TARJETAS_SWOT.is_dir():
+        tarjetas_detectadas = sorted(
+            archivo.name for archivo in CARPETA_TARJETAS_SWOT.iterdir()
+            if archivo.is_file() and archivo.suffix.casefold() in {".png", ".jpg", ".jpeg", ".webp"}
+        )
+    st.write(f"**Carpeta tarjetas SWOT:** `{CARPETA_TARJETAS_SWOT}`")
+    st.write("**Tarjetas SWOT detectadas:**")
+    st.code(
+        "\n".join(tarjetas_detectadas) if tarjetas_detectadas else "Ninguna tarjeta SWOT detectada",
+        language=None,
+    )
     st.write(f"**NetCDF GWSa:** `{Path(ARCHIVO_GWS).name if ARCHIVO_GWS else 'No encontrado'}`")
 
 info = territorio_actual(territorio)
@@ -4303,6 +4602,10 @@ elif seccion == "Análisis de tendencias":
 
 elif seccion == "Hidrología":
     st.title(f"💦 Hidrología de {territorio}")
+
+    # Animaciones temporales y fichas técnicas SWOT disponibles para Leticia, Tumaco, Medellín y Arauca.
+    mostrar_gifs_swot(territorio)
+    mostrar_tarjetas_swot(territorio)
 
     if territorio == "Leticia":
         mostrar_mapa_imagen(
