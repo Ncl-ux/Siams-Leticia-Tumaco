@@ -1,5 +1,6 @@
 from pathlib import Path
 from textwrap import dedent
+from html import escape
 import math
 import unicodedata
 import base64
@@ -22,8 +23,8 @@ except ImportError:
     np = None
     xr = None
 
-VERSION_APP = "PROTOTIPO-SIAMS-V22-GGDI-2026-09-11"
-FECHA_ACTUALIZACION = "11 de septiembre de 2026"
+VERSION_APP = "PROTOTIPO-SIAMS-V23-COBERTURAS-TARJETAS-2026-10-03"
+FECHA_ACTUALIZACION = "3 de octubre de 2026"
 
 # =========================================================
 # CONFIGURACIÓN GENERAL
@@ -1918,6 +1919,8 @@ def encontrar_carpeta_mapas() -> Path:
 
 
 CARPETA_PROYECTO = Path(__file__).resolve().parent
+CARPETA_DATOS_HIDRO = CARPETA_PROYECTO / "Analisis Hidro"
+CARPETA_MAPAS_QGIS = CARPETA_PROYECTO / "Mapas Qgis"
 CARPETA_MAPAS = encontrar_carpeta_mapas()
 
 # =========================================================
@@ -2197,11 +2200,13 @@ def mostrar_tarjetas_swot(nombre_territorio: str) -> None:
         unsafe_allow_html=True,
     )
 
-# Se buscan mapas en ambos lugares:
-# 1) SIAMS MAPAS -> cartografía temática existente.
-# 2) carpeta de app.py -> PDF del piloto de Bogotá y compatibilidad.
+# Cartografía temática, PDF de QGIS y compatibilidad con archivos en la raíz.
 CARPETAS_BUSQUEDA_MAPAS = []
-for _carpeta in (CARPETA_MAPAS, CARPETA_PROYECTO):
+for _carpeta in (
+    CARPETA_MAPAS,
+    CARPETA_MAPAS_QGIS,
+    CARPETA_PROYECTO,
+):
     if _carpeta not in CARPETAS_BUSQUEDA_MAPAS:
         CARPETAS_BUSQUEDA_MAPAS.append(_carpeta)
 
@@ -2213,36 +2218,50 @@ EXTENSIONES_MAPA = EXTENSIONES_IMAGEN + (".pdf", ".PDF")
 # ARCHIVO CLIMÁTICO DE LETICIA
 # =========================================================
 
-def encontrar_archivo_clima_leticia():
-    """Localiza automáticamente el Excel de NASA POWER junto al proyecto."""
-    carpeta_codigo = Path(__file__).resolve().parent
-    carpetas = [
-        carpeta_codigo,
-        carpeta_codigo / "DATOS CLIMA",
-        carpeta_codigo / "datos",
-        carpeta_codigo / "datos" / "leticia",
-        carpeta_codigo / "datos" / "leticia" / "clima",
-    ]
+def encontrar_archivo_excel(prefijos, nombres_preferidos, subcarpetas):
+    """Busca primero en Analisis Hidro y después en las ubicaciones anteriores."""
+    carpetas = []
+    for carpeta in (
+        CARPETA_DATOS_HIDRO,
+        CARPETA_PROYECTO,
+        *(CARPETA_PROYECTO / sub for sub in subcarpetas),
+    ):
+        if carpeta.is_dir() and carpeta not in carpetas:
+            carpetas.append(carpeta)
 
-    nombres_preferidos = [
-        "NASA_POWER_LETICIA_FINAL.xlsx",
-        "NASA_POWER_LETICIA_FINAL (3).xlsx",
-    ]
-
+    # Los nombres completos tienen prioridad sobre copias con (1), (2), etc.
+    # Se ignoran tildes y mayúsculas, sin modificar los archivos originales.
     for carpeta in carpetas:
+        archivos = sorted(
+            (archivo for archivo in carpeta.iterdir()
+             if archivo.is_file() and archivo.suffix.casefold() == ".xlsx"
+             and not archivo.name.startswith("~$")),
+            key=lambda archivo: archivo.name.casefold(),
+        )
         for nombre in nombres_preferidos:
-            ruta = carpeta / nombre
-            if ruta.exists() and ruta.is_file():
-                return ruta
-
-    # Permite variaciones del nombre, por ejemplo copias con (1), (2), etc.
-    for carpeta in carpetas:
-        if carpeta.exists():
-            coincidencias = sorted(carpeta.glob("NASA_POWER_LETICIA*.xlsx"))
-            if coincidencias:
-                return coincidencias[0]
-
+            objetivo = normalizar_etiqueta(nombre)
+            for archivo in archivos:
+                if normalizar_etiqueta(archivo.name) == objetivo:
+                    return archivo
+        for prefijo in prefijos:
+            objetivo = normalizar_etiqueta(prefijo)
+            for archivo in archivos:
+                stem = normalizar_etiqueta(archivo.stem)
+                if stem == objetivo or stem.startswith(objetivo + "_"):
+                    return archivo
     return None
+
+
+def encontrar_archivo_clima_leticia():
+    """Localiza NASA POWER de Leticia en la carpeta de análisis hidrológico."""
+    return encontrar_archivo_excel(
+        prefijos=["NASA_POWER_LETICIA"],
+        nombres_preferidos=[
+            "NASA_POWER_LETICIA_FINAL.xlsx",
+            "NASA_POWER_LETICIA_FINAL (3).xlsx",
+        ],
+        subcarpetas=["DATOS CLIMA", "datos", "datos/leticia", "datos/leticia/clima"],
+    )
 
 
 ARCHIVO_CLIMA_LETICIA = encontrar_archivo_clima_leticia()
@@ -2334,27 +2353,6 @@ def cargar_clima_leticia(ruta_texto: str):
 # =========================================================
 # ARCHIVOS CLIMÁTICOS DE TUMACO: NASA POWER + IDEAM
 # =========================================================
-
-def encontrar_archivo_excel(prefijos, nombres_preferidos, subcarpetas):
-    """Localiza un Excel junto al proyecto, incluso si tiene (1), (2), etc."""
-    carpeta_codigo = Path(__file__).resolve().parent
-    carpetas = [carpeta_codigo] + [carpeta_codigo / sub for sub in subcarpetas]
-
-    for carpeta in carpetas:
-        for nombre in nombres_preferidos:
-            ruta = carpeta / nombre
-            if ruta.exists() and ruta.is_file():
-                return ruta
-
-    for carpeta in carpetas:
-        if not carpeta.exists():
-            continue
-        for prefijo in prefijos:
-            coincidencias = sorted(carpeta.glob(f"{prefijo}*.xlsx"))
-            if coincidencias:
-                return coincidencias[0]
-    return None
-
 
 ARCHIVO_NASA_TUMACO = encontrar_archivo_excel(
     prefijos=["NASA_POWER_TUMACO"],
@@ -2671,12 +2669,7 @@ def clima_prototipo(info: dict) -> pd.DataFrame:
 
 
 def buscar_mapa(nombre_base: str):
-    """Busca mapas en ``SIAMS MAPAS`` y también junto a ``app.py``.
-
-    Esto conserva los mapas temáticos existentes en la subcarpeta y, al mismo
-    tiempo, permite que los PDF del piloto de Bogotá permanezcan en la raíz del
-    proyecto sin mover ni renombrar archivos.
-    """
+    """Busca los mapas donde estaban y los PDF de Bogotá en Mapas Qgis."""
     objetivo = Path(nombre_base).name.casefold()
     objetivo_stem = Path(nombre_base).stem.casefold()
 
@@ -2708,6 +2701,7 @@ def buscar_mapa(nombre_base: str):
                 return archivo
 
     return None
+
 
 
 def mostrar_pdf_mapa(ruta_pdf: Path, altura: int = 900) -> None:
@@ -3231,11 +3225,11 @@ def mostrar_navegador_ubicacion_bogota() -> None:
 
         if ruta is None:
             st.warning(
-                f"No se encontró `{nombre_archivo}` junto a `app.py`."
+                f"No se encontró `{nombre_archivo}` en `Mapas Qgis`."
             )
             st.code(str(CARPETA_MAPAS), language=None)
             st.info(
-                "Pon los tres PDF originales al mismo nivel que `app.py`, conservando exactamente "
+                "Pon los tres PDF originales dentro de `Mapas Qgis`, conservando exactamente "
                 "los nombres con los que los exportaste desde QGIS."
             )
         else:
@@ -3558,6 +3552,344 @@ def tabla_disponibilidad(nombre_territorio: str) -> pd.DataFrame:
 
 
 # =========================================================
+# COBERTURAS MAPBIOMAS · CSV POR SEDE
+# =========================================================
+CARPETA_COBERTURAS = CARPETA_PROYECTO / "Coberturas MapBio"
+COBERTURAS_POR_TERRITORIO = {
+    "Arauca": {"carpeta": "ARAUCA", "zonas": {"A": "Arauca"}},
+    "La Paz": {"carpeta": "LA PAZ", "zonas": {"LP": "La Paz"}},
+    "Leticia": {"carpeta": "LETICIA", "zonas": {"L": "Leticia"}},
+    "Medellín": {"carpeta": "MEDELLIN", "zonas": {"M": "Medellín"}},
+    "San Andrés": {
+        "carpeta": "SAN ANDRES",
+        "zonas": {"SA": "San Andrés", "SAC": "San Andrés Costa"},
+    },
+    "Tumaco": {"carpeta": "TUMACO", "zonas": {"T": "Tumaco"}},
+}
+COLORES_COBERTURAS = {
+    "Formación boscosa": "#208b47",
+    "Formación natural no boscosa": "#bbce58",
+    "Área agropecuaria": "#f0c86a",
+    "Área sin vegetación": "#df4b51",
+    "Cuerpo de agua": "#2b63e8",
+}
+
+
+def encontrar_csv_coberturas(nombre_territorio: str, codigo: str) -> dict:
+    """Separa los archivos anual/serie y las siglas SA/SAC; acepta 'Copia de'."""
+    config = COBERTURAS_POR_TERRITORIO.get(nombre_territorio)
+    resultado = {"anual": [], "serie": []}
+    if config is None or codigo not in config["zonas"]:
+        return resultado
+    carpeta = CARPETA_COBERTURAS / config["carpeta"]
+    if not carpeta.is_dir():
+        return resultado
+    for archivo in sorted(carpeta.iterdir(), key=lambda p: p.name.casefold()):
+        if not archivo.is_file() or archivo.suffix.casefold() != ".csv":
+            continue
+        nombre = normalizar_etiqueta(archivo.stem)
+        if nombre.split("_")[-1] != codigo.casefold() or "cobertura" not in nombre:
+            continue
+        tipo = "serie" if "serie_temporal" in nombre else "anual"
+        resultado[tipo].append(archivo)
+    return resultado
+
+
+@st.cache_data(show_spinner=False)
+def cargar_csv_cobertura(ruta_texto: str, marca_archivo: int = 0) -> pd.DataFrame:
+    """Valida los CSV exportados. marca_archivo invalida la caché al editar el CSV."""
+    try:
+        df = pd.read_csv(ruta_texto, encoding="utf-8-sig", sep=None, engine="python")
+    except UnicodeDecodeError:
+        df = pd.read_csv(ruta_texto, encoding="cp1252", sep=None, engine="python")
+    df.columns = [str(columna).strip() for columna in df.columns]
+    if df.columns.duplicated().any():
+        raise ValueError("El CSV tiene columnas repetidas.")
+    equivalencias = {normalizar_etiqueta(c): c for c in df.columns}
+    if not {"nivel_1", "nivel_2"}.issubset(equivalencias):
+        raise ValueError("El CSV debe contener las columnas Nivel 1 y Nivel 2.")
+    df = df.rename(columns={equivalencias["nivel_1"]: "Nivel 1", equivalencias["nivel_2"]: "Nivel 2"})
+    anios = sorted(c for c in df.columns if len(c) == 4 and c.isdigit())
+    if not anios:
+        raise ValueError("No se encontraron columnas de años en el CSV.")
+    df = df[["Nivel 1", "Nivel 2", *anios]].copy()
+    for columna in ("Nivel 1", "Nivel 2"):
+        df[columna] = df[columna].fillna("").astype(str).str.strip()
+    df = df.loc[df["Nivel 1"].ne("")].copy()
+    if df.empty:
+        raise ValueError("El CSV no contiene clases de cobertura.")
+    if df.duplicated(["Nivel 1", "Nivel 2"]).any():
+        raise ValueError("Hay clases repetidas en el CSV; revisa la exportación.")
+    for anio in anios:
+        df[anio] = pd.to_numeric(df[anio], errors="coerce")
+        if df[anio].isna().any() or (df[anio] < 0).any() or not df[anio].map(math.isfinite).all():
+            raise ValueError(f"La columna {anio} contiene áreas faltantes, negativas o no numéricas.")
+    return df.reset_index(drop=True)
+
+
+def preparar_cobertura_nivel(df: pd.DataFrame, nivel: str) -> pd.DataFrame:
+    """Usa totales de Nivel 1 o subclases de Nivel 2, evitando doble conteo."""
+    anios = [c for c in df.columns if len(c) == 4 and c.isdigit()]
+    padres = df["Nivel 2"].eq("")
+    if nivel == "Nivel 1":
+        datos = df.loc[padres].copy()
+        if datos.empty:
+            datos = df.groupby("Nivel 1", as_index=False)[anios].sum()
+        datos["Clase"] = datos["Nivel 1"]
+    else:
+        datos = df.loc[~padres].copy()
+        if datos.empty:
+            raise ValueError("Este CSV no contiene subclases de Nivel 2.")
+        datos["Clase"] = datos["Nivel 2"]
+        repetidas = datos["Clase"].duplicated(keep=False)
+        datos.loc[repetidas, "Clase"] = datos.loc[repetidas, "Nivel 2"] + " · " + datos.loc[repetidas, "Nivel 1"]
+    return datos[["Clase", "Nivel 1", *anios]].reset_index(drop=True)
+
+
+def comparar_coberturas(datos: pd.DataFrame, inicial: int, final: int) -> pd.DataFrame:
+    """El porcentaje es relativo al área inicial; crecimiento desde cero queda sin % definido."""
+    if inicial > final:
+        raise ValueError("El año final debe ser igual o posterior al inicial.")
+    cambio = datos[["Clase", str(inicial), str(final)]].copy() if inicial != final else datos[["Clase", str(inicial)]].copy()
+    cambio = cambio.rename(columns={str(inicial): "Área inicial (ha)"})
+    if inicial == final:
+        cambio["Área final (ha)"] = cambio["Área inicial (ha)"]
+    else:
+        cambio = cambio.rename(columns={str(final): "Área final (ha)"})
+    cambio["Cambio (ha)"] = cambio["Área final (ha)"] - cambio["Área inicial (ha)"]
+    denominador = cambio["Área inicial (ha)"].where(cambio["Área inicial (ha)"].ne(0))
+    cambio["Cambio (%)"] = 100 * cambio["Cambio (ha)"] / denominador
+    ambas_cero = cambio["Área inicial (ha)"].eq(0) & cambio["Área final (ha)"].eq(0)
+    cambio.loc[ambas_cero, "Cambio (%)"] = 0.0
+    return cambio
+
+
+def mostrar_resumen_coberturas(anio, total, dominante, primer_anio, ultimo_anio) -> None:
+    """Tarjetas con texto ajustable, sin depender del ancho de st.metric."""
+    tarjetas = [
+        (f"Superficie clasificada · {anio}", f"{total:,.1f} ha", "numero"),
+        ("Clase dominante", dominante["Clase"] if total else "Sin superficie", "texto"),
+        ("Participación dominante", f"{dominante['Participación (%)']:.1f} %" if total else "—", "numero"),
+        ("Periodo disponible", f"{primer_anio}–{ultimo_anio}", "numero"),
+    ]
+    estilo = """<style>
+    .cobertura-resumen {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+        gap: 1rem;
+        width: 100%;
+        min-width: 0;
+        margin: 0.75rem 0 1.25rem;
+        align-items: stretch;
+    }
+    .cobertura-resumen-tarjeta {
+        box-sizing: border-box;
+        min-width: 0;
+        max-width: 100%;
+        min-height: 106px;
+        padding: 1rem 1.15rem;
+        border: 1px solid var(--siams-borde, rgba(128,128,128,0.28));
+        border-radius: 16px;
+        background: var(--secondary-background-color);
+        color: var(--text-color);
+        box-shadow: var(--siams-sombra, 0 6px 18px rgba(0,0,0,0.08));
+    }
+    .cobertura-resumen-etiqueta,
+    .cobertura-resumen-valor {
+        display: block;
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        white-space: normal !important;
+        overflow-wrap: anywhere !important;
+        word-break: normal !important;
+        color: var(--text-color) !important;
+    }
+    .cobertura-resumen-etiqueta {
+        font-size: 0.86rem;
+        line-height: 1.35;
+        margin-bottom: 0.55rem;
+        opacity: 0.82;
+    }
+    .cobertura-resumen-valor {
+        font-size: clamp(1.15rem, 1.6vw, 1.45rem);
+        line-height: 1.3;
+        font-weight: 650;
+    }
+    .cobertura-resumen-valor.texto {
+        font-size: 1.08rem;
+        line-height: 1.45;
+    }
+    </style>"""
+    contenido = "".join(
+        '<div class="cobertura-resumen-tarjeta">'
+        f'<div class="cobertura-resumen-etiqueta">{escape(str(etiqueta))}</div>'
+        f'<div class="cobertura-resumen-valor {tipo}">{escape(str(valor))}</div>'
+        '</div>'
+        for etiqueta, valor, tipo in tarjetas
+    )
+    st.markdown(estilo + '<div class="cobertura-resumen">' + contenido + '</div>', unsafe_allow_html=True)
+
+
+def mostrar_coberturas_mapbiomas(nombre_territorio: str) -> None:
+    config = COBERTURAS_POR_TERRITORIO.get(nombre_territorio)
+    if config is None:
+        st.info("Todavía no se han incorporado CSV de coberturas para esta sede.")
+        return
+    codigos = list(config["zonas"])
+    if len(codigos) > 1:
+        codigo = st.selectbox("Zona de análisis", codigos, format_func=lambda c: config["zonas"][c], key=f"cob_zona_{nombre_territorio}")
+        st.caption("SA = San Andrés · SAC = San Andrés Costa. Cada zona conserva su propia serie y superficie.")
+    else:
+        codigo = codigos[0]
+    zona = config["zonas"][codigo]
+    clave = f"cob_{normalizar_etiqueta(nombre_territorio)}_{codigo}"
+    archivos = encontrar_csv_coberturas(nombre_territorio, codigo)
+    if any(len(rutas) > 1 for rutas in archivos.values()):
+        st.warning("Hay más de un CSV del mismo tipo para esta zona. Deja una sola exportación anual y una sola serie histórica.")
+        for tipo, rutas in archivos.items():
+            if len(rutas) > 1:
+                st.write(f"Archivos de {tipo}: " + ", ".join(r.name for r in rutas))
+        return
+    if not archivos["serie"]:
+        st.info(f"No se encontró la serie histórica de {zona} en Coberturas MapBio/{config['carpeta']}.")
+        st.caption(f"El nombre del CSV debe terminar en ({codigo}).csv y contener Serie temporal.")
+        return
+    ruta_serie = archivos["serie"][0]
+    ruta_anual = archivos["anual"][0] if archivos["anual"] else None
+    try:
+        historico = cargar_csv_cobertura(str(ruta_serie), ruta_serie.stat().st_mtime_ns)
+        anual = cargar_csv_cobertura(str(ruta_anual), ruta_anual.stat().st_mtime_ns) if ruta_anual else None
+    except Exception as error:
+        st.error(f"No se pudieron leer las coberturas de {zona}: {error}")
+        return
+    anios = sorted(int(c) for c in historico.columns if len(c) == 4 and c.isdigit())
+    if anual is not None:
+        comunes = [str(a) for a in anios if str(a) in anual.columns]
+        for anio in comunes:
+            comprobacion = historico[["Nivel 1", "Nivel 2", anio]].merge(
+                anual[["Nivel 1", "Nivel 2", anio]], on=["Nivel 1", "Nivel 2"], how="outer", suffixes=("_serie", "_anual"), indicator=True,
+            )
+            dif = (comprobacion[f"{anio}_serie"] - comprobacion[f"{anio}_anual"]).abs()
+            tolerancia = 1e-5 + 1e-8 * comprobacion[f"{anio}_serie"].abs()
+            if comprobacion["_merge"].ne("both").any() or (dif > tolerancia).any():
+                st.warning(f"El CSV anual y la serie no coinciden en {anio}. La distribución usa el CSV anual; las tendencias y cambios usan la serie. Revisa que ambos correspondan al mismo recorte.")
+    st.subheader(f"Coberturas de la tierra · {zona}")
+    st.caption(f"Exportaciones MapBiomas aportadas al proyecto · {anios[0]}–{anios[-1]} · superficie en hectáreas (ha).")
+    st.caption("Los CSV contienen áreas por clase; la zona analizada corresponde al recorte de la descarga y puede ser mayor que el campus. No contienen geometría para dibujar un mapa.")
+    c_nivel, c_anio = st.columns(2)
+    with c_nivel:
+        nivel = st.radio("Detalle de clasificación", ["Nivel 1", "Nivel 2"], horizontal=True, key=f"{clave}_nivel")
+    with c_anio:
+        anio = st.selectbox("Año de distribución", anios, index=len(anios) - 1, key=f"{clave}_anio")
+    try:
+        datos = preparar_cobertura_nivel(historico, nivel)
+        fuente_anual = anual if anual is not None and str(anio) in anual.columns else historico
+        distribucion = preparar_cobertura_nivel(fuente_anual, nivel)[["Clase", "Nivel 1", str(anio)]].rename(columns={str(anio): "Área (ha)"})
+    except ValueError as error:
+        st.error(str(error))
+        return
+    total = distribucion["Área (ha)"].sum()
+    distribucion["Participación (%)"] = 100 * distribucion["Área (ha)"] / total if total else 0.0
+    dominante = distribucion.loc[distribucion["Área (ha)"].idxmax()]
+    mostrar_resumen_coberturas(anio, total, dominante, anios[0], anios[-1])
+    if nivel == "Nivel 2":
+        colores = {fila["Clase"]: COLORES_COBERTURAS.get(fila["Nivel 1"], "#78909c") for _, fila in datos.iterrows()}
+    else:
+        colores = COLORES_COBERTURAS
+    t_anual, t_serie, t_cambio, t_datos = st.tabs(["Distribución anual", "Evolución histórica", "Cambios entre años", "Datos y descargas"])
+    with t_anual:
+        visibles = distribucion[distribucion["Área (ha)"] > 0]
+        if visibles.empty:
+            st.info("No hay superficie clasificada para este año.")
+        else:
+            fig = px.pie(visibles, names="Clase", values="Área (ha)", hole=0.55, color="Clase", color_discrete_map=colores, hover_data=["Participación (%)"], title=f"Distribución de coberturas · {zona} · {anio}")
+            fig.update_traces(textinfo="percent", hovertemplate="%{label}<br>Área: %{value:,.2f} ha<br>Participación: %{percent}<extra></extra>")
+            fig.update_layout(height=520, margin=dict(l=20, r=20, t=60, b=30))
+            st.plotly_chart(fig, use_container_width=True, key=f"{clave}_dona")
+        st.dataframe(distribucion.sort_values("Área (ha)", ascending=False).round(2), hide_index=True, use_container_width=True)
+    with t_serie:
+        activas = datos.loc[datos[[str(a) for a in anios]].sum(axis=1) > 0, "Clase"].tolist()
+        seleccion = st.multiselect("Clases que se muestran", activas, default=activas, key=f"{clave}_clases")
+        modo = st.radio("Unidad del gráfico", ["Superficie (ha)", "Participación (%)"], horizontal=True, key=f"{clave}_unidad")
+        largo = datos.melt(id_vars=["Clase", "Nivel 1"], var_name="Año", value_name="Área (ha)")
+        largo["Año"] = largo["Año"].astype(int)
+        totales = largo.groupby("Año")["Área (ha)"].transform("sum")
+        largo["Participación (%)"] = 100 * largo["Área (ha)"] / totales.where(totales.ne(0))
+        largo.loc[totales.eq(0), "Participación (%)"] = 0.0
+        largo = largo[largo["Clase"].isin(seleccion)].sort_values("Año")
+        if not seleccion:
+            st.info("Selecciona al menos una clase para ver la evolución.")
+        else:
+            eje = "Área (ha)" if modo == "Superficie (ha)" else "Participación (%)"
+            fig = px.area(largo, x="Año", y=eje, color="Clase", color_discrete_map=colores, title=f"Evolución de coberturas · {zona}")
+            fig.update_layout(height=520, hovermode="x unified", margin=dict(l=20, r=20, t=60, b=30))
+            fig.update_xaxes(range=[anios[0], anios[-1]], dtick=5 if len(anios) > 15 else 1, rangeslider_visible=True)
+            st.plotly_chart(fig, use_container_width=True, key=f"{clave}_serie")
+            if modo == "Participación (%)":
+                st.caption("El porcentaje se calcula respecto a todas las clases del año. Ocultar una clase no recalcula el denominador.")
+    with t_cambio:
+        c1, c2 = st.columns(2)
+        with c1:
+            inicial = st.selectbox("Año inicial", anios, index=0, key=f"{clave}_inicio")
+        with c2:
+            final = st.selectbox("Año final", anios, index=len(anios) - 1, key=f"{clave}_fin")
+        if inicial > final:
+            st.warning("Elige un año final igual o posterior al año inicial.")
+        else:
+            cambio = comparar_coberturas(datos, inicial, final)
+            cambio["Periodo"] = f"{inicial}–{final}"
+            st.dataframe(cambio.round(2), hide_index=True, use_container_width=True)
+            barras = cambio[(cambio["Área inicial (ha)"] > 0) | (cambio["Área final (ha)"] > 0)].sort_values("Cambio (ha)")
+            if not barras.empty:
+                fig = px.bar(barras, x="Cambio (ha)", y="Clase", orientation="h", color="Clase", color_discrete_map=colores, title=f"Cambio neto de superficie · {inicial}–{final}")
+                fig.update_layout(height=max(360, 32 * len(barras)), showlegend=False, margin=dict(l=20, r=20, t=60, b=30))
+                fig.add_vline(x=0, line_color="#78909c", line_width=1)
+                st.plotly_chart(fig, use_container_width=True, key=f"{clave}_cambio")
+            if (cambio["Cambio (ha)"].abs() > 1e-6).any():
+                aumento = cambio.loc[cambio["Cambio (ha)"].idxmax()]
+                perdida = cambio.loc[cambio["Cambio (ha)"].idxmin()]
+                frases = []
+                if aumento["Cambio (ha)"] > 0:
+                    frases.append(f"El mayor aumento corresponde a {aumento['Clase']}: {aumento['Cambio (ha)']:,.1f} ha.")
+                if perdida["Cambio (ha)"] < 0:
+                    frases.append(f"La mayor disminución corresponde a {perdida['Clase']}: {abs(perdida['Cambio (ha)']):,.1f} ha.")
+                st.info(f"Entre {inicial} y {final}, " + " ".join(frases))
+            else:
+                st.info("Las superficies no presentan cambios entre los años elegidos.")
+            st.caption("Cambio (%) = 100 × (área final − área inicial) / área inicial. Si se pasa de cero a un área positiva, el porcentaje queda sin definir. El cambio neto no identifica qué clases se transformaron en otras.")
+            st.download_button("Descargar comparación CSV", data=cambio.to_csv(index=False).encode("utf-8-sig"), file_name=f"Cambios_cobertura_{codigo}_{inicial}_{final}.csv", mime="text/csv", key=f"{clave}_descarga_cambios")
+    with t_datos:
+        st.write(f"**Serie histórica:** {ruta_serie.name}")
+        if ruta_anual:
+            st.write(f"**Distribución anual:** {ruta_anual.name}")
+        else:
+            st.caption("No se encontró el CSV anual; la distribución se calcula con la serie histórica.")
+        st.dataframe(datos, hide_index=True, use_container_width=True)
+        for etiqueta, ruta in (("serie histórica original", ruta_serie), ("distribución anual original", ruta_anual)):
+            if ruta:
+                st.download_button(f"Descargar {etiqueta}", data=ruta.read_bytes(), file_name=ruta.name, mime="text/csv", key=f"{clave}_original_{etiqueta}")
+        st.caption("Nivel 1 muestra categorías generales. Nivel 2 muestra sus subclases. Los totales de Nivel 1 no se suman otra vez a las subclases.")
+
+
+def actualizar_estado_coberturas() -> None:
+    """Actualiza solo el componente de cobertura; el relieve sigue en proceso."""
+    for nombre, config in COBERTURAS_POR_TERRITORIO.items():
+        disponibles = [codigo for codigo in config["zonas"] if len(encontrar_csv_coberturas(nombre, codigo)["serie"]) == 1]
+        if not disponibles:
+            continue
+        nota = "CSV de coberturas detectados para " + ", ".join(config["zonas"][codigo] for codigo in disponibles) + "; la cartografía de relieve conserva su estado previo."
+        ESTADO_COMPONENTES[nombre] = [
+            (componente, "En proceso", nota) if componente == "Cobertura y relieve" else (componente, estado, texto)
+            for componente, estado, texto in ESTADO_COMPONENTES[nombre]
+        ]
+
+
+actualizar_estado_coberturas()
+
+
+# =========================================================
 # BARRA LATERAL CON SUBMENÚS
 # =========================================================
 
@@ -3624,15 +3956,6 @@ else:
         opciones_submenu,
     )
 
-publico = st.sidebar.selectbox(
-    "Nivel de consulta",
-    [
-        "Público general",
-        "Estudiantes",
-        "Información técnica",
-    ],
-)
-
 st.sidebar.divider()
 st.sidebar.caption("Prototipo académico. Información sujeta a revisión.")
 st.sidebar.success(f"Versión activa: {VERSION_APP}")
@@ -3640,14 +3963,30 @@ with st.sidebar.expander("Diagnóstico de archivos", expanded=False):
     st.write(f"**Script:** `{Path(__file__).name}`")
     st.write(f"**Carpeta de mapas temáticos:** `{CARPETA_MAPAS}`")
     st.write(f"**Raíz del proyecto:** `{CARPETA_PROYECTO}`")
-    archivos_detectados = []
+    st.write(f"**Carpeta Excel:** `{CARPETA_DATOS_HIDRO}`")
+    st.write(f"**Carpeta PDF QGIS:** `{CARPETA_MAPAS_QGIS}`")
+    excel_detectados = sorted(
+        archivo.name for archivo in CARPETA_DATOS_HIDRO.glob("*")
+        if archivo.is_file() and archivo.suffix.casefold() == ".xlsx"
+        and not archivo.name.startswith("~$")
+    )
+    st.write("**Excel detectados en Analisis Hidro:**")
+    st.code("\n".join(excel_detectados) if excel_detectados else "Ningún Excel detectado", language=None)
+    archivos_detectados = set()
     for carpeta_revision in CARPETAS_BUSQUEDA_MAPAS:
-        if carpeta_revision.exists() and carpeta_revision.is_dir():
+        if carpeta_revision.is_dir():
             for archivo in carpeta_revision.iterdir():
                 if archivo.is_file() and archivo.suffix.casefold() in {".png", ".jpg", ".jpeg", ".webp", ".pdf"}:
-                    archivos_detectados.append(f"{carpeta_revision.name}/{archivo.name}")
+                    archivos_detectados.add(str(archivo.relative_to(CARPETA_PROYECTO)))
     st.write("**Mapas detectados:**")
     st.code("\n".join(sorted(archivos_detectados)) if archivos_detectados else "Ningún mapa detectado", language=None)
+    st.write(f"**Carpeta de coberturas:** `{CARPETA_COBERTURAS}`")
+    csv_detectados = []
+    for config_cob in COBERTURAS_POR_TERRITORIO.values():
+        carpeta_cob = CARPETA_COBERTURAS / config_cob["carpeta"]
+        if carpeta_cob.is_dir():
+            csv_detectados.extend(str(p.relative_to(CARPETA_COBERTURAS)) for p in carpeta_cob.iterdir() if p.is_file() and p.suffix.casefold() == ".csv")
+    st.code("\n".join(sorted(csv_detectados)) if csv_detectados else "Ningún CSV de coberturas detectado", language=None)
     gifs_detectados = []
     if CARPETA_GIFS.exists() and CARPETA_GIFS.is_dir():
         gifs_detectados = sorted(
@@ -3936,7 +4275,7 @@ elif seccion == "Clima":
 
         if faltantes:
             st.error(
-                f"Faltan archivos climáticos de {territorio} junto a `app.py`: "
+                f"Faltan archivos climáticos de {territorio} en `Analisis Hidro`: "
                 + ", ".join(faltantes)
             )
             st.info(
@@ -4279,7 +4618,7 @@ elif seccion == "Clima":
             }
             st.warning(
                 f"No se encontró el Excel de NASA POWER para **{territorio}**. "
-                f"Ponlo al mismo nivel de `app.py` con un nombre que comience por "
+                f"Ponlo dentro de `Analisis Hidro` con un nombre que comience por "
                 f"`{prefijos.get(territorio, 'NASA_POWER')}`."
             )
 
@@ -5324,31 +5663,34 @@ elif seccion == "Calidad del agua e IRCA":
 
 elif seccion == "Cobertura y relieve":
     st.title(f"🌿 Cobertura y relieve de {territorio}")
-
-    if territorio in {"Leticia", "Tumaco"}:
-        tab1, tab2 = st.tabs(["Cobertura", "Relieve y geomorfología"])
-        with tab1:
-            if territorio == "Leticia":
-                mostrar_mapa_imagen("cobertura", "Coberturas de la tierra del municipio de Leticia", "Instituto SINCHI")
-            else:
-                mostrar_mapa_imagen("cobertura", "Cobertura y uso actual de la tierra en la cuenca del río Mira", "CORPONARIÑO – POMCA Río Mira")
-        with tab2:
-            if territorio == "Leticia":
-                mostrar_mapa_imagen("relieve", "Geomorfología y características generales del relieve del Trapecio Sur", "Instituto SINCHI")
-            else:
-                mostrar_mapa_imagen("relieve", "Distribución de pendientes en la cuenca hidrográfica del río Mira", "CORPONARIÑO – POMCA Río Mira")
-    elif territorio == "Medellín":
-        st.subheader("Estructura Ecológica Principal")
-        mostrar_mapa_imagen(
-            "estructura_ecologica", "Estructura Ecológica Principal de Medellín",
-            "Alcaldía de Medellín – Plan de Ordenamiento Territorial (POT)",
-            "Se incorpora como contexto ambiental municipal para relacionar corredores, áreas de interés ecológico y el sistema hídrico con el entorno urbano.",
-        )
-        st.info("Para completar esta sección conviene agregar después un mapa de pendientes o un DEM recortado alrededor de la sede.")
-    elif territorio == "San Andrés":
-        st.info("Para San Andrés todavía no se incorporó una capa específica de cobertura o relieve. La versión actual prioriza geología, acuíferos, nitratos y microcuencas.")
-    else:
-        st.info(f"Para {territorio} todavía no se incorporaron capas validadas de cobertura o relieve.")
+    tab_coberturas, tab_cartografia = st.tabs(["Coberturas MapBiomas", "Mapas y relieve"])
+    with tab_coberturas:
+        mostrar_coberturas_mapbiomas(territorio)
+    with tab_cartografia:
+        if territorio in {"Leticia", "Tumaco"}:
+            tab1, tab2 = st.tabs(["Cobertura", "Relieve y geomorfología"])
+            with tab1:
+                if territorio == "Leticia":
+                    mostrar_mapa_imagen("cobertura", "Coberturas de la tierra del municipio de Leticia", "Instituto SINCHI")
+                else:
+                    mostrar_mapa_imagen("cobertura", "Cobertura y uso actual de la tierra en la cuenca del río Mira", "CORPONARIÑO – POMCA Río Mira")
+            with tab2:
+                if territorio == "Leticia":
+                    mostrar_mapa_imagen("relieve", "Geomorfología y características generales del relieve del Trapecio Sur", "Instituto SINCHI")
+                else:
+                    mostrar_mapa_imagen("relieve", "Distribución de pendientes en la cuenca hidrográfica del río Mira", "CORPONARIÑO – POMCA Río Mira")
+        elif territorio == "Medellín":
+            st.subheader("Estructura Ecológica Principal")
+            mostrar_mapa_imagen(
+                "estructura_ecologica", "Estructura Ecológica Principal de Medellín",
+                "Alcaldía de Medellín – Plan de Ordenamiento Territorial (POT)",
+                "Se incorpora como contexto ambiental municipal para relacionar corredores, áreas de interés ecológico y el sistema hídrico con el entorno urbano.",
+            )
+            st.info("Para completar esta sección conviene agregar después un mapa de pendientes o un DEM recortado alrededor de la sede.")
+        elif territorio == "San Andrés":
+            st.info("Todavía no se incorporó cartografía específica de relieve para San Andrés. Consulta los CSV de SA y SAC en la pestaña Coberturas MapBiomas.")
+        else:
+            st.info(f"Para {territorio} todavía no se incorporaron mapas de relieve en este bloque. Las estadísticas CSV se consultan en Coberturas MapBiomas cuando están disponibles.")
 
 # =========================================================
 # ESTACIONES Y DATOS
@@ -5818,6 +6160,12 @@ elif seccion == "Fuentes y descargas":
             ("IDEAM procesado · Arauca", ARCHIVO_IDEAM_ARAUCA, "descarga_fuente_ideam_arauca"),
             ("GWSa Colombia · GRACE/GLDAS", ARCHIVO_GWS, "descarga_fuente_gws"),
         ]
+        for nombre_cob, config_cob in COBERTURAS_POR_TERRITORIO.items():
+            for codigo_cob, zona_cob in config_cob["zonas"].items():
+                rutas_cob = encontrar_csv_coberturas(nombre_cob, codigo_cob)
+                for tipo_cob, candidatos_cob in rutas_cob.items():
+                    ruta_cob = candidatos_cob[0] if len(candidatos_cob) == 1 else None
+                    archivos.append((f"MapBiomas · {zona_cob} · {tipo_cob}", ruta_cob, f"fuente_cob_{codigo_cob}_{tipo_cob}"))
         estado = []
         for etiqueta, ruta, clave_boton in archivos:
             estado.append({
@@ -5829,8 +6177,8 @@ elif seccion == "Fuentes y descargas":
                 with open(ruta, "rb") as archivo:
                     extension = Path(ruta).suffix.lower()
                     mime = (
-                        "application/x-netcdf"
-                        if extension == ".nc"
+                        "text/csv" if extension == ".csv"
+                        else "application/x-netcdf" if extension == ".nc"
                         else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
                     st.download_button(
@@ -5947,5 +6295,5 @@ st.divider()
 
 st.caption(
     f"SIAMS · Universidad Nacional de Colombia · Prototipo hidroambiental · "
-    f"Territorio seleccionado: {territorio} · Nivel: {publico} · Actualización: {FECHA_ACTUALIZACION}"
+    f"Territorio seleccionado: {territorio} · Actualización: {FECHA_ACTUALIZACION}"
 )
