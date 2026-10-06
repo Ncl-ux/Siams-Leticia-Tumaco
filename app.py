@@ -3595,6 +3595,114 @@ def encontrar_csv_coberturas(nombre_territorio: str, codigo: str) -> dict:
     return resultado
 
 
+def encontrar_mapa_cobertura_mapbiomas(nombre_territorio: str, codigo: str):
+    """Busca una imagen de referencia MapBiomas dentro de la carpeta de la sede."""
+    config = COBERTURAS_POR_TERRITORIO.get(nombre_territorio)
+    if config is None or codigo not in config["zonas"]:
+        return None
+
+    carpeta = CARPETA_COBERTURAS / config["carpeta"]
+    if not carpeta.is_dir():
+        return None
+
+    zona = config["zonas"][codigo]
+    objetivos = {
+        normalizar_etiqueta(f"Mapa Mapbiomas - {zona}"),
+        normalizar_etiqueta(f"Mapa MapBiomas - {zona}"),
+        normalizar_etiqueta(f"Mapa Mapbiomas {zona}"),
+        normalizar_etiqueta(f"Mapa MapBiomas {zona}"),
+    }
+
+    extensiones = {".png", ".jpg", ".jpeg", ".webp"}
+
+    # 1) Coincidencia prácticamente exacta con el nombre esperado.
+    for archivo in sorted(carpeta.iterdir(), key=lambda p: p.name.casefold()):
+        if not archivo.is_file() or archivo.suffix.casefold() not in extensiones:
+            continue
+        if normalizar_etiqueta(archivo.stem) in objetivos:
+            return archivo
+
+    # 2) Respaldo tolerante para nombres parecidos.
+    zona_norm = normalizar_etiqueta(zona)
+    for archivo in sorted(carpeta.iterdir(), key=lambda p: p.name.casefold()):
+        if not archivo.is_file() or archivo.suffix.casefold() not in extensiones:
+            continue
+        nombre_norm = normalizar_etiqueta(archivo.stem)
+        if "mapa" in nombre_norm and "mapbiomas" in nombre_norm and zona_norm in nombre_norm:
+            return archivo
+
+    return None
+
+
+def mostrar_mapa_cobertura_mapbiomas(nombre_territorio: str, codigo: str) -> None:
+    """
+    Muestra arriba de los datos la imagen cartográfica disponible para la zona.
+
+    IMPORTANTE: la imagen NO se estira al ancho de la página. Se renderiza con
+    su resolución nativa y solo se reduce si la pantalla es más estrecha. Así se
+    evita que capturas pequeñas de MapBiomas se vean borrosas o pixeladas.
+    """
+    ruta = encontrar_mapa_cobertura_mapbiomas(nombre_territorio, codigo)
+    if ruta is None:
+        return
+
+    config = COBERTURAS_POR_TERRITORIO[nombre_territorio]
+    zona = config["zonas"][codigo]
+
+    # MIME correcto para PNG/JPG/WEBP.
+    mime_por_extension = {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".webp": "image/webp",
+    }
+    mime = mime_por_extension.get(ruta.suffix.casefold(), "image/png")
+
+    # Embebemos la imagen directamente en HTML para que el navegador respete
+    # su tamaño nativo. max-width:100% permite reducirla en pantallas pequeñas,
+    # pero nunca la agranda por encima de sus píxeles originales.
+    imagen_b64 = base64.b64encode(ruta.read_bytes()).decode("ascii")
+
+    st.markdown("#### 🗺️ Mapa de coberturas")
+    st.markdown(
+        f"""
+        <div style="
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0.35rem 0 0.55rem 0;
+        ">
+            <img
+                src="data:{mime};base64,{imagen_b64}"
+                alt="Mapa de coberturas MapBiomas de {escape(str(zona))}"
+                style="
+                    display: block;
+                    width: auto;
+                    height: auto;
+                    max-width: 100%;
+                    border-radius: 14px;
+                    box-shadow: 0 8px 22px rgba(0,0,0,0.10);
+                "
+            >
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        f"<div style='text-align:center; opacity:0.76; font-size:0.88rem; margin-top:-0.1rem;'>"
+        f"Cobertura de la tierra · {escape(str(zona))} · Fuente: MapBiomas"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+    st.caption(
+        "La imagen se mantiene en su resolución nativa para evitar pérdida de nitidez. "
+        "Las gráficas y tablas inferiores corresponden a los CSV procesados."
+    )
+
+
 @st.cache_data(show_spinner=False)
 def cargar_csv_cobertura(ruta_texto: str, marca_archivo: int = 0) -> pd.DataFrame:
     """Valida los CSV exportados. marca_archivo invalida la caché al editar el CSV."""
@@ -3776,6 +3884,7 @@ def mostrar_coberturas_mapbiomas(nombre_territorio: str) -> None:
             if comprobacion["_merge"].ne("both").any() or (dif > tolerancia).any():
                 st.warning(f"El CSV anual y la serie no coinciden en {anio}. La distribución usa el CSV anual; las tendencias y cambios usan la serie. Revisa que ambos correspondan al mismo recorte.")
     st.subheader(f"Coberturas de la tierra · {zona}")
+    mostrar_mapa_cobertura_mapbiomas(nombre_territorio, codigo)
     st.caption(f"Exportaciones MapBiomas aportadas al proyecto · {anios[0]}–{anios[-1]} · superficie en hectáreas (ha).")
     st.caption("Los CSV contienen áreas por clase; la zona analizada corresponde al recorte de la descarga y puede ser mayor que el campus. No contienen geometría para dibujar un mapa.")
     c_nivel, c_anio = st.columns(2)
