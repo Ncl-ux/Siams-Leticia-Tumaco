@@ -23,7 +23,7 @@ except ImportError:
     np = None
     xr = None
 
-VERSION_APP = "PROTOTIPO-SIAMS-V24-MAPBIOMAS-GIF-QGIS-2026-10-07"
+VERSION_APP = "PROTOTIPO-SIAMS-V29-MAPBIOMAS-ANTNAT-UNICO-2026-10-07"
 FECHA_ACTUALIZACION = "7 de octubre de 2026"
 
 # =========================================================
@@ -3869,46 +3869,537 @@ def _mostrar_gif_mapbiomas(ruta: Path, titulo: str, descripcion: str) -> None:
     st.caption(descripcion)
 
 
-def mostrar_gifs_cobertura_mapbiomas(nombre_territorio: str) -> None:
-    """Muestra los tres GIF MapBiomas: Nivel 1, Nivel 2 y natural/antrópico."""
-    configuracion = MAPBIOMAS_GIFS_POR_TERRITORIO.get(nombre_territorio)
-    if not configuracion:
-        return
+def mostrar_presentacion_cobertura_mapbiomas(nombre_territorio: str, tipo: str, zona: str) -> None:
+    """Encabezado y GIF del apartado seleccionado, junto a su explicación.
 
-    st.markdown("#### 🗺️ Evolución espacial de las coberturas")
-    st.write(
-        "Los GIF permiten recorrer la evolución temporal del recorte de MapBiomas. "
-        "Se separan la clasificación general, el detalle de Nivel 2 y la lectura "
-        "simplificada entre coberturas naturales y antrópicas."
-    )
-
-    pestanas = st.tabs(list(configuracion.keys()))
-    descripciones = {
-        "Nivel 1": "Clasificación general de coberturas · Fuente: MapBiomas.",
-        "Nivel 2": "Clasificación de coberturas con mayor detalle temático · Fuente: MapBiomas.",
-        "Natural / antrópico": "Síntesis temporal de coberturas naturales frente a coberturas antrópicas · Fuente: MapBiomas.",
+    El GIF es territorial, mientras que la estadística proviene de la zona CSV.
+    En San Andrés esto importa para no confundir la isla con San Andrés Costa.
+    """
+    detalles = {
+        "Nivel 1": {
+            "titulo": "🌳 Nivel 1 · Coberturas generales",
+            "descripcion": (
+                "Clasificación general de las coberturas de la tierra. "
+                "La animación muestra los cambios espaciales y las estadísticas "
+                "resumen la superficie por categoría."
+            ),
+            "explicacion": (
+                "**Lectura:** identifica las grandes categorías de cobertura y compara "
+                "su participación y evolución en el tiempo."
+            ),
+        },
+        "Nivel 2": {
+            "titulo": "🧩 Nivel 2 · Detalle de coberturas",
+            "descripcion": (
+                "Desagregación de las coberturas generales en subclases. "
+                "Permite identificar cambios con mayor detalle temático."
+            ),
+            "explicacion": (
+                "**Lectura:** las subclases se analizan por separado, sin volver a sumar "
+                "los totales de Nivel 1."
+            ),
+        },
+        "Natural / antrópico": {
+            "titulo": "🌿 Natural / Antrópico",
+            "descripcion": (
+                "Síntesis de las coberturas naturales frente a las transformadas "
+                "por actividades humanas. Se presenta una sola clasificación Ant/Nat."
+            ),
+            "explicacion": (
+                "**Lectura:** compara la superficie natural y antrópica, su participación "
+                "y sus cambios a lo largo de la serie histórica."
+            ),
+        },
     }
-
-    for pestana, (tipo, nombre_archivo) in zip(pestanas, configuracion.items()):
-        with pestana:
-            ruta = buscar_gif_mapbiomas(nombre_territorio, nombre_archivo)
-            if ruta is None:
-                st.warning(
-                    f"No se encontró `{nombre_archivo}` dentro de "
-                    f"`Coberturas MapBio/{COBERTURAS_POR_TERRITORIO[nombre_territorio]['carpeta']}`."
-                )
-                continue
+    cfg = detalles[tipo]
+    st.markdown(f"### {cfg['titulo']}")
+    st.caption(cfg["descripcion"])
+    col_gif, col_texto = st.columns([1.65, 1.0])
+    with col_gif:
+        archivo = MAPBIOMAS_GIFS_POR_TERRITORIO.get(nombre_territorio, {}).get(tipo)
+        ruta = buscar_gif_mapbiomas(nombre_territorio, archivo) if archivo else None
+        if ruta is None:
+            st.info(f"Animación {tipo} no encontrada para {nombre_territorio}.")
+            if archivo:
+                st.caption(f"Archivo esperado: Coberturas MapBio/{COBERTURAS_POR_TERRITORIO[nombre_territorio]['carpeta']}/{archivo}")
+        else:
             _mostrar_gif_mapbiomas(
                 ruta,
                 f"{nombre_territorio} · {tipo}",
-                descripciones[tipo],
+                f"Animación MapBiomas · {tipo}",
+            )
+    with col_texto:
+        st.markdown("#### Interpretación del mapa")
+        st.markdown(cfg["explicacion"])
+        st.markdown(f"**Zona estadística:** {zona}")
+        st.caption("Fuente: MapBiomas · estadísticas y animación de coberturas.")
+        if nombre_territorio == "San Andrés":
+            st.caption(
+                "El GIF representa San Andrés a escala territorial. Las estadísticas "
+                "se consultan para SA (isla) o SAC (costa) por separado."
+            )
+    st.divider()
+
+
+# =========================================================
+# MAPBIOMAS · ESTADÍSTICAS DE COBERTURA NATURAL Y ANTRÓPICA
+# =========================================================
+# Este producto usa CSV independientes de los de Nivel 1 y Nivel 2.
+# No clasifica por su cuenta las clases de MapBiomas: respeta la
+# clasificación natural/antrópica ya contenida en cada archivo fuente.
+
+def buscar_csv_natural_antropico(nombre_territorio: str, codigo: str):
+    """Localiza CSV Ant-Nat sin confundirlos con las series de Nivel 1/2."""
+    cfg = COBERTURAS_POR_TERRITORIO.get(nombre_territorio)
+    if not cfg or codigo not in cfg["zonas"]:
+        return [], []
+    carpeta = CARPETA_COBERTURAS / cfg["carpeta"]
+    if not carpeta.is_dir():
+        return [], []
+
+    candidatos = []
+    for ruta in sorted(carpeta.iterdir(), key=lambda p: p.name.casefold()):
+        if not ruta.is_file() or ruta.suffix.casefold() != ".csv":
+            continue
+        nombre = normalizar_etiqueta(ruta.stem)
+        if (("ant_nat" in nombre or "nat_ant" in nombre)
+                and "mapbiomas" in nombre):
+            candidatos.append(ruta)
+
+    # SA y SAC deben permanecer separados. No asignamos basándonos en
+    # nombres ambiguos como «San Andrés y Providencia».
+    if nombre_territorio != "San Andrés":
+        return candidatos, []
+
+    asignados = []
+    ambiguos = []
+    for ruta in candidatos:
+        nombre = normalizar_etiqueta(ruta.stem)
+        tokens = set(nombre.split("_"))
+        es_costa = ("sac" in tokens or "costa" in tokens)
+        es_isla = ("sa" in tokens or "isla" in tokens) and not es_costa
+        if (codigo == "SAC" and es_costa) or (codigo == "SA" and es_isla):
+            asignados.append(ruta)
+        elif not es_costa and not es_isla:
+            ambiguos.append(ruta)
+    return asignados, ambiguos
+
+
+def _tipo_natural_antropico(texto: str):
+    """Reconoce etiquetas de las dos clases; no adivina códigos numéricos."""
+    etiqueta = normalizar_etiqueta(texto)
+    if not etiqueta:
+        return None
+    palabras = set(etiqueta.split("_"))
+    if ("antropico" in palabras or "antropica" in palabras
+            or "antropicos" in palabras or "antropicas" in palabras
+            or "anthropic" in palabras or any(p.startswith("antrop") or p.startswith("antropiz") for p in palabras)):
+        return "Antrópica"
+    if (("natural" in palabras or "naturales" in palabras)
+            and not ("no" in palabras or "semi" in palabras)):
+        return "Natural"
+    return None
+
+
+def _numero_antnat(valor):
+    """Acepta números, decimal con coma y miles + decimal mixtos."""
+    if pd.isna(valor):
+        return float("nan")
+    if isinstance(valor, (int, float)):
+        return float(valor)
+    t = str(valor).strip().replace("\u00a0", "").replace(" ", "")
+    t = t.replace("%", "")
+    if not t or t in {"-", "—", "NA", "N/A"}:
+        return float("nan")
+    if "," in t and "." in t:
+        if t.rfind(",") > t.rfind("."):
+            t = t.replace(".", "").replace(",", ".")
+        else:
+            t = t.replace(",", "")
+    elif "," in t:
+        t = t.replace(",", ".")
+    try:
+        return float(t)
+    except ValueError:
+        return float("nan")
+
+
+@st.cache_data(show_spinner=False)
+def cargar_csv_natural_antropico(ruta_texto: str, marca_archivo: int = 0):
+    """Admite dos clases por filas, por columnas o en formato año-clase-área.
+
+    Devuelve datos largos normalizados [Año, Clase, Valor] y metadatos de
+    unidad. Las estadísticas descargadas de MapBiomas se presentan en hectáreas
+    cuando el CSV no señala expresamente otra unidad.
+    """
+    ruta = Path(ruta_texto)
+    errores = []
+    tabla = None
+    for codificacion in ("utf-8-sig", "cp1252"):
+        try:
+            tabla = pd.read_csv(ruta, sep=None, engine="python", encoding=codificacion)
+            break
+        except (UnicodeDecodeError, pd.errors.ParserError, ValueError) as exc:
+            errores.append(str(exc))
+    if tabla is None:
+        raise ValueError("No se pudo interpretar el CSV. " + "; ".join(errores[-2:]))
+
+    tabla.columns = [str(c).strip().replace("\ufeff", "") for c in tabla.columns]
+    tabla = tabla.loc[:, [not normalizar_etiqueta(c).startswith("unnamed") for c in tabla.columns]]
+    tabla = tabla.dropna(how="all")
+    if tabla.empty:
+        raise ValueError("El archivo CSV está vacío.")
+
+    columnas = list(tabla.columns)
+    columnas_norm = {c: normalizar_etiqueta(c) for c in columnas}
+    anios_col = [c for c in columnas if str(c).strip().isdigit()
+                 and len(str(c).strip()) == 4 and 1900 <= int(str(c).strip()) <= 2100]
+    unit = "ha"  # Estadísticas de área de la plataforma MapBiomas Colombia.
+    cabecera = " ".join(columnas_norm.values())
+    if any(k in cabecera for k in ("porcentaje", "percent", "participacion", "pct")) or "%" in " ".join(columnas):
+        unit = "%"
+    elif any(k in cabecera for k in ("hectarea", "area_ha", "superficie_ha", "_ha")):
+        unit = "ha"
+    elif "km2" in cabecera or "km_2" in cabecera:
+        unit = "km²"
+
+    # Formato nativo MapBiomas Ant-Nat: Level 1 / Level 2 / 1985 ... 2024.
+    # Los registros Level 2 vacíos SON TOTALES: no se pueden sumar a sus hijas.
+    nombres = {normalizar_etiqueta(c): c for c in columnas}
+    col_n1 = next((nombres[k] for k in ("level_1", "nivel_1") if k in nombres), None)
+    col_n2 = next((nombres[k] for k in ("level_2", "nivel_2") if k in nombres), None)
+    if col_n1 is not None and col_n2 is not None and anios_col:
+        t = tabla.copy()
+        t["_grupo"] = t[col_n1].map(_tipo_natural_antropico)
+        t["_subclase"] = t[col_n2].fillna("").astype(str).str.strip()
+        for columna_anio in anios_col:
+            t[columna_anio] = t[columna_anio].map(_numero_antnat)
+            if t[columna_anio].isna().any() or (t[columna_anio] < 0).any():
+                raise ValueError(f"Datos faltantes o negativos en el año {columna_anio}.")
+
+        padres = t[t["_subclase"].eq("") & t["_grupo"].notna()].copy()
+        hijas = t[t["_subclase"].ne("") & t["_grupo"].notna()].copy()
+        if not {"Natural", "Antrópica"}.issubset(set(padres["_grupo"])):
+            raise ValueError("Faltan las filas totales Natural / Anthropic (Level 2 vacío).")
+        if padres["_grupo"].duplicated().any():
+            raise ValueError("Hay totales repetidos para Natural o Anthropic.")
+
+        datos = padres.melt(id_vars=["_grupo"], value_vars=anios_col,
+                            var_name="Año", value_name="Valor")
+        datos = datos.rename(columns={"_grupo": "Clase"})
+        datos["Año"] = datos["Año"].astype(int)
+        datos = datos[["Año", "Clase", "Valor"]].sort_values(["Año", "Clase"]).reset_index(drop=True)
+
+        if not hijas.empty:
+            detalle = hijas.melt(id_vars=["_grupo", "_subclase"], value_vars=anios_col,
+                                var_name="Año", value_name="Valor")
+            detalle = detalle.rename(columns={"_grupo": "Nivel 1", "_subclase": "Nivel 2"})
+            detalle["Año"] = detalle["Año"].astype(int)
+            detalle["Clase"] = detalle["Nivel 2"] + " · " + detalle["Nivel 1"]
+            detalle = detalle[["Año", "Clase", "Nivel 1", "Nivel 2", "Valor"]]
+            detalle = (detalle.groupby(["Año", "Clase", "Nivel 1", "Nivel 2"], as_index=False)["Valor"]
+                       .sum().sort_values(["Año", "Nivel 1", "Nivel 2"]).reset_index(drop=True))
+        else:
+            detalle = pd.DataFrame(columns=["Año", "Clase", "Nivel 1", "Nivel 2", "Valor"])
+
+        discrepancias = []
+        if not detalle.empty:
+            comprobacion = detalle.groupby(["Año", "Nivel 1"])["Valor"].sum()
+            for fila in datos.itertuples(index=False):
+                subtotal = comprobacion.get((fila.Año, fila.Clase), float("nan"))
+                if not math.isfinite(subtotal) or not math.isclose(
+                    float(fila.Valor), float(subtotal), abs_tol=1e-5, rel_tol=1e-8
+                ):
+                    discrepancias.append(f"{fila.Clase} {fila.Año}")
+
+        no_def = t[t["_subclase"].eq("") & t["_grupo"].isna() &
+                   t[col_n1].astype(str).map(normalizar_etiqueta).isin({"not_defined", "no_definido", "sin_clasificar"})]
+        sin_clasificar = {}
+        if not no_def.empty:
+            sin_clasificar = {int(a): float(no_def[a].sum()) for a in anios_col}
+
+        return datos, {
+            "unidad": unit, "archivo": ruta.name,
+            "detalle_nivel_2": detalle,
+            "discrepancias": discrepancias,
+            "sin_clasificar": sin_clasificar,
+        }
+
+    categoria = None
+    if anios_col:
+        # Disposición ancha: Tipo | 1985 | 1986 ...
+        otras = [c for c in columnas if c not in anios_col]
+        if otras:
+            puntajes = {c: tabla[c].map(_tipo_natural_antropico).notna().sum() for c in otras}
+            categoria = max(puntajes, key=puntajes.get)
+            if puntajes[categoria] == 0:
+                categoria = None
+        if categoria is None:
+            raise ValueError("Se encontraron columnas de años, pero no filas identificables como Natural y Antrópica.")
+        datos = tabla.melt(id_vars=[categoria], value_vars=anios_col, var_name="Año", value_name="Valor")
+        datos["Clase"] = datos[categoria].map(_tipo_natural_antropico)
+        datos = datos[["Año", "Clase", "Valor"]]
+    else:
+        # Disposición larga: Año | Categoría | Área, o Año | Natural | Antrópica.
+        posibles_anio = [c for c in columnas if columnas_norm[c] in
+                         {"ano", "anio", "year", "periodo", "fecha", "years"}]
+        if not posibles_anio:
+            raise ValueError("No se encontraron años: utiliza columnas 1985, 1986... o una columna Año/Year.")
+        col_anio = posibles_anio[0]
+        col_clases = {c: _tipo_natural_antropico(c) for c in columnas if c != col_anio}
+        ancha = {c: k for c, k in col_clases.items() if k is not None}
+        if {"Natural", "Antrópica"}.issubset(set(ancha.values())):
+            cols = [c for c in ancha if ancha[c] in {"Natural", "Antrópica"}]
+            datos = tabla.melt(id_vars=[col_anio], value_vars=cols, var_name="Tipo", value_name="Valor")
+            datos["Clase"] = datos["Tipo"].map(ancha)
+            datos = datos.rename(columns={col_anio: "Año"})[["Año", "Clase", "Valor"]]
+        else:
+            columnas_cat = [c for c in columnas if c != col_anio]
+            puntos = {c: tabla[c].map(_tipo_natural_antropico).notna().sum() for c in columnas_cat}
+            categoria = max(puntos, key=puntos.get) if puntos else None
+            if categoria is None or puntos[categoria] == 0:
+                raise ValueError("No se identificaron las categorías Natural y Antrópica en el CSV.")
+            candidatas = [c for c in columnas if c not in {col_anio, categoria}]
+            if not candidatas:
+                raise ValueError("Falta una columna con el área o valor de cada categoría.")
+            # Prioriza la columna de área/valor; ignora otras columnas de atributos.
+            preferencias = ("area", "superficie", "valor", "hectarea", "ha", "porcentaje", "participacion", "percent", "pct")
+            candidatas.sort(key=lambda c: (not any(k in columnas_norm[c] for k in preferencias), columnas.index(c)))
+            col_valor = candidatas[0]
+            if unit is None:
+                if "ha" in columnas_norm[col_valor].split("_") or "hectarea" in columnas_norm[col_valor]:
+                    unit = "ha"
+                elif "porcentaje" in columnas_norm[col_valor] or "pct" in columnas_norm[col_valor]:
+                    unit = "%"
+            datos = tabla[[col_anio, categoria, col_valor]].copy()
+            datos.columns = ["Año", "Categoría", "Valor"]
+            datos["Clase"] = datos["Categoría"].map(_tipo_natural_antropico)
+            datos = datos[["Año", "Clase", "Valor"]]
+
+    datos["Año"] = pd.to_numeric(datos["Año"], errors="coerce")
+    datos["Valor"] = datos["Valor"].map(_numero_antnat)
+    datos = datos.dropna(subset=["Año", "Clase", "Valor"])
+    datos = datos[datos["Año"].between(1900, 2100) & (datos["Valor"] >= 0)].copy()
+    if datos.empty:
+        raise ValueError("No hay filas con año, categoría y valor numérico válidos.")
+    datos["Año"] = datos["Año"].astype(int)
+    datos = (datos.groupby(["Año", "Clase"], as_index=False)["Valor"]
+             .sum().sort_values(["Año", "Clase"]).reset_index(drop=True))
+    if set(datos["Clase"]) != {"Natural", "Antrópica"}:
+        raise ValueError("Se necesita al menos un registro para Natural y otro para Antrópica.")
+    return datos, {"unidad": unit, "archivo": ruta.name}
+
+
+def mostrar_analisis_natural_antropico(nombre_territorio: str, codigo: str) -> None:
+    """Una sola lectura Natural/Antrópica, sin duplicar por Nivel 1 y Nivel 2.
+
+    Las exportaciones nativas de MapBiomas incluyen subtotales y desglose por
+    subclase. Para esta sección, usamos SOLO los totales naturales y antrópicos
+    del archivo Ant-Nat, de modo que cada área se contabiliza una única vez.
+    """
+    zona = COBERTURAS_POR_TERRITORIO[nombre_territorio]["zonas"][codigo]
+    clave = f"antnat_{normalizar_etiqueta(nombre_territorio)}_{codigo}"
+    asignados, ambiguos = buscar_csv_natural_antropico(nombre_territorio, codigo)
+    rutas = asignados + ambiguos
+
+    mostrar_presentacion_cobertura_mapbiomas(nombre_territorio, "Natural / antrópico", zona)
+    st.markdown("#### Estadísticas de cobertura natural y antrópica")
+
+    if not rutas:
+        st.info(
+            f"No se encontró un CSV MapBiomas Ant-Nat para {zona} dentro de "
+            f"Coberturas MapBio/{COBERTURAS_POR_TERRITORIO[nombre_territorio]['carpeta']}."
+        )
+        return
+
+    # San Andrés isla y San Andrés Costa deben permanecer diferenciados.
+    if len(rutas) == 1 and nombre_territorio != "San Andrés":
+        ruta = rutas[0]
+    elif len(asignados) == 1:
+        ruta = asignados[0]
+    else:
+        st.warning(
+            "Elige qué CSV corresponde a esta zona. Puedes añadir SA (isla) "
+            "o SAC (costa) al nombre para identificarlo automáticamente."
+            if nombre_territorio == "San Andrés"
+            else "Se encontraron varios CSV Ant-Nat: selecciona el correcto."
+        )
+        nombres = [r.name for r in rutas]
+        elegido = st.selectbox(
+            f"CSV Ant-Nat de {zona}", ["Seleccionar archivo..."] + nombres,
+            key=f"{clave}_elegir_csv",
+        )
+        if elegido == "Seleccionar archivo...":
+            return
+        ruta = next(r for r in rutas if r.name == elegido)
+
+    try:
+        datos, metadatos = cargar_csv_natural_antropico(str(ruta), ruta.stat().st_mtime_ns)
+    except Exception as error:
+        st.error(f"No se pudo interpretar `{ruta.name}`: {error}")
+        return
+
+    unidad = metadatos.get("unidad", "ha")
+    etiqueta_superficie = f"Superficie ({unidad})" if unidad in {"ha", "km²"} else "Cobertura (%)"
+    if metadatos.get("discrepancias"):
+        st.warning(
+            "Los subtotales del CSV presentan diferencias respecto a los totales en: "
+            + ", ".join(metadatos["discrepancias"][:6])
+            + ". Se utilizan los totales originales sin sumarlos de nuevo."
+        )
+
+    pivot = datos.pivot(index="Año", columns="Clase", values="Valor").sort_index()
+    completos = pivot.dropna(subset=["Natural", "Antrópica"]).copy()
+    if completos.empty:
+        st.info("No hay años que tengan simultáneamente superficies naturales y antrópicas.")
+        st.dataframe(datos, hide_index=True, use_container_width=True)
+        return
+
+    completos["Total"] = completos["Natural"] + completos["Antrópica"]
+    completos["Natural (%)"] = 100 * completos["Natural"] / completos["Total"].where(completos["Total"].ne(0))
+    completos["Antrópica (%)"] = 100 * completos["Antrópica"] / completos["Total"].where(completos["Total"].ne(0))
+    anios = completos.index.to_list()
+    anio = st.selectbox(
+        "Año de consulta · Natural/Antrópica", anios, index=len(anios) - 1,
+        key=f"{clave}_anio",
+    )
+    fila = completos.loc[anio]
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Superficie natural", f"{fila['Natural']:,.2f} {unidad}")
+    c2.metric("Superficie antrópica", f"{fila['Antrópica']:,.2f} {unidad}")
+    c3.metric("Participación natural", f"{fila['Natural (%)']:.1f} %" if pd.notna(fila["Natural (%)"]) else "—")
+    c4.metric("Periodo disponible", f"{anios[0]}–{anios[-1]}")
+
+    sin_clasificar = metadatos.get("sin_clasificar", {})
+    if sin_clasificar.get(int(anio), 0) > 0:
+        st.caption(
+            f"Superficie no clasificada en {anio}: {sin_clasificar[int(anio)]:,.2f} {unidad}; "
+            "no se incluye en los porcentajes de Natural y Antrópica."
+        )
+
+    t_dist, t_evol, t_comp, t_datos = st.tabs([
+        "Distribución anual", "Evolución histórica", "Cambios entre años", "Datos y descargas",
+    ])
+    colores = {"Natural": "#208b47", "Antrópica": "#df9454"}
+
+    with t_dist:
+        actual = pd.DataFrame({
+            "Clase": ["Natural", "Antrópica"],
+            "Valor": [fila["Natural"], fila["Antrópica"]],
+            "Participación (%)": [fila["Natural (%)"], fila["Antrópica (%)"]],
+        })
+        visibles = actual.loc[actual["Valor"] > 0]
+        if not visibles.empty:
+            fig = px.pie(
+                visibles, names="Clase", values="Valor", color="Clase", hole=0.56,
+                color_discrete_map=colores,
+                title=f"Cobertura natural y antrópica · {zona} · {anio}",
+            )
+            fig.update_traces(
+                textinfo="percent",
+                hovertemplate="%{label}<br>Superficie: %{value:,.2f}<br>%{percent}<extra></extra>",
+            )
+            fig.update_layout(height=480, margin=dict(l=10, r=10, t=60, b=20))
+            st.plotly_chart(fig, use_container_width=True, key=f"{clave}_distribucion")
+        else:
+            st.info("No se reportan superficies naturales ni antrópicas para el año elegido.")
+        st.dataframe(
+            actual.rename(columns={"Valor": etiqueta_superficie}).round(2),
+            hide_index=True, use_container_width=True,
+        )
+
+    with t_evol:
+        modo = st.radio(
+            "Visualizar", [etiqueta_superficie, "Participación (%)"],
+            horizontal=True, key=f"{clave}_modo",
+        )
+        if modo == etiqueta_superficie:
+            largo = completos.reset_index().melt(
+                id_vars="Año", value_vars=["Natural", "Antrópica"],
+                var_name="Clase", value_name="Valor",
+            )
+            fig = px.area(
+                largo, x="Año", y="Valor", color="Clase", color_discrete_map=colores,
+                title=f"Evolución de superficies · {zona}",
+            )
+            fig.update_yaxes(title=etiqueta_superficie)
+        else:
+            largo = completos.reset_index().melt(
+                id_vars="Año", value_vars=["Natural (%)", "Antrópica (%)"],
+                var_name="Clase", value_name="Participación (%)",
+            )
+            largo["Clase"] = largo["Clase"].str.replace(" (%)", "", regex=False)
+            fig = px.line(
+                largo, x="Año", y="Participación (%)", color="Clase", markers=True,
+                color_discrete_map=colores, title=f"Participación histórica · {zona}",
+            )
+            fig.update_yaxes(range=[0, 100])
+        fig.update_xaxes(range=[anios[0], anios[-1]], rangeslider_visible=True)
+        fig.update_layout(height=490, hovermode="x unified", margin=dict(l=15, r=15, t=60, b=15))
+        st.plotly_chart(fig, use_container_width=True, key=f"{clave}_evolucion")
+
+    with t_comp:
+        c_ini, c_fin = st.columns(2)
+        with c_ini:
+            inicio = st.selectbox("Año inicial", anios, index=0, key=f"{clave}_inicio")
+        with c_fin:
+            fin = st.selectbox("Año final", anios, index=len(anios) - 1, key=f"{clave}_fin")
+        if inicio > fin:
+            st.warning("Selecciona un año final igual o posterior al inicial.")
+        else:
+            comparacion = pd.DataFrame({
+                "Clase": ["Natural", "Antrópica"],
+                f"Superficie inicial ({inicio})": completos.loc[inicio, ["Natural", "Antrópica"]].to_numpy(),
+                f"Superficie final ({fin})": completos.loc[fin, ["Natural", "Antrópica"]].to_numpy(),
+                "Participación inicial (%)": completos.loc[inicio, ["Natural (%)", "Antrópica (%)"]].to_numpy(),
+                "Participación final (%)": completos.loc[fin, ["Natural (%)", "Antrópica (%)"]].to_numpy(),
+            })
+            col_ini = f"Superficie inicial ({inicio})"
+            col_fin = f"Superficie final ({fin})"
+            comparacion[f"Variación ({unidad})"] = comparacion[col_fin] - comparacion[col_ini]
+            comparacion["Variación (puntos porcentuales)"] = (
+                comparacion["Participación final (%)"] - comparacion["Participación inicial (%)"]
+            )
+            comparacion["Cambio relativo (%)"] = 100 * (
+                comparacion[f"Variación ({unidad})"] /
+                comparacion[col_ini].replace(0, float("nan"))
+            )
+            st.dataframe(comparacion.round(2), hide_index=True, use_container_width=True)
+            fig = px.bar(
+                comparacion, x="Clase", y=f"Variación ({unidad})", color="Clase",
+                color_discrete_map=colores, title=f"Cambio de superficie · {inicio}–{fin}",
+            )
+            fig.update_layout(height=420, showlegend=False)
+            st.plotly_chart(fig, use_container_width=True, key=f"{clave}_comparacion")
+            st.caption(
+                "La variación neta entre años no identifica directamente qué clases "
+                "se transformaron: para eso se requiere una matriz de transiciones."
+            )
+            st.download_button(
+                "Descargar comparación CSV",
+                data=comparacion.to_csv(index=False).encode("utf-8-sig"),
+                file_name=f"MapBiomas_AntNat_Cambios_{codigo}_{inicio}_{fin}.csv",
+                mime="text/csv", key=f"{clave}_desc_comparacion",
             )
 
-    if nombre_territorio == "San Andrés":
-        st.caption(
-            "Los GIF corresponden al territorio de San Andrés. El selector SA / SAC que aparece abajo "
-            "se conserva para consultar por separado las tablas y series CSV de San Andrés y San Andrés Costa."
+    with t_datos:
+        st.write(f"**Archivo fuente:** `{ruta.name}`")
+        st.dataframe(
+            datos.rename(columns={"Valor": etiqueta_superficie}),
+            hide_index=True, use_container_width=True,
         )
+        st.download_button(
+            "Descargar serie Natural/Antrópica",
+            data=datos.rename(columns={"Valor": etiqueta_superficie}).to_csv(index=False).encode("utf-8-sig"),
+            file_name=f"MapBiomas_AntNat_Serie_{codigo}.csv",
+            mime="text/csv", key=f"{clave}_desc_serie",
+        )
+        st.download_button(
+            "Descargar CSV original",
+            data=ruta.read_bytes(), file_name=ruta.name,
+            mime="text/csv", key=f"{clave}_desc_fuente",
+        )
+        st.caption("Se usan los totales por categoría del archivo sin sumar dos veces las subclases.")
 
 
 @st.cache_data(show_spinner=False)
@@ -4048,34 +4539,30 @@ def mostrar_resumen_coberturas(anio, total, dominante, primer_anio, ultimo_anio)
     st.markdown(estilo + '<div class="cobertura-resumen">' + contenido + '</div>', unsafe_allow_html=True)
 
 
-def mostrar_coberturas_mapbiomas(nombre_territorio: str) -> None:
-    config = COBERTURAS_POR_TERRITORIO.get(nombre_territorio)
-    if config is None:
-        st.info("Todavía no se han incorporado CSV de coberturas para esta sede.")
-        return
-
-    # Primero se muestran las animaciones MapBiomas; debajo quedan las estadísticas CSV.
-    mostrar_gifs_cobertura_mapbiomas(nombre_territorio)
-    st.divider()
-
-    codigos = list(config["zonas"])
-    if len(codigos) > 1:
-        codigo = st.selectbox("Zona de análisis", codigos, format_func=lambda c: config["zonas"][c], key=f"cob_zona_{nombre_territorio}")
-        st.caption("SA = San Andrés · SAC = San Andrés Costa. Cada zona conserva su propia serie y superficie.")
-    else:
-        codigo = codigos[0]
+def mostrar_analisis_coberturas_nivel(nombre_territorio: str, codigo: str, nivel: str) -> None:
+    """Muestra el GIF y las estadísticas del nivel dentro de su propia pestaña."""
+    config = COBERTURAS_POR_TERRITORIO[nombre_territorio]
     zona = config["zonas"][codigo]
-    clave = f"cob_{normalizar_etiqueta(nombre_territorio)}_{codigo}"
+    clave = f"cob_{normalizar_etiqueta(nombre_territorio)}_{codigo}_{normalizar_etiqueta(nivel)}"
+
+    mostrar_presentacion_cobertura_mapbiomas(nombre_territorio, nivel, zona)
+
     archivos = encontrar_csv_coberturas(nombre_territorio, codigo)
     if any(len(rutas) > 1 for rutas in archivos.values()):
-        st.warning("Hay más de un CSV del mismo tipo para esta zona. Deja una sola exportación anual y una sola serie histórica.")
+        st.warning(
+            "Hay más de un CSV del mismo tipo para esta zona. "
+            "Conserva una exportación anual y una serie temporal por zona."
+        )
         for tipo, rutas in archivos.items():
             if len(rutas) > 1:
-                st.write(f"Archivos de {tipo}: " + ", ".join(r.name for r in rutas))
+                st.caption(f"Archivos de {tipo}: " + ", ".join(r.name for r in rutas))
         return
     if not archivos["serie"]:
-        st.info(f"No se encontró la serie histórica de {zona} en Coberturas MapBio/{config['carpeta']}.")
-        st.caption(f"El nombre del CSV debe terminar en ({codigo}).csv y contener Serie temporal.")
+        st.info(
+            f"Todavía no se encontró la serie temporal de coberturas generales "
+            f"para {zona}."
+        )
+        st.caption(f"Ubicación: Coberturas MapBio/{config['carpeta']} · CSV que termina en {codigo}.")
         return
     ruta_serie = archivos["serie"][0]
     ruta_anual = archivos["anual"][0] if archivos["anual"] else None
@@ -4083,8 +4570,9 @@ def mostrar_coberturas_mapbiomas(nombre_territorio: str) -> None:
         historico = cargar_csv_cobertura(str(ruta_serie), ruta_serie.stat().st_mtime_ns)
         anual = cargar_csv_cobertura(str(ruta_anual), ruta_anual.stat().st_mtime_ns) if ruta_anual else None
     except Exception as error:
-        st.error(f"No se pudieron leer las coberturas de {zona}: {error}")
+        st.error(f"No se pudieron leer las coberturas generales de {zona}: {error}")
         return
+
     anios = sorted(int(c) for c in historico.columns if len(c) == 4 and c.isdigit())
     if anual is not None:
         comunes = [str(a) for a in anios if str(a) in anual.columns]
@@ -4096,14 +4584,10 @@ def mostrar_coberturas_mapbiomas(nombre_territorio: str) -> None:
             tolerancia = 1e-5 + 1e-8 * comprobacion[f"{anio}_serie"].abs()
             if comprobacion["_merge"].ne("both").any() or (dif > tolerancia).any():
                 st.warning(f"El CSV anual y la serie no coinciden en {anio}. La distribución usa el CSV anual; las tendencias y cambios usan la serie. Revisa que ambos correspondan al mismo recorte.")
-    st.subheader(f"Coberturas de la tierra · {zona}")
+    st.markdown(f"#### Estadísticas · {nivel}")
     st.caption(f"Exportaciones MapBiomas aportadas al proyecto · {anios[0]}–{anios[-1]} · superficie en hectáreas (ha).")
     st.caption("Los CSV contienen áreas por clase; la zona analizada corresponde al recorte de la descarga y puede ser mayor que el campus. No contienen geometría para dibujar un mapa.")
-    c_nivel, c_anio = st.columns(2)
-    with c_nivel:
-        nivel = st.radio("Detalle de clasificación", ["Nivel 1", "Nivel 2"], horizontal=True, key=f"{clave}_nivel")
-    with c_anio:
-        anio = st.selectbox("Año de distribución", anios, index=len(anios) - 1, key=f"{clave}_anio")
+    anio = st.selectbox("Año de distribución", anios, index=len(anios) - 1, key=f"{clave}_anio")
     try:
         datos = preparar_cobertura_nivel(historico, nivel)
         fuente_anual = anual if anual is not None and str(anio) in anual.columns else historico
@@ -4191,7 +4675,45 @@ def mostrar_coberturas_mapbiomas(nombre_territorio: str) -> None:
         for etiqueta, ruta in (("serie histórica original", ruta_serie), ("distribución anual original", ruta_anual)):
             if ruta:
                 st.download_button(f"Descargar {etiqueta}", data=ruta.read_bytes(), file_name=ruta.name, mime="text/csv", key=f"{clave}_original_{etiqueta}")
-        st.caption("Nivel 1 muestra categorías generales. Nivel 2 muestra sus subclases. Los totales de Nivel 1 no se suman otra vez a las subclases.")
+        st.caption("Las superficies se obtienen del nivel seleccionado, evitando contar dos veces categorías y subcategorías.")
+
+
+def mostrar_coberturas_mapbiomas(nombre_territorio: str) -> None:
+    """Navegación principal única: Nivel 1 | Nivel 2 | Natural/Antrópico.
+
+    GIF, métricas, gráficas y tablas de cada categoría se muestran juntos,
+    sin repetir ni mezclar las estadísticas Ant/Nat con los niveles generales.
+    """
+    config = COBERTURAS_POR_TERRITORIO.get(nombre_territorio)
+    if config is None:
+        st.info("Todavía no se han incorporado coberturas MapBiomas para esta sede.")
+        return
+
+    st.markdown("### 🗺️ Coberturas de la tierra · MapBiomas")
+    st.caption(
+        "Explora las coberturas generales en dos niveles de detalle y la "
+        "síntesis Natural/Antrópico, cada una con su animación y sus estadísticas."
+    )
+    codigos = list(config["zonas"])
+    if len(codigos) > 1:
+        codigo = st.selectbox(
+            "Zona de análisis", codigos,
+            format_func=lambda c: config["zonas"][c],
+            key=f"cob_zona_{normalizar_etiqueta(nombre_territorio)}",
+        )
+        st.caption("SA = San Andrés · SAC = San Andrés Costa. Las estadísticas se consultan por zona.")
+    else:
+        codigo = codigos[0]
+
+    tab_uno, tab_dos, tab_antnat = st.tabs([
+        "🌳 Nivel 1", "🧩 Nivel 2", "🌿 Natural / antrópico",
+    ])
+    with tab_uno:
+        mostrar_analisis_coberturas_nivel(nombre_territorio, codigo, "Nivel 1")
+    with tab_dos:
+        mostrar_analisis_coberturas_nivel(nombre_territorio, codigo, "Nivel 2")
+    with tab_antnat:
+        mostrar_analisis_natural_antropico(nombre_territorio, codigo)
 
 
 def actualizar_estado_coberturas() -> None:
