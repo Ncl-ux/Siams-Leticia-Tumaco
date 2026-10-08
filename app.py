@@ -23,8 +23,8 @@ except ImportError:
     np = None
     xr = None
 
-VERSION_APP = "PROTOTIPO-SIAMS-V23-COBERTURAS-TARJETAS-2026-10-03"
-FECHA_ACTUALIZACION = "3 de octubre de 2026"
+VERSION_APP = "PROTOTIPO-SIAMS-V24-MAPBIOMAS-GIF-QGIS-2026-10-07"
+FECHA_ACTUALIZACION = "7 de octubre de 2026"
 
 # =========================================================
 # CONFIGURACIÓN GENERAL
@@ -1882,12 +1882,84 @@ MAPAS_ARAUCA = {
     "sistema_acuifero": "mapa_sistema_acuifero_arauca_arauquita",
 }
 
-# Piloto de ubicación multiescala de la Sede Bogotá.
-# Se usan directamente los PDF originales, conservando exactamente sus nombres.
+# Mapas QGIS de ubicación multiescala.
+# Los nombres se dejan como aparecen en la carpeta ``Mapas Qgis``.
 MAPAS_BOGOTA = {
-    "ubicacion_colombia": "Mapa Bogotá escala 10.000.000.pdf",
-    "ubicacion_region": "Mapa Bogotá escala 1.500.000.pdf",
-    "ubicacion_campus": "Mapa Campus escala 10.000.pdf",
+    "ubicacion_colombia": "Bogotá 1-10000000.pdf",
+    "ubicacion_region": "Bogotá 1- 1500000.pdf",
+    "ubicacion_campus": "Bogotá 1- 10000.pdf",
+}
+
+MAPAS_UBICACION_QGIS = {
+    "Bogotá": [
+        {
+            "paso": "Colombia",
+            "archivo": "Bogotá 1-10000000.pdf",
+            "titulo": "Nivel 1 · Colombia",
+            "detalle": "Ubicación de Bogotá D.C. dentro del contexto nacional.",
+            "escala": "1:10.000.000",
+        },
+        {
+            "paso": "Bogotá",
+            "archivo": "Bogotá 1- 1500000.pdf",
+            "titulo": "Nivel 2 · Bogotá y contexto regional",
+            "detalle": "Acercamiento al Distrito Capital y su entorno regional.",
+            "escala": "1:1.500.000",
+        },
+        {
+            "paso": "Campus",
+            "archivo": "Bogotá 1- 10000.pdf",
+            "titulo": "Nivel 3 · Campus Ciudad Universitaria",
+            "detalle": "Detalle de la Sede Bogotá y su entorno inmediato.",
+            "escala": "1:10.000",
+        },
+    ],
+    "Arauca": [
+        {
+            "paso": "Colombia",
+            "archivo": "Arauca 1-10000000.pdf",
+            "titulo": "Nivel 1 · Colombia",
+            "detalle": "Ubicación de Arauca dentro del contexto nacional.",
+            "escala": "1:10.000.000",
+        },
+        {
+            "paso": "Arauca",
+            "archivo": "Arauca 1-1500000.pdf",
+            "titulo": "Nivel 2 · Arauca y contexto regional",
+            "detalle": "Acercamiento regional al territorio de la Sede Orinoquía.",
+            "escala": "1:1.500.000",
+        },
+        {
+            "paso": "Sede",
+            "archivo": "Arauca 1-1500.pdf",
+            "titulo": "Nivel 3 · Entorno de la Sede Orinoquía",
+            "detalle": "Detalle cartográfico del entorno inmediato de la sede.",
+            "escala": "1:1.500",
+        },
+    ],
+    "Medellín": [
+        {
+            "paso": "Colombia",
+            "archivo": "Medellín 1-10000000.pdf",
+            "titulo": "Nivel 1 · Colombia",
+            "detalle": "Ubicación de Medellín dentro del contexto nacional.",
+            "escala": "1:10.000.000",
+        },
+        {
+            "paso": "Medellín",
+            "archivo": "Medellín 1-250000.pdf",
+            "titulo": "Nivel 2 · Medellín y contexto regional",
+            "detalle": "Acercamiento al Valle de Aburrá y al entorno urbano de Medellín.",
+            "escala": "1:250.000",
+        },
+        {
+            "paso": "Sede",
+            "archivo": "Medellín 1-5000.pdf",
+            "titulo": "Nivel 3 · Entorno de la Sede Medellín",
+            "detalle": "Detalle cartográfico del entorno inmediato de la sede.",
+            "escala": "1:5.000",
+        },
+    ],
 }
 
 
@@ -2700,6 +2772,17 @@ def buscar_mapa(nombre_base: str):
             ):
                 return archivo
 
+        # Coincidencia normalizada: ignora tildes, espacios, puntos y guiones.
+        # Esto evita que cambios como ``Bogotá 1- 10000.pdf`` rompan el visor.
+        objetivo_normalizado = normalizar_etiqueta(Path(nombre_base).stem)
+        for archivo in carpeta.iterdir():
+            if not archivo.is_file():
+                continue
+            if archivo.suffix.casefold() not in {".png", ".jpg", ".jpeg", ".webp", ".pdf"}:
+                continue
+            if normalizar_etiqueta(archivo.stem) == objetivo_normalizado:
+                return archivo
+
     return None
 
 
@@ -3267,6 +3350,109 @@ def mostrar_navegador_ubicacion_bogota() -> None:
         )
 
 
+
+def mostrar_navegador_ubicacion_qgis(nombre_territorio: str, info_territorio: dict) -> None:
+    """Navegador multiescala QGIS para los territorios que ya tienen tres PDF."""
+    niveles = MAPAS_UBICACION_QGIS.get(nombre_territorio, [])
+    if not niveles:
+        mostrar_mapa_interactivo_territorio(nombre_territorio, info_territorio)
+        return
+
+    st.markdown(
+        dedent(f"""
+        <div class="soft-box">
+            <strong>Ubicación multiescala en QGIS.</strong>
+            Recorre tres escalas cartográficas —nacional, regional y sede— y después abre
+            el explorador interactivo de <strong>{escape(str(nombre_territorio))}</strong>.
+        </div>
+        """).strip(),
+        unsafe_allow_html=True,
+    )
+
+    clave_estado = f"nivel_ubicacion_qgis_{normalizar_etiqueta(nombre_territorio)}"
+    opciones = [nivel["paso"] for nivel in niveles] + ["Interactivo"]
+    if clave_estado not in st.session_state or st.session_state[clave_estado] not in opciones:
+        st.session_state[clave_estado] = opciones[0]
+
+    etiquetas = []
+    for i, nivel in enumerate(niveles):
+        if i == 0:
+            icono = "🇨🇴"
+        elif i == len(niveles) - 1:
+            icono = "🏫"
+        else:
+            icono = "🧭"
+        etiquetas.append((f"{icono} {nivel['paso']}", nivel["paso"]))
+    etiquetas.append(("🌎 Interactivo", "Interactivo"))
+
+    columnas = st.columns(len(etiquetas))
+    for columna, (etiqueta, valor) in zip(columnas, etiquetas):
+        with columna:
+            if st.button(
+                etiqueta,
+                use_container_width=True,
+                key=f"btn_qgis_{normalizar_etiqueta(nombre_territorio)}_{normalizar_etiqueta(valor)}",
+            ):
+                st.session_state[clave_estado] = valor
+
+    nivel_activo = st.session_state[clave_estado]
+    piezas = []
+    for i, paso in enumerate(opciones):
+        clase = "location-step active" if paso == nivel_activo else "location-step"
+        piezas.append(f'<span class="{clase}">{i + 1}. {escape(str(paso))}</span>')
+        if i < len(opciones) - 1:
+            piezas.append('<span class="location-arrow">→</span>')
+
+    st.markdown(
+        '<div class="location-progress">' + "".join(piezas) + "</div>",
+        unsafe_allow_html=True,
+    )
+
+    st.markdown('<div class="location-shell">', unsafe_allow_html=True)
+
+    if nivel_activo == "Interactivo":
+        st.markdown(f"### 🌎 Explorador interactivo de {nombre_territorio}")
+        if nombre_territorio == "Bogotá":
+            mostrar_mapa_interactivo_bogota()
+        else:
+            mostrar_mapa_interactivo_territorio(nombre_territorio, info_territorio)
+    else:
+        cfg = next(n for n in niveles if n["paso"] == nivel_activo)
+        st.markdown(f"### {cfg['titulo']}")
+        st.caption(f"{cfg['detalle']} · Escala cartográfica: {cfg['escala']}")
+
+        ruta = buscar_mapa(cfg["archivo"])
+        if ruta is None:
+            st.warning(f"No se encontró `{cfg['archivo']}` dentro de `Mapas Qgis`.")
+            st.caption(f"Ruta esperada: {CARPETA_MAPAS_QGIS / cfg['archivo']}")
+        elif ruta.suffix.casefold() == ".pdf":
+            mostrar_pdf_mapa(ruta, altura=900)
+            st.caption(f"Archivo: {ruta.name} · Escala {cfg['escala']}")
+        else:
+            st.image(
+                str(ruta),
+                caption=f"{cfg['titulo']} · Escala {cfg['escala']}",
+                use_container_width=True,
+            )
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        mostrar_tarjeta("Sede de referencia", info_territorio["sede"], "📍")
+    with c2:
+        mostrar_tarjeta(
+            "Navegación",
+            " → ".join(opciones),
+            "🧭",
+        )
+    with c3:
+        mostrar_tarjeta(
+            "Uso del visor",
+            "Ubicación institucional y contexto espacial; no sustituye cartografía temática oficial.",
+            "🗺️",
+        )
+
 def mostrar_mapa_imagen(
     clave: str,
     titulo: str,
@@ -3595,112 +3781,134 @@ def encontrar_csv_coberturas(nombre_territorio: str, codigo: str) -> dict:
     return resultado
 
 
-def encontrar_mapa_cobertura_mapbiomas(nombre_territorio: str, codigo: str):
-    """Busca una imagen de referencia MapBiomas dentro de la carpeta de la sede."""
+MAPBIOMAS_GIFS_POR_TERRITORIO = {
+    "Arauca": {
+        "Nivel 1": "MapBiomas Gif Arauca.gif",
+        "Nivel 2": "MapBiomas Gif Arauca 2.gif",
+        "Natural / antrópico": "MapBiomas Gif Arauca AntNat.gif",
+    },
+    "La Paz": {
+        "Nivel 1": "MapBiomas Gif La Paz.gif",
+        "Nivel 2": "MapBiomas Gif La Paz 2.gif",
+        "Natural / antrópico": "MapBiomas Gif La Paz AntNat.gif",
+    },
+    "Leticia": {
+        "Nivel 1": "MapBiomas Gif Leticia.gif",
+        "Nivel 2": "MapBiomas Gif Leticia 2.gif",
+        "Natural / antrópico": "MapBiomas Gif Leticia AntNat.gif",
+    },
+    "Medellín": {
+        "Nivel 1": "MapBiomas Gif Medellin.gif",
+        "Nivel 2": "MapBiomas Gif Medellin 2.gif",
+        "Natural / antrópico": "MapBiomas Gif Medellin AntNat.gif",
+    },
+    "San Andrés": {
+        "Nivel 1": "MapBiomas Gif San Andres.gif",
+        "Nivel 2": "MapBiomas Gif San Andres 2.gif",
+        "Natural / antrópico": "MapBiomas Gif San Andres AntNat.gif",
+    },
+    "Tumaco": {
+        "Nivel 1": "MapBiomas Gif Tumaco.gif",
+        "Nivel 2": "MapBiomas Gif Tumaco 2.gif",
+        "Natural / antrópico": "MapBiomas Gif Tumaco AntNat.gif",
+    },
+}
+
+
+def buscar_gif_mapbiomas(nombre_territorio: str, nombre_archivo: str):
+    """Busca un GIF MapBiomas dentro de la carpeta de la sede, tolerando tildes y espacios."""
     config = COBERTURAS_POR_TERRITORIO.get(nombre_territorio)
-    if config is None or codigo not in config["zonas"]:
+    if config is None:
         return None
 
     carpeta = CARPETA_COBERTURAS / config["carpeta"]
     if not carpeta.is_dir():
         return None
 
-    zona = config["zonas"][codigo]
-    objetivos = {
-        normalizar_etiqueta(f"Mapa Mapbiomas - {zona}"),
-        normalizar_etiqueta(f"Mapa MapBiomas - {zona}"),
-        normalizar_etiqueta(f"Mapa Mapbiomas {zona}"),
-        normalizar_etiqueta(f"Mapa MapBiomas {zona}"),
-    }
+    ruta_directa = carpeta / nombre_archivo
+    if ruta_directa.exists() and ruta_directa.is_file():
+        return ruta_directa
 
-    extensiones = {".png", ".jpg", ".jpeg", ".webp"}
-
-    # 1) Coincidencia prácticamente exacta con el nombre esperado.
+    objetivo = normalizar_etiqueta(Path(nombre_archivo).stem)
     for archivo in sorted(carpeta.iterdir(), key=lambda p: p.name.casefold()):
-        if not archivo.is_file() or archivo.suffix.casefold() not in extensiones:
+        if not archivo.is_file() or archivo.suffix.casefold() != ".gif":
             continue
-        if normalizar_etiqueta(archivo.stem) in objetivos:
+        if normalizar_etiqueta(archivo.stem) == objetivo:
             return archivo
-
-    # 2) Respaldo tolerante para nombres parecidos.
-    zona_norm = normalizar_etiqueta(zona)
-    for archivo in sorted(carpeta.iterdir(), key=lambda p: p.name.casefold()):
-        if not archivo.is_file() or archivo.suffix.casefold() not in extensiones:
-            continue
-        nombre_norm = normalizar_etiqueta(archivo.stem)
-        if "mapa" in nombre_norm and "mapbiomas" in nombre_norm and zona_norm in nombre_norm:
-            return archivo
-
     return None
 
 
-def mostrar_mapa_cobertura_mapbiomas(nombre_territorio: str, codigo: str) -> None:
-    """
-    Muestra arriba de los datos la imagen cartográfica disponible para la zona.
-
-    IMPORTANTE: la imagen NO se estira al ancho de la página. Se renderiza con
-    su resolución nativa y solo se reduce si la pantalla es más estrecha. Así se
-    evita que capturas pequeñas de MapBiomas se vean borrosas o pixeladas.
-    """
-    ruta = encontrar_mapa_cobertura_mapbiomas(nombre_territorio, codigo)
-    if ruta is None:
-        return
-
-    config = COBERTURAS_POR_TERRITORIO[nombre_territorio]
-    zona = config["zonas"][codigo]
-
-    # MIME correcto para PNG/JPG/WEBP.
-    mime_por_extension = {
-        ".png": "image/png",
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".webp": "image/webp",
-    }
-    mime = mime_por_extension.get(ruta.suffix.casefold(), "image/png")
-
-    # Embebemos la imagen directamente en HTML para que el navegador respete
-    # su tamaño nativo. max-width:100% permite reducirla en pantallas pequeñas,
-    # pero nunca la agranda por encima de sus píxeles originales.
-    imagen_b64 = base64.b64encode(ruta.read_bytes()).decode("ascii")
-
-    st.markdown("#### 🗺️ Mapa de coberturas")
+def _mostrar_gif_mapbiomas(ruta: Path, titulo: str, descripcion: str) -> None:
+    """Renderiza el GIF sin convertirlo para conservar la animación."""
+    gif_b64 = base64.b64encode(ruta.read_bytes()).decode("ascii")
     st.markdown(
         f"""
         <div style="
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: 0.35rem 0 0.55rem 0;
+            width:100%;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            margin:0.35rem 0 0.65rem 0;
         ">
             <img
-                src="data:{mime};base64,{imagen_b64}"
-                alt="Mapa de coberturas MapBiomas de {escape(str(zona))}"
+                src="data:image/gif;base64,{gif_b64}"
+                alt="{escape(str(titulo))}"
                 style="
-                    display: block;
-                    width: auto;
-                    height: auto;
-                    max-width: 100%;
-                    border-radius: 14px;
-                    box-shadow: 0 8px 22px rgba(0,0,0,0.10);
+                    display:block;
+                    width:auto;
+                    height:auto;
+                    max-width:100%;
+                    border-radius:14px;
+                    box-shadow:0 8px 22px rgba(0,0,0,0.10);
                 "
             >
         </div>
         """,
         unsafe_allow_html=True,
     )
+    st.caption(descripcion)
 
-    st.markdown(
-        f"<div style='text-align:center; opacity:0.76; font-size:0.88rem; margin-top:-0.1rem;'>"
-        f"Cobertura de la tierra · {escape(str(zona))} · Fuente: MapBiomas"
-        f"</div>",
-        unsafe_allow_html=True,
+
+def mostrar_gifs_cobertura_mapbiomas(nombre_territorio: str) -> None:
+    """Muestra los tres GIF MapBiomas: Nivel 1, Nivel 2 y natural/antrópico."""
+    configuracion = MAPBIOMAS_GIFS_POR_TERRITORIO.get(nombre_territorio)
+    if not configuracion:
+        return
+
+    st.markdown("#### 🗺️ Evolución espacial de las coberturas")
+    st.write(
+        "Los GIF permiten recorrer la evolución temporal del recorte de MapBiomas. "
+        "Se separan la clasificación general, el detalle de Nivel 2 y la lectura "
+        "simplificada entre coberturas naturales y antrópicas."
     )
 
-    st.caption(
-        "La imagen se mantiene en su resolución nativa para evitar pérdida de nitidez. "
-        "Las gráficas y tablas inferiores corresponden a los CSV procesados."
-    )
+    pestanas = st.tabs(list(configuracion.keys()))
+    descripciones = {
+        "Nivel 1": "Clasificación general de coberturas · Fuente: MapBiomas.",
+        "Nivel 2": "Clasificación de coberturas con mayor detalle temático · Fuente: MapBiomas.",
+        "Natural / antrópico": "Síntesis temporal de coberturas naturales frente a coberturas antrópicas · Fuente: MapBiomas.",
+    }
+
+    for pestana, (tipo, nombre_archivo) in zip(pestanas, configuracion.items()):
+        with pestana:
+            ruta = buscar_gif_mapbiomas(nombre_territorio, nombre_archivo)
+            if ruta is None:
+                st.warning(
+                    f"No se encontró `{nombre_archivo}` dentro de "
+                    f"`Coberturas MapBio/{COBERTURAS_POR_TERRITORIO[nombre_territorio]['carpeta']}`."
+                )
+                continue
+            _mostrar_gif_mapbiomas(
+                ruta,
+                f"{nombre_territorio} · {tipo}",
+                descripciones[tipo],
+            )
+
+    if nombre_territorio == "San Andrés":
+        st.caption(
+            "Los GIF corresponden al territorio de San Andrés. El selector SA / SAC que aparece abajo "
+            "se conserva para consultar por separado las tablas y series CSV de San Andrés y San Andrés Costa."
+        )
 
 
 @st.cache_data(show_spinner=False)
@@ -3845,6 +4053,11 @@ def mostrar_coberturas_mapbiomas(nombre_territorio: str) -> None:
     if config is None:
         st.info("Todavía no se han incorporado CSV de coberturas para esta sede.")
         return
+
+    # Primero se muestran las animaciones MapBiomas; debajo quedan las estadísticas CSV.
+    mostrar_gifs_cobertura_mapbiomas(nombre_territorio)
+    st.divider()
+
     codigos = list(config["zonas"])
     if len(codigos) > 1:
         codigo = st.selectbox("Zona de análisis", codigos, format_func=lambda c: config["zonas"][c], key=f"cob_zona_{nombre_territorio}")
@@ -3884,7 +4097,6 @@ def mostrar_coberturas_mapbiomas(nombre_territorio: str) -> None:
             if comprobacion["_merge"].ne("both").any() or (dif > tolerancia).any():
                 st.warning(f"El CSV anual y la serie no coinciden en {anio}. La distribución usa el CSV anual; las tendencias y cambios usan la serie. Revisa que ambos correspondan al mismo recorte.")
     st.subheader(f"Coberturas de la tierra · {zona}")
-    mostrar_mapa_cobertura_mapbiomas(nombre_territorio, codigo)
     st.caption(f"Exportaciones MapBiomas aportadas al proyecto · {anios[0]}–{anios[-1]} · superficie en hectáreas (ha).")
     st.caption("Los CSV contienen áreas por clase; la zona analizada corresponde al recorte de la descarga y puede ser mayor que el campus. No contienen geometría para dibujar un mapa.")
     c_nivel, c_anio = st.columns(2)
@@ -4330,9 +4542,9 @@ elif seccion == "Resumen territorial":
 elif seccion == "Mapa y territorio":
     st.title(f"🗺️ Ubicación territorial de {territorio}")
 
-    if territorio == "Bogotá":
-        # Bogotá conserva el piloto multiescala y los PDF originales.
-        mostrar_navegador_ubicacion_bogota()
+    if territorio in MAPAS_UBICACION_QGIS:
+        # Bogotá, Arauca y Medellín ya tienen tres escalas QGIS cargadas en Mapas Qgis.
+        mostrar_navegador_ubicacion_qgis(territorio, info)
 
     else:
         st.write(
