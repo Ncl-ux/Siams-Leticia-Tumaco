@@ -24,7 +24,7 @@ except ImportError:
     np = None
     xr = None
 
-VERSION_APP = "PROTOTIPO-SIAMS-V36-LOGO-COMPACTO-2026-10-09"
+VERSION_APP = "PROTOTIPO-SIAMS-V38-INICIO-FOTOS-FECHAS-2026-10-09"
 FECHA_ACTUALIZACION = "9 de octubre de 2026"
 
 # =========================================================
@@ -599,6 +599,116 @@ st.markdown(
         }
     }
 
+
+
+    /* INICIO SIAMS · GALERÍA FOTOGRÁFICA DE LAS SIETE SEDES */
+    .siams-home-kicker {
+        color: var(--primary-color) !important;
+        font-size: .78rem; text-transform: uppercase;
+        font-weight: 800; letter-spacing: .12rem;
+        margin: .2rem 0 .45rem;
+    }
+    .siams-home-subtitle {
+        color: var(--text-color) !important;
+        opacity: .78; font-size: .96rem; line-height: 1.55;
+        max-width: 950px; margin-bottom: .9rem;
+    }
+    /* La altura es idéntica aunque varíen los textos y las imágenes. */
+    .siams-sede-content {
+        height: 385px; min-width: 0; display: flex;
+        flex-direction: column; color: var(--text-color);
+        overflow: hidden; border-radius: 12px;
+    }
+    .siams-sede-media {
+        height: 134px; flex: 0 0 134px;
+        position: relative; overflow: hidden;
+        background: linear-gradient(125deg, #105e55, #389d81);
+        border-radius: 11px; margin-bottom: .72rem;
+    }
+    .siams-sede-media img {
+        display: block; height: 100%; width: 100%;
+        object-fit: cover; object-position: center;
+        transition: transform .28s ease;
+    }
+    .siams-sede-media:hover img {transform: scale(1.035);}
+    .siams-sede-media--empty {
+        display:flex; justify-content:center; align-items:center;
+        color: #fff !important; font-size: 2.3rem;
+    }
+    .siams-sede-photo-label {
+        position: absolute; bottom: 0; left: 0; right: 0;
+        color: #fff !important; font-size: .68rem; font-weight: 700;
+        padding: 14px 9px 7px;
+        background:linear-gradient(0deg,rgba(0,0,0,.57),rgba(0,0,0,0));
+    }
+    .siams-sede-body {
+        min-height:0; flex:1; display: flex; flex-direction: column;
+    }
+    .siams-sede-region {
+        font-size: .67rem; font-weight: 750; letter-spacing:.03em;
+        color:var(--text-color) !important; opacity: .7;
+        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .siams-sede-title {
+        color:var(--text-color) !important;
+        font-size:1.14rem; font-weight:850; line-height:1.2;
+        margin:.17rem 0 .12rem;
+    }
+    .siams-sede-focus {
+        color:var(--primary-color) !important;
+        font-size:.75rem; font-weight:800; margin-bottom:.35rem;
+        overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    }
+    .siams-sede-description {
+        color:var(--text-color) !important;
+        font-size:.77rem; line-height:1.42; opacity:.91;
+        margin:0 0 .50rem; min-height:2.85em;
+        display:-webkit-box; -webkit-box-orient:vertical;
+        -webkit-line-clamp:2; overflow:hidden;
+    }
+    .siams-sede-dates {
+        border-top:1px solid var(--siams-borde);
+        padding-top:.48rem; margin-top:auto;
+        min-height:55px;
+    }
+    .siams-sede-date-heading {
+        color:var(--text-color) !important; font-size:.66rem;
+        font-weight:800; opacity:.74; margin-bottom:.22rem;
+    }
+    .siams-sede-date-row {
+        color:var(--text-color) !important; font-size:.68rem;
+        line-height:1.32; white-space:nowrap;
+        overflow:hidden; text-overflow:ellipsis;
+    }
+    .siams-sede-date-source {font-weight:780;}
+    .siams-sede-tags {
+        display:flex; flex-wrap:nowrap; gap:.3rem;
+        margin-top:.45rem; min-height:24px;
+        overflow:hidden;
+    }
+    .siams-sede-tag {
+        background:color-mix(in srgb, var(--primary-color) 11%, var(--secondary-background-color));
+        border:1px solid color-mix(in srgb, var(--primary-color) 23%, var(--secondary-background-color));
+        color:var(--text-color) !important; border-radius:999px;
+        font-size:.61rem; font-weight:760; padding:.2rem .44rem;
+        white-space:nowrap;
+    }
+    .siams-sede-empty {
+        font-size:.7rem; color:var(--text-color) !important;
+        opacity:.66; font-style:italic;
+    }
+    .siams-home-note {
+        font-size:.8rem; opacity:.75; line-height:1.55;
+        color:var(--text-color) !important; margin:.5rem 0 1.1rem;
+    }
+    @media(max-width:950px) {
+        .siams-sede-content {height:410px;}
+        .siams-sede-media {height:116px;flex-basis:116px;}
+    }
+    @media(max-width:640px) {
+        .siams-sede-content {height:395px;}
+        .siams-sede-media {height:132px;flex-basis:132px;}
+    }
 
     /* MAPA INSTITUCIONAL DEL INICIO */
     [data-testid="stPlotlyChart"] {
@@ -5707,6 +5817,350 @@ def mostrar_sentinel_territorio(nombre_territorio: str) -> None:
     )
 
 
+
+# =========================================================
+# INICIO: FOTOS Y SÍNTESIS TERRITORIAL (SIN CAMBIAR ANÁLISIS)
+# =========================================================
+# Fotos disponibles en: Presentacion/Bogota.jpg, Leticia.jpg, Tumaco.jpeg, etc.
+# Los rangos temporales se extraen de archivos existentes, nunca se inventan.
+SIAMS_SEDES_PORTADA = {
+    "Bogotá": {
+        "icono": "🏛️", "tema": "Cartografía y localización",
+        "descripcion": "Ubicación multiescala de la Ciudad Universitaria y exploración del contexto espacial.",
+    },
+    "Leticia": {
+        "icono": "🌿", "tema": "Clima y sistemas amazónicos",
+        "descripcion": "Datos hidrometeorológicos, cartografía ambiental y observaciones del río Amazonas.",
+    },
+    "Tumaco": {
+        "icono": "🌊", "tema": "Ríos y ambiente costero",
+        "descripcion": "Clima regional, manglares y dinámica de los ríos Mira y Rosario.",
+    },
+    "Medellín": {
+        "icono": "⛰️", "tema": "Territorio urbano-andino",
+        "descripcion": "Clima, geología, inundación y observaciones del río Medellín.",
+    },
+    "San Andrés": {
+        "icono": "🏝️", "tema": "Agua dulce y acuíferos",
+        "descripcion": "Clima insular, vulnerabilidad hidrogeológica y calidad del agua subterránea.",
+    },
+    "Arauca": {
+        "icono": "🌾", "tema": "Agua y llanuras aluviales",
+        "descripcion": "Contraste hidrometeorológico, sistema acuífero y observación del río Arauca.",
+    },
+    "La Paz": {
+        "icono": "🌄", "tema": "Clima y agua subterránea",
+        "descripcion": "Contexto del Cesar, información climática y almacenamiento hídrico satelital.",
+    },
+}
+
+CARPETA_FOTOS_SEDES = CARPETA_PROYECTO / "Presentacion"
+
+
+def foto_sede_portada(nombre_sede: str):
+    """Localiza foto sin exigir tildes o extensiones uniformes; nunca usa otra sede."""
+    if not CARPETA_FOTOS_SEDES.is_dir():
+        return None
+    objetivo = normalizar_etiqueta(nombre_sede)
+    extensiones = {".jpg", ".jpeg", ".png", ".webp"}
+    for ruta in sorted(CARPETA_FOTOS_SEDES.iterdir(), key=lambda p: p.name.casefold()):
+        if (ruta.is_file() and ruta.suffix.casefold() in extensiones
+                and normalizar_etiqueta(ruta.stem) == objetivo):
+            return ruta
+    return None
+
+
+@st.cache_data(show_spinner=False, max_entries=20)
+def foto_sede_data_uri(ruta_texto: str, fecha_cambio_ns: int) -> str:
+    """Crea una miniatura liviana en memoria. No modifica el JPG original del proyecto."""
+    ruta = Path(ruta_texto)
+    try:
+        from io import BytesIO
+        from PIL import Image, ImageOps
+        with Image.open(ruta) as imagen:
+            foto = ImageOps.exif_transpose(imagen).convert("RGB")
+            # La imagen se recorta solamente al visualizarse (object-fit: cover).
+            foto.thumbnail((900, 750), Image.Resampling.LANCZOS)
+            buffer = BytesIO()
+            foto.save(buffer, format="JPEG", quality=82, optimize=True)
+            contenido = buffer.getvalue()
+        return "data:image/jpeg;base64," + base64.b64encode(contenido).decode("ascii")
+    except (ImportError, OSError, ValueError):
+        mime = "image/png" if ruta.suffix.casefold() == ".png" else (
+            "image/webp" if ruta.suffix.casefold() == ".webp" else "image/jpeg"
+        )
+        return "data:" + mime + ";base64," + base64.b64encode(ruta.read_bytes()).decode("ascii")
+
+
+def recursos_reales_sede_portada(nombre: str) -> list[str]:
+    """Solo se muestran recursos con evidencia de un archivo real."""
+    etiquetas = []
+
+    def existe(ruta):
+        return ruta is not None and Path(ruta).is_file()
+
+    try:
+        if existe(ARCHIVOS_IDEAM.get(nombre)):
+            etiquetas.append("IDEAM")
+        if existe(archivo_nasa_territorio(nombre)):
+            etiquetas.append("NASA POWER")
+        if any(buscar_mapa(n["archivo"]) is not None
+               for n in MAPAS_UBICACION_QGIS.get(nombre, [])):
+            etiquetas.append("QGIS")
+        if any(buscar_mapa(ruta) is not None
+               for ruta in MAPAS_POR_TERRITORIO.get(nombre, {}).values()):
+            etiquetas.append("Mapas temáticos")
+        if any(buscar_gif_swot(item["archivo"]) is not None
+               for item in GIFS_SWOT_POR_TERRITORIO.get(nombre, [])) or any(
+                   buscar_tarjeta_swot(archivo) is not None
+                   for rio in TARJETAS_SWOT_POR_TERRITORIO.get(nombre, [])
+                   for archivo in rio["archivos"].values()
+               ):
+            etiquetas.append("SWOT")
+        cfg_cob = COBERTURAS_POR_TERRITORIO.get(nombre)
+        if cfg_cob:
+            carpeta = CARPETA_COBERTURAS / cfg_cob["carpeta"]
+            if carpeta.is_dir() and any(f.is_file() and f.suffix.casefold() in {".csv", ".gif"}
+                                        for f in carpeta.iterdir()):
+                etiquetas.append("MapBiomas")
+        landsat = inventario_landsat(nombre)
+        if landsat["gifs"] or existe(landsat["areas"]):
+            etiquetas.append("Landsat")
+        if buscar_animaciones_sentinel(nombre):
+            etiquetas.append("Sentinel-2")
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    return etiquetas
+
+
+def _fecha_valida_portada(valor):
+    """Convierte fecha Excel/texto sin confundir un año 2025 con nanosegundos Unix."""
+    if valor is None or pd.isna(valor):
+        return None
+    try:
+        if isinstance(valor, (int, float)):
+            valor_n = float(valor)
+            if valor_n.is_integer() and 1900 <= valor_n <= 2100:
+                fecha = pd.Timestamp(year=int(valor_n), month=1, day=1)
+            elif 20000 <= valor_n <= 65000:
+                fecha = pd.Timestamp("1899-12-30") + pd.to_timedelta(valor_n, unit="D")
+            else:
+                return None
+        else:
+            texto = str(valor).strip()
+            if re.fullmatch(r"(?:19|20)\d{2}", texto):
+                fecha = pd.Timestamp(year=int(texto), month=1, day=1)
+            else:
+                # ISO YYYY-MM-DD ya declara año/mes/día: no invertir mes y día.
+                if re.match(r"^\d{4}-\d{1,2}-\d{1,2}", texto):
+                    fecha = pd.to_datetime(valor, errors="coerce", yearfirst=True)
+                else:
+                    fecha = pd.to_datetime(valor, errors="coerce", dayfirst=True)
+        if pd.isna(fecha) or not 1900 <= fecha.year <= 2100:
+            return None
+        return pd.Timestamp(fecha)
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
+@st.cache_data(show_spinner=False, max_entries=40)
+def periodo_excel_sede_portada(ruta_texto: str, fecha_cambio_ns: int):
+    """Obtiene años extremos de indicadores/metadata de un Excel NASA o IDEAM.
+
+    No inspecciona nombres de archivos como si fueran años de observación.
+    No lee climatologías mensuales como series históricas.
+    """
+    try:
+        with pd.ExcelFile(ruta_texto) as libro:
+            hojas = {normalizar_etiqueta(nombre): nombre for nombre in libro.sheet_names}
+            inicios, finales = [], []
+            if "indicadores" in hojas:
+                tabla = pd.read_excel(libro, sheet_name=hojas["indicadores"])
+                if len(tabla.columns) >= 2:
+                    for etiqueta, valor in tabla.iloc[:, :2].itertuples(index=False, name=None):
+                        campo = normalizar_etiqueta(etiqueta)
+                        if "fecha" not in campo:
+                            continue
+                        fecha = _fecha_valida_portada(valor)
+                        if fecha is None:
+                            continue
+                        if any(p in campo for p in ("inicial", "inicio", "primera")):
+                            inicios.append(fecha)
+                        elif any(p in campo for p in ("final", "fin", "ultima")):
+                            finales.append(fecha)
+            if not (inicios and finales):
+                # Algunos Excel IDEAM ponen periodos por estación/variable en estas hojas.
+                for candidato in ("fuentes", "control_faltantes"):
+                    if candidato not in hojas:
+                        continue
+                    tabla = pd.read_excel(libro, sheet_name=hojas[candidato])
+                    campos = {normalizar_etiqueta(c): c for c in tabla.columns}
+                    columnas_inicio = [c for n, c in campos.items()
+                                      if "fecha" in n and ("inicio" in n or "inicial" in n)]
+                    columnas_fin = [c for n, c in campos.items()
+                                   if "fecha" in n and ("final" in n or "fin" in n)]
+                    for c in columnas_inicio:
+                        inicios.extend(f for v in tabla[c].dropna().tolist()
+                                       if (f := _fecha_valida_portada(v)) is not None)
+                    for c in columnas_fin:
+                        finales.extend(f for v in tabla[c].dropna().tolist()
+                                       if (f := _fecha_valida_portada(v)) is not None)
+            if inicios and finales:
+                inicio, fin = min(inicios), max(finales)
+                if inicio <= fin:
+                    return (int(inicio.year), int(fin.year))
+    except (OSError, ValueError, KeyError, ImportError, TypeError):
+        pass
+    return None
+
+
+@st.cache_data(show_spinner=False, max_entries=48)
+def periodo_csv_mapbiomas_portada(ruta_texto: str, fecha_cambio_ns: int):
+    """Extrae años de las columnas del CSV de serie temporal (sin sumar datos)."""
+    try:
+        try:
+            tabla = pd.read_csv(ruta_texto, nrows=0, sep=None,
+                                engine="python", encoding="utf-8-sig")
+        except UnicodeDecodeError:
+            tabla = pd.read_csv(ruta_texto, nrows=0, sep=None,
+                                engine="python", encoding="cp1252")
+        anios = sorted(int(str(c).strip()) for c in tabla.columns
+                      if re.fullmatch(r"(?:19|20)\d{2}", str(c).strip()))
+        if anios:
+            return (anios[0], anios[-1])
+    except (OSError, ValueError, TypeError):
+        pass
+    return None
+
+
+def periodos_reales_sede_portada(nombre: str) -> list[tuple[str, str]]:
+    """Periodos de cobertura de FUENTES distintas, no un único rango inventado."""
+    resultado = []
+    for etiqueta, ruta in (
+        ("IDEAM", ARCHIVOS_IDEAM.get(nombre)),
+        ("NASA POWER", archivo_nasa_territorio(nombre)),
+    ):
+        if ruta is None or not Path(ruta).is_file():
+            continue
+        periodo = periodo_excel_sede_portada(str(ruta), Path(ruta).stat().st_mtime_ns)
+        if periodo:
+            resultado.append((etiqueta, f"{periodo[0]}–{periodo[1]}"))
+
+    configuracion = COBERTURAS_POR_TERRITORIO.get(nombre)
+    if configuracion:
+        rangos = []
+        for zona in configuracion["zonas"]:
+            archivos = encontrar_csv_coberturas(nombre, zona)
+            for ruta in archivos.get("serie", []):
+                periodo = periodo_csv_mapbiomas_portada(
+                    str(ruta), ruta.stat().st_mtime_ns
+                )
+                if periodo is not None:
+                    rangos.append(periodo)
+        if rangos:
+            resultado.append(("MapBiomas", f"{min(p[0] for p in rangos)}–{max(p[1] for p in rangos)}"))
+    return resultado
+
+
+def ir_a_ficha_sede_siams(nombre: str) -> None:
+    """Cambia widgets del sidebar mediante callback, antes del rerun."""
+    st.session_state["siams_nav_territorio"] = nombre
+    st.session_state["siams_nav_grupo"] = "Territorio"
+    st.session_state["siams_nav_contenido_territorio"] = "Resumen territorial"
+
+
+def mostrar_sintesis_sedes_inicio() -> None:
+    """Galería uniforme 4+3, con fotos y fechas verificadas automáticamente."""
+    st.markdown(
+        '<div class="siams-home-kicker">SIAMS EN COLOMBIA</div>'
+        '<div class="section-title" style="margin-top:0">Conoce nuestras sedes</div>'
+        '<p class="siams-home-subtitle">Una mirada rápida a los territorios, '
+        'los estudios y los periodos de información disponibles en el semillero.</p>',
+        unsafe_allow_html=True,
+    )
+    orden = ["Bogotá", "Leticia", "Tumaco", "Medellín", "San Andrés", "Arauca", "La Paz"]
+    # Se usan siempre cuatro columnas: las tres últimas no se ensanchan.
+    # Así TODAS las tarjetas miden igual en escritorio.
+    for comienzo in (0, 4):
+        columnas = st.columns(4, gap="medium")
+        for columna, nombre in zip(columnas, orden[comienzo:comienzo + 4]):
+            datos = SIAMS_SEDES_PORTADA[nombre]
+            region = TERRITORIOS[nombre]["region"]
+            recursos = recursos_reales_sede_portada(nombre)
+            periodos = periodos_reales_sede_portada(nombre)
+            ruta_foto = foto_sede_portada(nombre)
+            if ruta_foto is not None:
+                imagen = foto_sede_data_uri(str(ruta_foto), ruta_foto.stat().st_mtime_ns)
+                visual = (
+                    '<div class="siams-sede-media">'
+                    f'<img src="{imagen}" alt="Fotografía de {escape(nombre)}" loading="lazy">'
+                    f'<span class="siams-sede-photo-label">{escape(nombre)}</span>'
+                    '</div>'
+                )
+            else:
+                visual = (
+                    '<div class="siams-sede-media siams-sede-media--empty" '
+                    f'title="Falta imagen de {escape(nombre)} en Presentacion">'
+                    f'{datos["icono"]}</div>'
+                )
+
+            # Se prioriza dar fechas por cada FUENTE. Muestra hasta 3 rangos por tarjeta.
+            lineas_fecha = "".join(
+                '<div class="siams-sede-date-row">'
+                f'<span class="siams-sede-date-source">{escape(fuente)}:</span> '
+                f'{escape(rango)}</div>'
+                for fuente, rango in periodos[:3]
+            )
+            if not lineas_fecha:
+                lineas_fecha = '<div class="siams-sede-empty">Periodos pendientes de verificar</div>'
+
+            visibles = recursos[:3]
+            etiquetas = "".join(
+                f'<span class="siams-sede-tag">{escape(recurso)}</span>'
+                for recurso in visibles
+            )
+            if len(recursos) > len(visibles):
+                etiquetas += f'<span class="siams-sede-tag">+{len(recursos) - len(visibles)}</span>'
+            if not etiquetas:
+                etiquetas = '<span class="siams-sede-empty">Recursos por integrar</span>'
+
+            html = (
+                '<div class="siams-sede-content">'
+                + visual +
+                '<div class="siams-sede-body">'
+                f'<span class="siams-sede-region">{escape(str(region))}</span>'
+                f'<div class="siams-sede-title">{escape(nombre)}</div>'
+                f'<div class="siams-sede-focus">{escape(datos["tema"])}</div>'
+                f'<p class="siams-sede-description">{escape(datos["descripcion"])}</p>'
+                '<div class="siams-sede-dates">'
+                '<div class="siams-sede-date-heading">PERIODOS CON DATOS</div>'
+                + lineas_fecha + '</div>'
+                f'<div class="siams-sede-tags">{etiquetas}</div>'
+                '</div></div>'
+            )
+            with columna:
+                with st.container(border=True):
+                    st.markdown(html, unsafe_allow_html=True)
+                    st.button(
+                        "Explorar esta sede  →",
+                        key=f"siams_portada_abrir_{normalizar_etiqueta(nombre)}",
+                        use_container_width=True,
+                        on_click=ir_a_ficha_sede_siams,
+                        args=(nombre,),
+                    )
+
+    st.markdown(
+        '<p class="siams-home-note">'
+        'Los periodos corresponden a las fechas declaradas en los Excel de IDEAM/NASA POWER '
+        'y a los años presentes en las series CSV de MapBiomas. '
+        'Un intervalo entre dos años no implica que existan datos todos los días ni para todas '
+        'las variables. SWOT, Landsat y otras fuentes se consultan en cada módulo. '
+        'Cuando no se puede comprobar una fecha, se muestra como pendiente.</p>',
+        unsafe_allow_html=True,
+    )
+
+
+# =========================================================
 # =========================================================
 # BARRA LATERAL CON SUBMENÚS
 # =========================================================
@@ -5736,6 +6190,7 @@ st.sidebar.markdown(
 territorio = st.sidebar.selectbox(
     "Territorio",
     ["Bogotá", "Leticia", "Tumaco", "Medellín", "San Andrés", "Arauca", "La Paz"],
+    key="siams_nav_territorio",
 )
 
 grupo = st.sidebar.selectbox(
@@ -5748,6 +6203,7 @@ grupo = st.sidebar.selectbox(
         "Monitoreo",
         "Proyecto",
     ],
+    key="siams_nav_grupo",
 )
 
 SUBMENUS = {
@@ -5793,6 +6249,7 @@ else:
     seccion = st.sidebar.radio(
         "Contenido",
         opciones_submenu,
+        key=f"siams_nav_contenido_{normalizar_etiqueta(grupo)}",
     )
 
 st.sidebar.divider()
@@ -5881,136 +6338,120 @@ if seccion == "Inicio":
         "hidrogeológica y de calidad del agua de los territorios estudiados por el semillero.",
     )
 
-    st.markdown(
-        '<div class="section-title">Red de sedes de la Universidad Nacional de Colombia</div>',
-        unsafe_allow_html=True,
-    )
+    # Síntesis ejecutiva visible sin desplegar mapas ni tablas.
+    mostrar_sintesis_sedes_inicio()
 
-    st.write(
-        "El mapa presenta la red de sedes de la Universidad Nacional de Colombia y "
-        "resalta los territorios que actualmente hacen parte del prototipo SIAMS."
-    )
+    st.markdown("---")
 
-    mostrar_mapa_sedes_unal()
-
-    m0, m1, m2 = st.columns(3)
-    m0.metric("Sedes UNAL ubicadas", f"{len(UNAL_SEDES)}")
-    m1.metric("Territorios activos en SIAMS", f"{len(TERRITORIOS)}")
-    m2.metric("Cobertura actual", "Bogotá D.C. · Amazonía · Caribe · Andina · Pacífico · Orinoquía · Cesar")
-
-    st.caption(
-        "La localización nacional permite contextualizar el alcance territorial del prototipo "
-        "y visualizar las sedes priorizadas para esta fase de desarrollo."
-    )
-
-    st.markdown(
-        '<div class="section-title">Estado rápido de los territorios</div>',
-        unsafe_allow_html=True,
-    )
-
-    fila1 = st.columns(3)
-    fila2 = st.columns(3)
-    fila3 = st.columns(3)
-
-    tarjetas_territorio = [
-        (fila1[0], "Bogotá", "<strong>Piloto de ubicación</strong><br>Mapas por niveles + explorador interactivo.", "📍"),
-        (fila1[1], "Leticia", "<strong>Clima completo</strong><br>Cartografía ambiental avanzada.", "🌿"),
-        (fila1[2], "Tumaco", "<strong>Clima completo</strong><br>IDEAM + NASA POWER y cartografía regional.", "🌊"),
-        (fila2[0], "Medellín", "<strong>Clima completo</strong><br>Geología, estructura ecológica e inundación.", "🏙️"),
-        (fila2[1], "San Andrés", "<strong>Clima completo</strong><br>Hidrogeología y calidad del agua destacadas.", "🏝️"),
-        (fila2[2], "Arauca", "<strong>Clima + cartografía en proceso</strong><br>IDEAM, NASA POWER, geología e hidrogeología regional.", "🌾"),
-        (fila3[0], "La Paz", "<strong>Territorio habilitado</strong><br>GWSa GRACE y módulos para ampliar datos.", "⛰️"),
-    ]
-    for columna, nombre, texto_tarjeta, icono in tarjetas_territorio:
-        with columna:
-            mostrar_tarjeta(nombre, texto_tarjeta, icono)
-
-    st.markdown(
-        '<div class="section-title">¿Qué contiene la plataforma?</div>',
-        unsafe_allow_html=True,
-    )
-
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        mostrar_tarjeta(
-            "Clima",
-            "Series, regímenes mensuales, promedios, comparaciones y disponibilidad de datos.",
-            "🌧️",
-        )
-    with c2:
-        mostrar_tarjeta(
-            "Territorio",
-            "Mapas, hidrografía, humedales, cobertura, relieve y contexto espacial.",
-            "🗺️",
-        )
-    with c3:
-        mostrar_tarjeta(
-            "Subsuelo y agua",
-            "Geología, hidrogeología, GWSa, GGDI, hidrogeoquímica y calidad del agua.",
-            "🪨",
-        )
-    with c4:
-        mostrar_tarjeta(
-            "Monitoreo",
-            "Espacio reservado para series de nivel, sondas y curvas validadas.",
-            "📡",
+    with st.expander("🗺️ Ver el mapa nacional de sedes", expanded=False):
+        st.markdown(
+            '<div class="section-title">Red de sedes de la Universidad Nacional de Colombia</div>',
+            unsafe_allow_html=True,
         )
 
-    st.markdown(
-        '<div class="section-title">Cobertura del prototipo</div>',
-        unsafe_allow_html=True,
-    )
+        st.write(
+            "El mapa presenta la red de sedes de la Universidad Nacional de Colombia y "
+            "resalta los territorios que actualmente hacen parte del prototipo SIAMS."
+        )
 
-    cobertura = pd.DataFrame({
-        "Territorio": ["Bogotá", "Leticia", "Tumaco", "Medellín", "San Andrés", "Arauca", "La Paz"],
-        "Ubicación": ["✅", "✅", "✅", "✅", "✅", "✅", "✅"],
-        "Clima": ["—", "✅", "✅", "✅", "✅", "✅", "🟡"],
-        "Hidrología": ["🟡", "✅", "✅", "🟡", "✅", "🟡", "—"],
-        "Geología": ["—", "✅", "✅", "✅", "✅", "🟡", "—"],
-        "Hidrogeología": ["—", "🟡", "🟡", "—", "✅", "🟡", "🟡"],
-        "GWSa GRACE": ["—", "✅", "✅", "✅", "—", "✅", "✅"],
-        "GGDI": ["—", "✅", "✅", "✅", "—", "✅", "✅"],
-        "Calidad del agua": ["—", "🟡", "—", "—", "🟡", "—", "—"],
-        "Monitoreo": ["—", "—", "—", "—", "—", "🟡", "🟡"],
-    })
+        mostrar_mapa_sedes_unal()
 
-    st.dataframe(
-        cobertura,
-        use_container_width=True,
-        hide_index=True,
-    )
+        m0, m1, m2 = st.columns(3)
+        m0.metric("Sedes UNAL ubicadas", f"{len(UNAL_SEDES)}")
+        m1.metric("Territorios activos en SIAMS", f"{len(TERRITORIOS)}")
+        m2.metric("Cobertura actual", "Bogotá D.C. · Amazonía · Caribe · Andina · Pacífico · Orinoquía · Cesar")
 
-    st.caption("✅ incorporado · 🟡 parcial / en proceso · — pendiente o sin datos")
+        st.caption(
+            "La localización nacional permite contextualizar el alcance territorial del prototipo "
+            "y visualizar las sedes priorizadas para esta fase de desarrollo."
+        )
 
-    st.markdown(
-        '<div class="section-title">Estado del prototipo</div>',
-        unsafe_allow_html=True,
-    )
+    with st.expander("📊 Ver cobertura técnica e indicadores del prototipo", expanded=False):
+        st.markdown(
+            '<div class="section-title">¿Qué contiene la plataforma?</div>',
+            unsafe_allow_html=True,
+        )
 
-    mapas_encontrados = sum(
-        1 for mapas in MAPAS_POR_TERRITORIO.values()
-        for nombre in mapas.values()
-        if buscar_mapa(nombre) is not None
-    )
-    mapas_esperados = sum(len(mapas) for mapas in MAPAS_POR_TERRITORIO.values())
-    componentes_completos = sum(
-        1 for territorio_estado in ESTADO_COMPONENTES.values()
-        for _, estado, _ in territorio_estado
-        if estado == "Completo"
-    )
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            mostrar_tarjeta(
+                "Clima",
+                "Series, regímenes mensuales, promedios, comparaciones y disponibilidad de datos.",
+                "🌧️",
+            )
+        with c2:
+            mostrar_tarjeta(
+                "Territorio",
+                "Mapas, hidrografía, humedales, cobertura, relieve y contexto espacial.",
+                "🗺️",
+            )
+        with c3:
+            mostrar_tarjeta(
+                "Subsuelo y agua",
+                "Geología, hidrogeología, GWSa, GGDI, hidrogeoquímica y calidad del agua.",
+                "🪨",
+            )
+        with c4:
+            mostrar_tarjeta(
+                "Monitoreo",
+                "Espacio reservado para series de nivel, sondas y curvas validadas.",
+                "📡",
+            )
 
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Territorios", f"{len(TERRITORIOS)}")
-    m2.metric("Mapas incorporados", f"{mapas_encontrados}/{mapas_esperados}")
-    m3.metric("Componentes completos", componentes_completos)
-    m4.metric("Actualización", FECHA_ACTUALIZACION)
+        st.markdown(
+            '<div class="section-title">Cobertura del prototipo</div>',
+            unsafe_allow_html=True,
+        )
 
-    st.info(
-        "El prototipo diferencia información completa, información en proceso, "
-        "componentes pendientes y secciones sin datos. No se presentan valores "
-        "demostrativos como si fueran resultados reales."
-    )
+        cobertura = pd.DataFrame({
+            "Territorio": ["Bogotá", "Leticia", "Tumaco", "Medellín", "San Andrés", "Arauca", "La Paz"],
+            "Ubicación": ["✅", "✅", "✅", "✅", "✅", "✅", "✅"],
+            "Clima": ["—", "✅", "✅", "✅", "✅", "✅", "🟡"],
+            "Hidrología": ["🟡", "✅", "✅", "🟡", "✅", "🟡", "—"],
+            "Geología": ["—", "✅", "✅", "✅", "✅", "🟡", "—"],
+            "Hidrogeología": ["—", "🟡", "🟡", "—", "✅", "🟡", "🟡"],
+            "GWSa GRACE": ["—", "✅", "✅", "✅", "—", "✅", "✅"],
+            "GGDI": ["—", "✅", "✅", "✅", "—", "✅", "✅"],
+            "Calidad del agua": ["—", "🟡", "—", "—", "🟡", "—", "—"],
+            "Monitoreo": ["—", "—", "—", "—", "—", "🟡", "🟡"],
+        })
 
+        st.dataframe(
+            cobertura,
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        st.caption("✅ incorporado · 🟡 parcial / en proceso · — pendiente o sin datos")
+
+        st.markdown(
+            '<div class="section-title">Estado del prototipo</div>',
+            unsafe_allow_html=True,
+        )
+
+        mapas_encontrados = sum(
+            1 for mapas in MAPAS_POR_TERRITORIO.values()
+            for nombre in mapas.values()
+            if buscar_mapa(nombre) is not None
+        )
+        mapas_esperados = sum(len(mapas) for mapas in MAPAS_POR_TERRITORIO.values())
+        componentes_completos = sum(
+            1 for territorio_estado in ESTADO_COMPONENTES.values()
+            for _, estado, _ in territorio_estado
+            if estado == "Completo"
+        )
+
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Territorios", f"{len(TERRITORIOS)}")
+        m2.metric("Mapas incorporados", f"{mapas_encontrados}/{mapas_esperados}")
+        m3.metric("Componentes completos", componentes_completos)
+        m4.metric("Actualización", FECHA_ACTUALIZACION)
+
+        st.info(
+            "El prototipo diferencia información completa, información en proceso, "
+            "componentes pendientes y secciones sin datos. No se presentan valores "
+            "demostrativos como si fueran resultados reales."
+        )
 
 # =========================================================
 # RESUMEN TERRITORIAL
