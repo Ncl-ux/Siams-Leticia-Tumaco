@@ -24,16 +24,27 @@ except ImportError:
     np = None
     xr = None
 
-VERSION_APP = "PROTOTIPO-SIAMS-V33-LANDSAT-GIF-CONTROL-2026-10-09"
+VERSION_APP = "PROTOTIPO-SIAMS-V36-LOGO-COMPACTO-2026-10-09"
 FECHA_ACTUALIZACION = "9 de octubre de 2026"
 
 # =========================================================
-# CONFIGURACIÓN GENERAL
+# CONFIGURACIÓN GENERAL Y LOGO SIAMS
 # =========================================================
+# Se aprovecha el icono existente al lado de app.py; si todavía no
+# se subió a GitHub, la aplicación sigue funcionando con 💧.
+CARPETA_APP = Path(__file__).resolve().parent
+_ICONOS_VALIDOS = {"icono de siams.jpeg", "icono de siams.jpg", "icono de siams.png"}
+ICONO_SIAMS = next(
+    (
+        archivo for archivo in CARPETA_APP.iterdir()
+        if archivo.is_file() and archivo.name.casefold() in _ICONOS_VALIDOS
+    ),
+    None,
+)
 
 st.set_page_config(
     page_title="SIAMS | Plataforma Hidroambiental",
-    page_icon="💧",
+    page_icon=str(ICONO_SIAMS) if ICONO_SIAMS is not None else "💧",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -79,6 +90,58 @@ st.markdown(
     /* SIDEBAR */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #0b3d36 0%, #124f45 100%);
+    }
+
+    /* Identidad compacta: evita ampliar un JPEG que puede tener baja resolución. */
+    .siams-sidebar-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        margin: 0.25rem 0 1.4rem 0;
+        padding: 0.4rem 0;
+        min-width: 0;
+    }
+    .siams-sidebar-brand__logo {
+        flex: 0 0 56px;
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
+    }
+    .siams-sidebar-brand__logo img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        image-rendering: auto;
+    }
+    .siams-sidebar-brand__fallback {
+        font-size: 1.7rem;
+        line-height: 1;
+    }
+    .siams-sidebar-brand__label {
+        flex: 1;
+        min-width: 0;
+    }
+    .siams-sidebar-brand__label strong {
+        display: block;
+        font-size: 1.45rem;
+        font-weight: 800;
+        line-height: 1.2;
+        letter-spacing: 0.02em;
+        color: #ffffff !important;
+    }
+    .siams-sidebar-brand__label small {
+        display: block;
+        margin-top: 0.2rem;
+        font-size: 0.82rem;
+        line-height: 1.3;
+        color: #d4ece6 !important;
     }
 
     [data-testid="stSidebar"] h1,
@@ -586,6 +649,47 @@ st.markdown(
     @media (max-width: 700px) {
         .sentinel-banner {padding: 1.15rem; border-radius: 14px;}
         .sentinel-method-card {min-height: auto;}
+    }
+
+
+    /* QGIS - fichas cartográficas bajo cada PDF de ubicación */
+    .qgis-metadata-title {
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: var(--text-color);
+        margin: 1.1rem 0 0.5rem 0;
+    }
+    .qgis-metadata-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.75rem;
+        margin: 0.4rem 0 0.8rem 0;
+    }
+    .qgis-metadata-card {
+        background: var(--secondary-background-color);
+        border: 1px solid var(--siams-borde);
+        border-radius: 14px;
+        padding: 0.9rem 1rem;
+        color: var(--text-color);
+        min-width: 0;
+        overflow-wrap: anywhere;
+        line-height: 1.5;
+    }
+    .qgis-metadata-card h4 {
+        margin: 0 0 0.45rem 0;
+        color: var(--primary-color) !important;
+        font-size: 0.96rem;
+    }
+    .qgis-metadata-card p { margin: 0; font-size: 0.87rem; }
+    .qgis-metadata-note {
+        opacity: .82;
+        font-size: .83rem;
+        line-height: 1.5;
+        margin: .35rem 0 1.3rem;
+        color: var(--text-color);
+    }
+    @media (max-width: 950px) {
+        .qgis-metadata-grid { grid-template-columns: 1fr; }
     }
 
     </style>
@@ -1997,6 +2101,38 @@ MAPAS_UBICACION_QGIS = {
             "escala": "1:5.000",
         },
     ],
+    "San Andrés": [
+        {
+            "paso": "Colombia",
+            "archivo": "San Andrés 1 - 10000000.pdf",
+            "titulo": "Nivel 1 · Colombia",
+            "detalle": "Ubicación del archipiélago de San Andrés en el contexto nacional.",
+            "escala": "1:10.000.000",
+        },
+        {
+            "paso": "Isla",
+            "archivo": "San Andrés 1 - 75000.pdf",
+            "titulo": "Nivel 2 · Isla de San Andrés",
+            "detalle": "Aproximación cartográfica al entorno insular de San Andrés.",
+            "escala": "1:75.000",
+        },
+    ],
+    "Tumaco": [
+        {
+            "paso": "Colombia",
+            "archivo": "Tumaco 1 - 10000000.pdf",
+            "titulo": "Nivel 1 · Colombia",
+            "detalle": "Ubicación de Tumaco dentro del contexto nacional.",
+            "escala": "1:10.000.000",
+        },
+        {
+            "paso": "Región",
+            "archivo": "Tumaco 1 - 1500000.pdf",
+            "titulo": "Nivel 2 · Pacífico nariñense",
+            "detalle": "Contexto regional del territorio de Tumaco y la costa pacífica de Nariño.",
+            "escala": "1:1.500.000",
+        },
+    ],
     "Leticia": [
         {
             "paso": "Colombia",
@@ -2044,6 +2180,20 @@ MAPAS_UBICACION_QGIS = {
         },
     ],
 }
+
+
+# Información de referencia del proyecto QGIS mostrado en las capturas.
+# NO equivale a certificar el SRC interno ni las fuentes de TODOS los PDF.
+# Ajustar estos campos si los layouts cartográficos usan otro SRC o fuentes.
+FICHA_QGIS_REFERENCIA = {
+    "src": "MAGNA-SIRGAS 2018 / Origen-Nacional (EPSG:9377)",
+    "proyeccion": "Transversa de Mercator",
+    "unidades": "Metros",
+    "fuentes": "OpenStreetMap (2024) · Esri World Imagery (2023)",
+    "elaboracion": "Semillero SIAMS · Cartografía académica elaborada en QGIS",
+    "fecha": "2026",
+}
+
 
 
 MAPAS_POR_TERRITORIO = {
@@ -3306,6 +3456,42 @@ def mostrar_mapa_interactivo_territorio(nombre_territorio: str, info_territorio:
         )
 
 
+def mostrar_ficha_tecnica_qgis(nombre_territorio: str, cfg: dict) -> None:
+    """Ficha de referencia bajo cada mapa QGIS; no presume metadatos embebidos en el PDF."""
+    base = FICHA_QGIS_REFERENCIA
+    campo = lambda valor: escape(str(valor))
+    st.markdown(
+        '<div class="qgis-metadata-title">🧭 Información cartográfica del mapa</div>'
+        '<div class="qgis-metadata-grid">'
+        '<div class="qgis-metadata-card">'
+        '<h4>📐 Sistema de coordenadas</h4>'
+        f'<p><strong>SRC de referencia:</strong> {campo(base["src"])}<br>'
+        f'<strong>Proyección:</strong> {campo(base["proyeccion"])}<br>'
+        f'<strong>Unidades:</strong> {campo(base["unidades"])}</p>'
+        '</div>'
+        '<div class="qgis-metadata-card">'
+        '<h4>🗺️ Fuentes de información</h4>'
+        f'<p>{campo(base["fuentes"])}<br>'
+        'Referencias declaradas en la ficha modelo aportada.</p>'
+        '</div>'
+        '<div class="qgis-metadata-card">'
+        '<h4>🎓 Elaboración</h4>'
+        f'<p>{campo(base["elaboracion"])}<br>'
+        f'<strong>Año de elaboración:</strong> {campo(base["fecha"])}<br>'
+        f'<strong>Sede:</strong> {campo(nombre_territorio)}<br>'
+        f'<strong>Escala del mapa:</strong> {campo(cfg.get("escala", "Por verificar"))}</p>'
+        '</div>'
+        '</div>'
+        '<p class="qgis-metadata-note">'
+        'El SRC EPSG:9377 corresponde al proyecto QGIS mostrado en la captura. '
+        'No se ha comprobado el SRC de exportación de cada PDF; '
+        'Las fuentes indicadas proceden de la ficha de ejemplo y deben verificarse '
+        'en cada mapa. Año de elaboración de los mapas SIAMS: 2026.'
+        '</p>',
+        unsafe_allow_html=True,
+    )
+
+
 def mostrar_navegador_ubicacion_bogota() -> None:
     """Navegador por niveles: Colombia → Bogotá → Campus → mapa interactivo."""
     st.markdown(
@@ -3408,6 +3594,7 @@ def mostrar_navegador_ubicacion_bogota() -> None:
                     use_container_width=True,
                 )
             st.caption(f"Archivo: {ruta.name} · {cfg['escala']}")
+            mostrar_ficha_tecnica_qgis("Bogotá", cfg)
 
 
     st.markdown("</div>", unsafe_allow_html=True)
@@ -3511,12 +3698,14 @@ def mostrar_navegador_ubicacion_qgis(nombre_territorio: str, info_territorio: di
         elif ruta.suffix.casefold() == ".pdf":
             mostrar_pdf_mapa(ruta, altura=900)
             st.caption(f"Archivo: {ruta.name} · Escala {cfg['escala']}")
+            mostrar_ficha_tecnica_qgis(nombre_territorio, cfg)
         else:
             st.image(
                 str(ruta),
                 caption=f"{cfg['titulo']} · Escala {cfg['escala']}",
                 use_container_width=True,
             )
+            mostrar_ficha_tecnica_qgis(nombre_territorio, cfg)
 
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -5514,8 +5703,27 @@ def mostrar_sentinel_territorio(nombre_territorio: str) -> None:
 # BARRA LATERAL CON SUBMENÚS
 # =========================================================
 
-st.sidebar.markdown("## 💧 SIAMS")
-st.sidebar.caption("Plataforma hidroambiental")
+# El archivo original sigue sirviendo como favicon. En la barra lateral se muestra
+# como isotipo pequeño junto a texto nítido, sin agrandarlo a 110 px.
+if ICONO_SIAMS is not None:
+    tipo_logo = "image/png" if ICONO_SIAMS.suffix.casefold() == ".png" else "image/jpeg"
+    logo_base64 = base64.b64encode(ICONO_SIAMS.read_bytes()).decode("ascii")
+    logo_html = (
+        f'<img src="data:{tipo_logo};base64,{logo_base64}" '
+        'alt="Logotipo del Semillero SIAMS">'
+    )
+else:
+    logo_html = '<span class="siams-sidebar-brand__fallback" aria-hidden="true">💧</span>'
+
+st.sidebar.markdown(
+    '<div class="siams-sidebar-brand">'
+    f'<div class="siams-sidebar-brand__logo">{logo_html}</div>'
+    '<div class="siams-sidebar-brand__label">'
+    '<strong>SIAMS</strong>'
+    '<small>Plataforma hidroambiental</small>'
+    '</div></div>',
+    unsafe_allow_html=True,
+)
 
 territorio = st.sidebar.selectbox(
     "Territorio",
