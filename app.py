@@ -2132,6 +2132,13 @@ MAPAS_UBICACION_QGIS = {
             "detalle": "Contexto regional del territorio de Tumaco y la costa pacífica de Nariño.",
             "escala": "1:1.500.000",
         },
+        {
+            "paso": "Sede",
+            "archivo": "Tumaco 1- 1500.pdf",
+            "titulo": "Nivel 3 · Entorno de la Sede Tumaco",
+            "detalle": "Detalle cartográfico de la Sede Tumaco y su entorno inmediato.",
+            "escala": "1:1.500",
+        },
     ],
     "Leticia": [
         {
@@ -3622,7 +3629,7 @@ def mostrar_navegador_ubicacion_bogota() -> None:
 
 
 def mostrar_navegador_ubicacion_qgis(nombre_territorio: str, info_territorio: dict) -> None:
-    """Navegador multiescala QGIS para los territorios que ya tienen tres PDF."""
+    """Navegador multiescala QGIS para territorios con mapas disponibles."""
     niveles = MAPAS_UBICACION_QGIS.get(nombre_territorio, [])
     if not niveles:
         mostrar_mapa_interactivo_territorio(nombre_territorio, info_territorio)
@@ -3632,8 +3639,9 @@ def mostrar_navegador_ubicacion_qgis(nombre_territorio: str, info_territorio: di
         dedent(f"""
         <div class="soft-box">
             <strong>Ubicación multiescala en QGIS.</strong>
-            Recorre tres escalas cartográficas —nacional, regional y sede— y después abre
-            el explorador interactivo de <strong>{escape(str(nombre_territorio))}</strong>.
+            Explora los mapas cartográficos disponibles —desde el contexto nacional
+            hasta la sede— y después abre el explorador interactivo de
+            <strong>{escape(str(nombre_territorio))}</strong>.
         </div>
         """).strip(),
         unsafe_allow_html=True,
@@ -8171,3 +8179,6 @@ st.caption(
     f"SIAMS · Universidad Nacional de Colombia · Prototipo hidroambiental · "
     f"Territorio seleccionado: {territorio} · Actualización: {FECHA_ACTUALIZACION}"
 )
+
+
+
