@@ -1,0 +1,65 @@
+{
+ "sede": "Leticia",
+ "periodo": "2023-06 a 2025-09",
+ "temporadas": [
+  2023,
+  2024,
+  2025
+ ],
+ "ventana_meses": [
+  6,
+  7,
+  8,
+  9
+ ],
+ "buffer_km": 25,
+ "crs": "EPSG:32719",
+ "pixel_m": 30.0,
+ "producto": "Landsat Collection 2 Level-2 Tier 1 (reflectancia superficial), vía Microsoft Planetary Computer",
+ "sensores": [
+  "landsat-8",
+  "landsat-9"
+ ],
+ "escenas_consultadas": 33,
+ "escenas_usadas": 24,
+ "primera_fecha": "2023-06-23",
+ "ultima_fecha": "2025-09-16",
+ "mascara": "QA_PIXEL bits 0–4 (relleno, nube dilatada, cirro, nube, sombra) y confianza de nube ≥ media, ampliada 60 m",
+ "metodo": "mediana por píxel de observaciones despejadas, sin las que superan en 0.04 el azul mínimo del píxel",
+ "aoi_sin_observacion_pct": 0.0,
+ "publicable": true,
+ "criterio_publicacion": "AOI sin observación ≤ 5.0 %",
+ "realce_color_natural": {
+  "rojo": [
+   0.0,
+   0.18
+  ],
+  "verde": [
+   0.0,
+   0.15
+  ],
+  "azul": [
+   0.0,
+   0.12
+  ]
+ },
+ "realce_falso_color": {
+  "swir1": [
+   0.0,
+   0.4
+  ],
+  "nir": [
+   0.0,
+   0.45
+  ],
+  "rojo": [
+   0.0,
+   0.18
+  ]
+ },
+ "imagenes": {
+  "color_natural": "leticia_2023-06_2025-09_color_natural.jpg",
+  "falso_color": "leticia_2023-06_2025-09_falso_color.jpg"
+ },
+ "script": "scripts/08_landsat_compuestos_stac.py"
+}

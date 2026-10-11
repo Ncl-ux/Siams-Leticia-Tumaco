@@ -157,3 +157,63 @@ cambian un poco, y no solo se alargan: en Arauca y La Paz la variabilidad (desvi
 
 - [ ] Pendiente para el semillero: confirmar con los autores cómo se generó `COL_GWS_estimations.nc` y decidir si se
       retira del repositorio. La app ya no lo necesita.
+
+## 9. Coberturas y Landsat con criterios de calidad; dos versiones de GWSa (octubre de 2026)
+
+### 9.1 Dos versiones de GWSa: decisión pendiente para la reunión con el semillero
+
+El repositorio trae ahora **dos** NetCDF extendidos hasta 2026-06, con el mismo formato y la misma malla:
+
+| | Método estándar (B) | Serie original extendida |
+|---|---|---|
+| Archivo | `data/processed/gwsa/COL_GWS_estimations_2002-2026.nc` | `data/processed/gwsa/COL_GWS_estimations_2002-2026_diferencias.nc` |
+| Fórmula | TWSA − anomalías 2004–2009 de humedad del suelo, dosel y nieve (GLDAS-2.1) | TWSA − (ΔSM + ΔSWE) mes a mes, la fórmula que reproduce el NetCDF original |
+| Construcción | Todo el período recalculado (2002-04 a 2026-06) | Valores originales hasta 2025-04 + 14 meses nuevos (variable `origen_valor`) |
+| Frente a Zenodo (Romero y Piña) | r mediano 0,963, amplitud ×0,98 | El original: r mediano 0,89, amplitud ×1,28 |
+| Continuidad con lo publicado antes en la app | No: cambian los valores históricos | Sí: idéntica hasta 2025-04 |
+| Empalme | — | Recalculado vs original en 2023-05 a 2025-04: r 0,96–0,998 por sede, sesgo −0,68 a +0,39 cm, RMSE 1,1–1,9 cm; serie nacional r 0,995 |
+| Tumaco | Hasta 2026-06 | Hasta 2025-04: su celda costera no tiene las cuatro subceldas GLDAS |
+| Series por sede | `GWSa_sedes_2002-2026.csv` | `GWSa_sedes_2002-2026_diferencias.csv` (columna `origen`) |
+
+- **App:** en «Agua subterránea (GRACE)» hay un selector «Versión de la serie GWSa» con «Método estándar (B, consistente con Zenodo)» (por defecto) y «Serie original extendida (diferencias mensuales)», con una nota que explica la diferencia. La elección también se aplica en «Análisis de tendencias». `SIAMS_ARCHIVO_GWS` sigue forzando un archivo y oculta el selector. En «Fuentes y descargas» se ofrecen los dos NetCDF.
+- **Script:** `python scripts/06_gwsa_grace_gldas_extendido.py alternativa` (mismos insumos que `procesar`).
+- **Pruebas:** `tests/test_gwsa_extendido.py` comprueba en la alternativa la cobertura hasta 2026-06, unidades y metadatos, que hasta 2025-04 los valores son los del original, las banderas `origen_valor`, la malla y el CSV por sede (incluido el corte de Tumaco).
+- [ ] **Decidir con el semillero** cuál versión queda por defecto (o si se publican ambas), si se acepta el corte de Tumaco en 2025-04 en la versión alternativa y si se retira `COL_GWS_estimations.nc`.
+
+### 9.2 Coberturas: MapBiomas como referencia
+
+- La pestaña «Coberturas MapBiomas (referencia)» sigue siendo la primera de «Cobertura y relieve», y la de Landsat se llama ahora «Landsat · imágenes con criterios» y abre con un aviso de que la referencia de coberturas es MapBiomas.
+- La colección de MapBiomas sigue **por confirmar**: los CSV llegan a 2024 y traen clases de la Colección 3.0 (octubre de 2025), pero no lo declaran. Cita sugerida en `CREDITOS.md`.
+
+### 9.3 Landsat: solo escenas y compuestos que cumplen criterios
+
+Criterios en `config/landsat_criterios.toml` (los lee `siams/landsat.py`, la app y los scripts): Collection 2, nivel L2SP, Tier 1; sensores LT04, LT05, LE07 (solo antes del fallo del SLC, 2003-05-31), LC08, LC09; nubes + sombra + sin dato sobre el buffer ≤ 20 % (desde `fraccion_util` del registro de Colab); y ventana de temporada seca por sede (Arauca y La Paz dic–mar, Leticia jun–sep, Medellín y Bogotá dic–feb, San Andrés ene–abr, Tumaco jul–oct, tomadas de las hojas `Regimen_P`).
+
+**Escenas del semillero** (`scripts/07_landsat_filtrar_escenas.py --eliminar-gif`):
+
+| Sede | Escenas registradas | Aceptadas en Colab | Cumplen | Principales motivos de rechazo |
+|---|---|---|---|---|
+| Arauca (2024) | 29 | 28 | 6 | fuera de la ventana seca, nubes > 20 %, 2 LE07 con SLC apagado, 2 Tier 2 |
+| La Paz (2024) | 30 | 27 | 10 | fuera de la ventana seca, nubes > 20 % |
+| Leticia (2025) | 25 | 22 | 0 | todas con > 20 % del buffer sin dato útil; 3 Tier 2 |
+| Medellín (2025) | 52 | 41 | 0 | nubes > 20 % (el buffer cae entre dos path/row, 009/055 y 009/056) |
+| San Andrés (2024) | 55 | 35 | 8 | fuera de la ventana seca, nubes, 2 LE07, 3 Tier 2 |
+| Tumaco (2024) | 37 | 32 | 0 | nubes > 20 %, 13 Tier 2 |
+
+- Se generó `Landsat/<Sede>/metadatos_escenas.csv` (id, fecha, sensor, path/row, tier, nubosidad del catálogo, % del buffer no aprovechable, cumple, motivos). `Control_escenas.csv` y `Areas_coberturas_por_fecha.csv` quedan sin cambios.
+- De los GIF se extrajeron **solo** los 24 fotogramas de escenas que cumplen (`Landsat/<Sede>/escenas/<id>.png`; se verificó fotograma por fotograma que la fecha impresa coincide con la fila del registro) y se **borraron los seis GIF**, que mezclaban escenas que cumplen y que no.
+- **Compuestos de temporada seca** (`scripts/08_landsat_compuestos_stac.py`, ejecutado en esta versión con datos de Microsoft Planetary Computer): mediana de Landsat 8/9 C2 L2 T1, temporadas 2023–2025, máscara QA_PIXEL (nube, nube dilatada, cirro, sombra, confianza de nube ≥ media, ampliada 60 m) y descarte por píxel de observaciones con neblina; JPG en color natural y falso color con realce fijo, norte, escala, período y fuente; tabla de escenas consultadas y JSON de metadatos. Resultado: Arauca 10 de 40 escenas consultadas (`--max-escenas 10`), La Paz 10 de 40 (ídem), San Andrés 10 de 65 (ídem), Leticia 24 de 33, Medellín 22 de 64 y Tumaco 10 de 46 (las únicas con ≥ 20 % del buffer despejado). El área sin ninguna observación despejada es ≤ 1,4 % en todas (Tumaco 1,38 %, Medellín 1,19 %; se muestra en gris), por debajo del 5 % que exige la configuración. Las escenas individuales siguen siendo de 2024–2025, pero los compuestos cubren tres temporadas secas (2023–2025).
+- **App** (`mostrar_landsat_territorio`): pestañas «Compuesto de temporada seca», «Escenas que cumplen» (selector de fecha y un umbral de nubes que solo puede hacerse más estricto que el de la configuración), «Series de coberturas» (solo fechas que cumplen, en % del área clasificada) y «Metadatos y descargas» (tabla con cumple y motivos). Ya no hay animaciones.
+- **Pruebas:** `tests/test_landsat_criterios.py` (lectura de IDs GEE y USGS, cada motivo de rechazo, filtro de umbral, carga de la configuración, y que en el repositorio cada imagen de `escenas/` corresponda a una escena que cumple, que no queden GIF y que los compuestos solo usen Landsat 8/9).
+
+**Peso:** `Landsat/` pasa de **22,6 MB** (seis GIF, 22,6 MB) a **9,1 MB**: 5,5 MB de escenas que cumplen (24 PNG), 3,6 MB de compuestos (12 JPG, tablas y JSON) y 0,07 MB de CSV. Sin los compuestos, el retiro de los GIF deja 5,5 MB. El historial de Git (`.git`, ~120 MB) **no** se reduce al borrar archivos: los GIF siguen en commits anteriores. Reducirlo exige reescribir el historial (`git filter-repo`), lo que obliga a todos a volver a clonar, incluida la copia de Windows; queda como decisión del semillero.
+
+**Lo que está implementado y lo que les toca:**
+
+- Implementado y ejecutado aquí: criterios, metadatos, filtrado de escenas, retiro de GIF, compuestos para las seis sedes, vista en la app y pruebas.
+- Les toca: (1) subir el cuaderno de Colab de la clasificación; (2) decidir si la clasificación propia se mantiene. Si se mantiene, rehacerla sobre los compuestos y validarla con puntos de referencia; si no, retirar `Areas_coberturas_por_fecha.csv` y quedarse con MapBiomas; (3) confirmar la colección de MapBiomas; (4) volver a correr `08_landsat_compuestos_stac.py` cuando quieran otro período (para antes de 2013 hay que agregar Landsat 5 y armonizar TM ↔ OLI; no está implementado).
+
+### 9.4 Otros
+
+- El mapa de GWSa usa una escala de color fija para todos los meses (percentil 98 de |GWSa| en toda la serie, simétrica en cero).
+- `VERSION_APP = "PROTOTIPO-SIAMS-V39-LANDSAT-CRITERIOS-GWSA-2VERSIONES"`.

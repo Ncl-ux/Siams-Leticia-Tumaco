@@ -361,6 +361,154 @@ def procesar(args) -> None:
     print("Validación:", rel(Path(args.validacion)), "| series:", rel(Path(args.sedes)))
 
 
+# --------------------------------------------------------------------------- versión alternativa
+SALIDA_NC_ALT = RAIZ / "data" / "processed" / "gwsa" / "COL_GWS_estimations_2002-2026_diferencias.nc"
+SALIDA_SEDES_ALT = RAIZ / "data" / "processed" / "gwsa" / "GWSa_sedes_2002-2026_diferencias.csv"
+SALIDA_VALIDACION_ALT = RAIZ / "docs" / "gwsa_validacion_diferencias.csv"
+
+
+def metodo_diferencias(gr: xr.Dataset, comp: dict, meses_gldas: list[str]) -> xr.DataArray:
+    """Fórmula de diferencias mensuales (UNgroundwater, ComputeGwe.py), variante A3.
+
+    GWe = lwe_thickness·scale_factor − (ΔSM + ΔSWE), con ΔX = X(mes) − X(mes anterior) de GLDAS,
+    sin canopia. GLDAS 0,25° → 0,5° por interpolación lineal en los centros JPL, que caen justo
+    entre 4 celdas GLDAS: equivale a su promedio simple, y es NaN si falta alguna (como xarray.interp).
+    La diferencia del mes calendario se asigna al mes nominal JPL (sin interpolación temporal).
+    """
+    d = (comp["SMSA"] + comp["SWEA"]).assign_coords(time=meses_gldas)
+    d = d.diff("time")  # etiqueta = mes final de la diferencia
+    d = d.coarsen(lat=2, lon=2, boundary="trim").reduce(np.mean)  # NaN si falta alguna
+    d = d.assign_coords(lat=d.lat.round(3), lon=d.lon.round(3)).reindex(lat=gr.lat, lon=gr.lon, method="nearest", tolerance=1e-3)
+    nominal = list(gr.mes_nominal.values)
+    falta = sorted(set(nominal) - set(d.time.values.astype(str)))
+    if falta:
+        sys.exit(f"Faltan diferencias GLDAS para: {falta}")
+    d = d.sel(time=nominal).assign_coords(time=gr.time)
+    return (gr["lwe_thickness"] * gr["scale_factor"] - d).transpose("time", "lat", "lon")
+
+
+def procesar_alternativa(args) -> None:
+    """Serie original del semillero + meses nuevos con su misma fórmula (diferencias mensuales)."""
+    grace = Path(args.grace) if args.grace else sorted(RAW_GRACE.glob("GRCTellus.JPL.*RL06.3M.MSCNv04CRI.nc"))[-1]
+    gr, faltantes = cargar_grace(grace, args.fin)
+    comp, meses_gldas, archivos_gldas = cargar_gldas(Path(args.gldas))
+    a05 = metodo_diferencias(gr, comp, meses_gldas)
+    ref = xr.open_dataset(args.referencia).load()
+    mascara = ref["GWS_anom"].notnull().any("time")
+    a_fino = a05.sel(lat=ref.lat, lon=ref.lon, method="nearest").assign_coords(lat=ref.lat, lon=ref.lon).where(mascara)
+
+    # Último mes del original con datos (el paso 2025-05 del archivo original está vacío).
+    con_dato = ref["GWS_anom"].notnull().any(("lat", "lon")).values
+    t_ult = ref.time.values[np.where(con_dato)[0][-1]]
+    t_orig = ref.time.values[con_dato]
+    assert np.isin(t_orig, gr.time.values).all(), "fechas del original que no están en el archivo JPL"
+    nuevos = gr.time.values[gr.time.values > t_ult]
+    tiempos = np.concatenate([t_orig, nuevos])
+    gr_t = gr.sel(time=tiempos)
+    valores = xr.concat([ref["GWS_anom"].sel(time=t_orig).astype("float32"),
+                         a_fino.sel(time=nuevos).drop_vars("mes_nominal").astype("float32")], dim="time")
+    origen = np.r_[np.zeros(len(t_orig), "int8"), np.ones(len(nuevos), "int8")]
+
+    # Empalme: la fórmula recalculada frente al original en los 24 meses previos al corte.
+    solape = t_orig[-24:]
+    filas = []
+    nuevo_sol, viejo_sol = a_fino.sel(time=solape), ref["GWS_anom"].sel(time=solape)
+    for sede, (la, lo) in SEDES.items():
+        i, j, d = pixel_sede(ref["GWS_anom"], la, lo)
+        fila = dict(ambito=sede, distancia_km=round(d, 1))
+        if i is not None:
+            s_new = a_fino.isel(lat=i, lon=j)
+            fila["meses_nuevos_con_dato"] = int(np.isfinite(s_new.sel(time=nuevos).values).sum())
+            fila.update(estadisticas(nuevo_sol.isel(lat=i, lon=j).values, viejo_sol.isel(lat=i, lon=j).values))
+            # Todo el período común (2002-05..2025-04): qué tanto reproduce la fórmula al original.
+            todo = estadisticas(a_fino.isel(lat=i, lon=j).sel(time=t_orig).values, ref["GWS_anom"].isel(lat=i, lon=j).sel(time=t_orig).values)
+            fila.update({f"{k}_2002_2025": v for k, v in todo.items() if k != "n_meses"})
+        filas.append(fila)
+    ma = np.nanmean(nuevo_sol.values, (1, 2)); mb = np.nanmean(viejo_sol.values, (1, 2))
+    filas.append(dict(ambito="Malla: serie media nacional", **estadisticas(ma, mb)))
+    val = pd.DataFrame(filas)
+    val.insert(1, "periodo_empalme", f"{pd.Timestamp(solape[0]):%Y-%m}..{pd.Timestamp(solape[-1]):%Y-%m}")
+
+    ahora = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+    t_fin = str(gr_t.mes_nominal.values[-1]); t_ini = str(gr_t.mes_nominal.values[0])
+    corte = str(gr_t.mes_nominal.values[len(t_orig) - 1])
+    out = xr.Dataset(coords=dict(time=tiempos, lat=ref.lat.values, lon=ref.lon.values))
+    out = out.assign_coords(mes_nominal=("time", gr_t.mes_nominal.values.astype(str)))
+    out["GWS_anom"] = valores.assign_coords(time=tiempos)
+    out["GWS_anom"].attrs = dict(
+        units="cm", long_name="Anomalía de almacenamiento de agua subterránea (GWSa), lámina de agua equivalente",
+        anomaly_baseline=("TWSA respecto a 2004-01-01/2009-12-31 (línea base JPL); a TWSA se le restan diferencias mensuales "
+                          "de humedad del suelo y nieve, no anomalías, así que la serie no tiene una línea base común"),
+        comment=(f"Hasta {corte}: valores del NetCDF original del semillero sin cambios (COL_GWS_estimations.nc). Desde el mes "
+                 "siguiente: GWe = TWSA·scale_factor (JPL RL06.3Mv04) − (ΔSM + ΔSWE) (GLDAS-2.1 Noah), la fórmula de diferencias "
+                 "mensuales con la que se reproduce el original (r mediano 0,975). Ver origen_valor."),
+        grid_mapping="crs", ancillary_variables="origen_valor")
+    out["origen_valor"] = ("time", origen)
+    out["origen_valor"].attrs = dict(long_name="procedencia del valor de cada mes", flag_values=np.array([0, 1], dtype="int8"),
+                                     flag_meanings="original_del_semillero extension_formula_diferencias_mensuales")
+    if "time_bounds" in gr_t:
+        out["time_bnds"] = (("time", "nv"), gr_t["time_bounds"].values)
+    out["crs"] = ref["crs"]
+    out.time.attrs = dict(standard_name="time", long_name="fecha central de la ventana de solución mensual GRACE/GRACE-FO",
+                          axis="T", **({"bounds": "time_bnds"} if "time_bnds" in out else {}))
+    out.mes_nominal.attrs = dict(long_name="mes nominal de la solución JPL (AAAA-MM)")
+    out.lat.attrs = dict(ref.lat.attrs); out.lon.attrs = dict(ref.lon.attrs)
+    sol = val.iloc[-1]
+    out.attrs = dict(
+        Conventions="CF-1.8",
+        title=f"GWSa para Colombia, serie original del semillero extendida hasta {t_fin} (diferencias mensuales)",
+        summary=(f"Versión ALTERNATIVA (pendiente de decisión con el semillero). Conserva sin cambios los valores del NetCDF "
+                 f"original ({t_ini}..{corte}) y agrega {len(nuevos)} meses ({pd.Timestamp(nuevos[0]):%Y-%m}..{t_fin}) "
+                 "calculados con la fórmula de diferencias mensuales de UNgroundwater, que es la que reproduce al original. "
+                 "La versión estándar es COL_GWS_estimations_2002-2026.nc (método B)."),
+        institution="Semillero SIAMS, Universidad Nacional de Colombia",
+        source=("Hasta el corte: COL_GWS_estimations.nc (procesamiento original por confirmar). Extensión: JPL GRACE/GRACE-FO Mascon "
+                f"CRI RL06.3Mv04 ({grace.name}, doi:10.5067/TEMSC-3JC634) y GLDAS_NOAH025_M v2.1 (doi:10.5067/SXAVCZFAQLNO)."),
+        method=("Extensión: GWe = lwe_thickness·scale_factor − (ΔSM + ΔSWE); SM = 0,1·(SoilMoi 0–10 + 10–40 + 40–100 + 100–200 cm), "
+                "SWE = 0,1·SWE_inst (cm); Δ = mes calendario menos mes anterior, asignado al mes nominal JPL (variante A3); "
+                "GLDAS llevado a 0,5° por interpolación lineal (promedio de las 4 celdas, NaN si falta alguna). Resta un flujo "
+                "(cambio mensual) a un estado (anomalía), por eso su amplitud es mayor que la del producto publicado."),
+        validation=(f"Fórmula recalculada frente al original en {val.periodo_empalme.iloc[0]}: serie media nacional r = {sol.get('r', float('nan')):.3f}, "
+                    f"sesgo = {sol.get('sesgo_cm', float('nan')):+.2f} cm, RMSE = {sol.get('rmse_cm', float('nan')):.2f} cm "
+                    "(docs/gwsa_validacion_diferencias.csv). Frente al producto Zenodo de Romero y Piña (2002-04..2023-04) el original "
+                    "tiene r mediano por píxel 0,89 y amplitud ×1,28; el método B, r 0,963 y amplitud ×0,98."),
+        time_coverage_start=t_ini, time_coverage_end=t_fin,
+        period=(f"{t_ini}..{t_fin}, {len(tiempos)} meses con solución. Meses sin solución JPL no interpolados: " + ";".join(m for m in faltantes if m >= t_ini)
+                + ". Incluye la brecha GRACE → GRACE-FO 2017-07..2018-05."),
+        references=("Romero, P. & Piña, A. (2025) doi:10.1016/j.ejrh.2025.102756; Watkins et al. (2015) doi:10.1002/2014JB011547; "
+                    "Rodell et al. (2004) doi:10.1175/BAMS-85-3-381"),
+        license="Por confirmar con los autores del producto original; datos NASA de uso libre con atribución.",
+        history=f"{ahora}: generado con scripts/06_gwsa_grace_gldas_extendido.py alternativa.",
+        geospatial_lat_min=float(ref.lat.min()), geospatial_lat_max=float(ref.lat.max()),
+        geospatial_lon_min=float(ref.lon.min()), geospatial_lon_max=float(ref.lon.max()),
+        comment="Las celdas costeras donde GLDAS no tiene las 4 subceldas quedan sin dato en los meses nuevos (p. ej. Tumaco).",
+    )
+    enc = {"GWS_anom": dict(zlib=True, complevel=6, _FillValue=np.float32(np.nan), least_significant_digit=3),
+           "time": dict(units="days since 2002-01-01", calendar="standard", dtype="float64")}
+    if "time_bnds" in out:
+        enc["time_bnds"] = dict(units="days since 2002-01-01", calendar="standard", dtype="float64")
+    salida = Path(args.salida)
+    out.to_netcdf(salida, encoding=enc)
+    print("NetCDF:", rel(salida), f"{salida.stat().st_size / 1e6:.1f} MB", t_ini, "→", t_fin, f"(corte {corte})")
+
+    series = []
+    for sede, (la, lo) in SEDES.items():
+        i, j, _ = pixel_sede(out["GWS_anom"], la, lo)
+        if i is None:
+            continue
+        s = out["GWS_anom"].isel(lat=i, lon=j).values.astype(float)
+        series.append(pd.DataFrame({"sede": sede, "mes_nominal": out.mes_nominal.values,
+                                    "fecha": pd.DatetimeIndex(out.time.values).strftime("%Y-%m-%d"),
+                                    "GWSa_cm": np.round(s, 3), "origen": np.where(origen == 0, "original", "extension"),
+                                    "lat_pixel": float(out.lat[i]), "lon_pixel": float(out.lon[j])}))
+    pd.concat(series).to_csv(args.sedes, index=False)
+    for c in ("n_meses", "meses_nuevos_con_dato"):
+        if c in val:
+            val[c] = val[c].astype("Int64")
+    val.to_csv(args.validacion, index=False, float_format="%.4f")
+    print(val.round(3).to_string())
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="accion", required=True)
@@ -375,9 +523,19 @@ def main(argv=None):
     p.add_argument("--salida", default=str(SALIDA_NC))
     p.add_argument("--sedes", default=str(SALIDA_SEDES))
     p.add_argument("--validacion", default=str(SALIDA_VALIDACION))
+    q = sub.add_parser("alternativa", help="serie original del semillero + meses nuevos con la fórmula de diferencias")
+    q.add_argument("--grace", default=None)
+    q.add_argument("--gldas", default=str(RAW_GLDAS))
+    q.add_argument("--referencia", default=str(REFERENCIA))
+    q.add_argument("--fin", default="2026-06")
+    q.add_argument("--salida", default=str(SALIDA_NC_ALT))
+    q.add_argument("--sedes", default=str(SALIDA_SEDES_ALT))
+    q.add_argument("--validacion", default=str(SALIDA_VALIDACION_ALT))
     a = ap.parse_args(argv)
     if a.accion == "descargar":
         descargar(a.inicio, a.fin)
+    elif a.accion == "alternativa":
+        procesar_alternativa(a)
     else:
         procesar(a)
 

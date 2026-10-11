@@ -93,3 +93,15 @@ references:
     volume: 85
     year: 2004
     doi: "10.1175/BAMS-85-3-381"
+  - type: dataset
+    title: "Landsat Collection 2 Level-2 Science Products (surface reflectance)"
+    authors:
+      - name: "U.S. Geological Survey"
+    notes: "Escenas y compuestos de temporada seca de Landsat/ (scripts/07 y 08); compuestos obtenidos vía Microsoft Planetary Computer."
+    url: "https://www.usgs.gov/landsat-missions/landsat-collection-2-level-2-science-products"
+  - type: dataset
+    title: "Colección 3.0 de la serie anual de mapas de cobertura y uso del suelo de Colombia (por confirmar)"
+    authors:
+      - name: "Proyecto MapBiomas Colombia"
+    year: 2025
+    url: "https://colombia.mapbiomas.org/"

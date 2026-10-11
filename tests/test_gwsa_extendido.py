@@ -63,3 +63,54 @@ def test_series_de_sedes_llegan_a_2026_06():
         assert x["mes_nominal"].min() == "2002-04", sede
     # San Andrés: celda GRACE oceánica y fuera de la malla; la app lo informa sin extrapolar.
     assert "San Andrés" not in set(s["sede"])
+
+
+# --------------------------------------------------------------------------------------------
+# Versión alternativa: serie original del semillero + meses nuevos con diferencias mensuales.
+ALTERNATIVO = RAIZ / "data" / "processed" / "gwsa" / "COL_GWS_estimations_2002-2026_diferencias.nc"
+SEDES_ALT = RAIZ / "data" / "processed" / "gwsa" / "GWSa_sedes_2002-2026_diferencias.csv"
+
+
+@pytest.fixture(scope="module")
+def alt():
+    with xr.open_dataset(ALTERNATIVO) as d:
+        yield d.load()
+
+
+def test_alternativa_cobertura_y_unidades(alt):
+    meses = list(alt["mes_nominal"].values.astype(str))
+    assert meses[0] == "2002-05" and meses[-1] == "2026-06"
+    assert alt.attrs["time_coverage_end"] == "2026-06"
+    assert len(meses) == len(set(meses))
+    assert "2017-07" not in meses and "2018-05" not in meses
+    assert alt["GWS_anom"].attrs["units"] == "cm"
+    assert alt.attrs["Conventions"].startswith("CF-")
+    assert "diferencias" in alt.attrs["method"].casefold() or "ΔSM" in alt.attrs["method"]
+    assert "validation" in alt.attrs and "r =" in alt.attrs["validation"]
+    assert int(alt["GWS_anom"].isel(time=-1).notnull().sum()) > 5000
+
+
+def test_alternativa_conserva_el_original_sin_cambios(alt):
+    with xr.open_dataset(ORIGINAL) as o:
+        o = o.load()
+        con_dato = o["GWS_anom"].notnull().any(("lat", "lon")).values
+        t = o.time.values[con_dato]
+        assert np.allclose(alt.lat, o.lat) and np.allclose(alt.lon, o.lon)
+        orig = alt["origen_valor"].values
+        assert (orig[: len(t)] == 0).all() and (orig[len(t):] == 1).all()
+        a = alt["GWS_anom"].sel(time=t).values
+        b = o["GWS_anom"].sel(time=t).values
+        # Igual salvo la cuantización a 0,001 cm de la compresión.
+        assert np.array_equal(np.isfinite(a), np.isfinite(b))
+        assert np.nanmax(np.abs(a - b)) < 1e-3
+
+
+def test_alternativa_series_de_sedes():
+    s = pd.read_csv(SEDES_ALT)
+    for sede in ["Bogotá", "Leticia", "Medellín", "Arauca", "La Paz"]:
+        x = s[(s["sede"] == sede) & s["GWSa_cm"].notna()]
+        assert x["mes_nominal"].max() == "2026-06", sede
+    # Tumaco: la celda costera no tiene las 4 subceldas GLDAS; su serie termina en el corte.
+    t = s[(s["sede"] == "Tumaco") & s["GWSa_cm"].notna()]
+    assert t["mes_nominal"].max() == "2025-04"
+    assert set(s["origen"]) == {"original", "extension"}

@@ -23,7 +23,8 @@ así empezó el proyecto.
 | Clima de estación | [IDEAM – DHIME](http://dhime.ideam.gov.co/atencionciudadano/) (Tumaco, Arauca) | 1985–2025 | estación | En validación; **lluvia de Tumaco inhomogénea** |
 | Agua subterránea (GWSa, GGDI) | [JPL GRACE/GRACE-FO mascon RL06.3Mv04](https://doi.org/10.5067/TEMSC-3JC634) menos [GLDAS-2.1 Noah](https://doi.org/10.5067/SXAVCZFAQLNO), según [Romero y Piña (2025)](https://doi.org/10.1016/j.ejrh.2025.102756) | 2002-04 – 2026-06 | regional (cientos de km) | Exploratorio |
 | Río (nivel y ancho) | [SWOT](https://swot.jpl.nasa.gov/) vía [HydroWeb](https://hydroweb.next.theia-land.fr/) | 2023–2026 | tramo de río | Exploratorio |
-| Coberturas | [MapBiomas Colombia](https://colombia.mapbiomas.org/) (colección por confirmar), Landsat 8/9 C2 L2 | 1985–2025 | 30 m | Exploratorio |
+| Coberturas | [MapBiomas Colombia](https://colombia.mapbiomas.org/) (probablemente Colección 3.0, por confirmar): referencia | 1985–2024 | 30 m | Clasificación validada por MapBiomas |
+| Imágenes Landsat | Landsat 8/9 C2 L2 Tier 1: escenas que cumplen `config/landsat_criterios.toml` y compuestos de temporada seca vía [Microsoft Planetary Computer](https://planetarycomputer.microsoft.com/) | 2023–2025 | 30 m | Apoyo visual |
 | Agua en superficie y vegetación | [Copernicus Sentinel-2](https://dataspace.copernicus.eu/) (NDVI, MNDWI, SCL) | 2025 | 10–20 m | Solo Arauca |
 | Cartografía | Mapas QGIS del semillero y mapas oficiales (SINCHI, Corpoamazonia, CORPONARIÑO, CORALINA, SGC, IDEAM, Alcaldía de Medellín) | — | — | Ver `CREDITOS.md` |
 
@@ -53,7 +54,10 @@ La app abre en <http://localhost:8501>. Con conda: `conda env create -f environm
 python scripts/01_descarga_nasa_power.py --sede tumaco --inicio 1992-01-01 --fin 2025-12-31
 python scripts/02_agregados_anuales.py          # series anuales en data/processed/anuales/
 python scripts/03_tendencias_homogeneidad.py    # docs/tendencias_homogeneidad.csv
-python scripts/06_gwsa_grace_gldas_extendido.py procesar   # GWSa 2002-04..2026-06 (insumos: ver data/README.md, 4.1)
+python scripts/06_gwsa_grace_gldas_extendido.py procesar     # GWSa método B 2002-04..2026-06 (insumos: data/README.md, 4.1)
+python scripts/06_gwsa_grace_gldas_extendido.py alternativa  # serie original extendida (data/README.md, 4.2)
+python scripts/07_landsat_filtrar_escenas.py                  # metadatos y criterios de escenas Landsat
+python scripts/08_landsat_compuestos_stac.py --sede Leticia   # compuesto de temporada seca (requiere red)
 ```
 
 Ver `scripts/README.md`: ahí se explica qué se reconstruyó y qué falta (procesamiento IDEAM, Landsat, SWOT,
@@ -67,6 +71,8 @@ siams/                     funciones reutilizables y probadas
   estadistica.py           Mann-Kendall, Hamed-Rao, Sen, Pettitt, SNHT, agregación anual
   unidades.py              unidades, conversiones y nombres de columnas
   calidad.py               series con problemas de calidad documentados
+  landsat.py               criterios de calidad de escenas Landsat
+config/landsat_criterios.toml  umbrales Landsat (nubes sobre el AOI, tier, sensores, ventana seca por sede)
 scripts/                   descarga y procesamiento reproducibles
 tests/                     pruebas con pytest
 data/README.md             diccionario de datos (fuente, unidad, zona horaria, licencia)
@@ -74,7 +80,8 @@ data/processed/            productos generados por los scripts
 docs/                      notas técnicas (homogeneidad de Tumaco, tabla de tendencias)
 Analisis Hidro/            Excel de clima NASA POWER e IDEAM
 COL_GWS_estimations.nc     GWSa original del semillero, 2002–2025 (respaldo)
-data/processed/gwsa/       GWSa extendido 2002-04 – 2026-06 (lo usa la app) y series por sede
+data/processed/gwsa/       GWSa extendido 2002-04 – 2026-06, dos versiones (método B por defecto y serie original
+                           extendida), y series por sede
 Coberturas MapBio/  Landsat/  Sentinel/  Gif/  Tarjeta Tecnica Swot/
 SIAMS MAPAS/  Mapas Qgis/  Presentacion/
 ```
@@ -90,7 +97,10 @@ SIAMS MAPAS/  Mapas Qgis/  Presentacion/
   (2002-04 – 2026-06) está documentado y es reproducible (`scripts/06_gwsa_grace_gldas_extendido.py`); San Andrés
   no tiene serie (celda oceánica) y los meses sin solución GRACE, como el vacío 2017-07 – 2018-05, no se interpolan.
   Ver `data/README.md`, sección 4.
-- **Landsat:** el área clasificada cambia con las nubes; compare en porcentaje, no en hectáreas.
+- **Coberturas:** la referencia es MapBiomas. La clasificación Landsat del semillero no está validada y cambia
+  con las nubes y la fenología; la app solo muestra escenas que cumplen los criterios y compuestos de temporada seca.
+- **GWSa, dos versiones:** la serie original extendida (diferencias mensuales) y la del método estándar difieren;
+  la elección está pendiente con el semillero (`CAMBIOS.md`, sección 9).
 - **SWOT:** las tarjetas no traen las tablas de origen ni los indicadores de calidad oficiales.
 - **Años parciales:** 2026 (NASA POWER) y 2025 (IDEAM Tumaco) están en las hojas `P_anual`, pero no entran en las
   tendencias.

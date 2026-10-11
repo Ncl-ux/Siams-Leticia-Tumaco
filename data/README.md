@@ -118,8 +118,19 @@ de la columna «Fechas ausentes» de `Control_faltantes` (mostraba 1900-11-17 en
 
 ## 4. Agua subterránea — GWSa GRACE/GLDAS
 
-La app usa el **NetCDF extendido** (4.1). El original del semillero (4.2) se conserva como respaldo y
-referencia: la app lo lee solo si falta el extendido (o si `SIAMS_ARCHIVO_GWS` apunta a él).
+Hay **dos versiones extendidas hasta 2026-06** y la elección entre ellas está **pendiente de decidir con el semillero**
+(ver `CAMBIOS.md`, sección 9). La app usa por defecto el método estándar (4.1) y en la página «Agua subterránea
+(GRACE)» tiene un selector para ver la serie original extendida (4.2); en «Análisis de tendencias» se usa la versión
+elegida en ese selector. El original del semillero (4.3) se conserva como respaldo: la app lo lee solo si faltan los
+extendidos (o si `SIAMS_ARCHIVO_GWS` apunta a él, lo que además oculta el selector).
+
+| | 4.1 Método estándar (B) | 4.2 Serie original extendida (diferencias) |
+|---|---|---|
+| Fórmula | TWSA − anomalías (respecto a 2004–2009) de humedad del suelo, dosel y nieve | TWSA − cambio mensual (ΔSM + ΔSWE) |
+| Cómo se construye | Recalculado de forma homogénea 2002-04 a 2026-06 | Valores del original hasta 2025-04 + 14 meses nuevos (2025-05 a 2026-06) |
+| Frente al producto publicado (Zenodo) | r mediano por píxel 0,963, amplitud ×0,98 | Original: r mediano 0,89, amplitud ×1,28 |
+| Continuidad con lo que ya mostraba la app | Cambia los valores históricos (Arauca y La Paz: −35–40 % de desviación estándar) | Idéntico hasta 2025-04 |
+| Tumaco | Hasta 2026-06 | Termina en 2025-04 (ver 4.2) |
 
 ### 4.1 `data/processed/gwsa/COL_GWS_estimations_2002-2026.nc` (en uso)
 
@@ -165,7 +176,38 @@ lon −72,75 y costa pacífica, incluida la vecindad de Tumaco): ahí la señal 
 GRACE-FO se publica con 2–3 meses de retraso y JPL reprocesa los meses recientes: al actualizar, los últimos
 valores pueden cambiar un poco. La reconstrucción es cercana pero no exacta al producto Zenodo (residuo de ~2 cm).
 
-### 4.2 `COL_GWS_estimations.nc` (original del semillero, respaldo)
+### 4.2 `data/processed/gwsa/COL_GWS_estimations_2002-2026_diferencias.nc` (alternativa, pendiente de decisión)
+
+| Campo | Valor |
+|---|---|
+| Variable | `GWS_anom(time, lat, lon)`, float32, **cm**; `origen_valor(time)` (0 = valor del NetCDF original, 1 = mes nuevo calculado), `mes_nominal(time)`, `crs` |
+| Malla y máscara | Idénticas al original (135 × 99) |
+| Tiempo | 2002-05 a 2026-06. Hasta **2025-04** son exactamente los valores de `COL_GWS_estimations.nc` (salvo cuantización de 0,001 cm); **2025-05 a 2026-06** (14 meses) son nuevos. El paso vacío 2025-05 del original se reemplaza por el calculado |
+| Fórmula de los meses nuevos | `GWSA = lwe_thickness·scale_factor − (ΔSM + ΔSWE)`, con SM = suma de las cuatro capas de `SoilMoi` y SWE de GLDAS-2.1 Noah 0,25° (kg m⁻² × 0,1 = cm); Δ = mes calendario menos mes anterior, asignado al mes nominal JPL; GLDAS llevado a 0,5° con el promedio simple de las 4 subceldas (NaN si falta alguna), que equivale a la interpolación lineal en el centro de la celda. Es la fórmula del código UNgroundwater que reproduce el original (r mediano 0,975 por píxel) |
+| Mismos insumos que 4.1 | JPL Mascon CRI RL06.3Mv04 y GLDAS-2.1 Noah 0,25° mensual |
+| Script | `python scripts/06_gwsa_grace_gldas_extendido.py alternativa` |
+| Otras salidas | `data/processed/gwsa/GWSa_sedes_2002-2026_diferencias.csv` (columna `origen`: `original` / `extension`) y `docs/gwsa_validacion_diferencias.csv` |
+
+**Validación del empalme.** Se recalculó la fórmula sobre los 24 meses anteriores al corte (2023-05 a 2025-04) y se
+comparó con el original (sesgo = recalculado − original):
+
+| Ámbito | r | Sesgo (cm) | RMSE (cm) | r 2002–2025 |
+|---|---|---|---|---|
+| Bogotá | 0,986 | −0,68 | 1,44 | 0,977 |
+| Leticia | 0,997 | +0,34 | 1,86 | 0,991 |
+| Medellín | 0,960 | −0,49 | 1,51 | 0,963 |
+| Arauca | 0,997 | +0,39 | 1,34 | 0,989 |
+| La Paz | 0,998 | +0,04 | 1,08 | 0,989 |
+| Malla, serie media nacional | 0,995 | −0,14 | 0,83 | — |
+
+El empalme no crea un salto apreciable (sesgos < 0,7 cm frente a oscilaciones de ±20–40 cm). **Tumaco** no tiene
+meses nuevos: su celda costera de 0,5° no tiene las cuatro subceldas GLDAS con dato, así que la fórmula original no la
+calcula y su serie termina en 2025-04 (el original sí tenía valores ahí; no se sabe con qué tratamiento de borde).
+**San Andrés** sigue sin píxel. Advertencia de fondo: la fórmula resta un flujo (cambio mensual) a un estado
+(anomalía), por eso su amplitud es mayor que la del producto publicado; las mismas advertencias de 4.1 sobre resolución
+(~300 km efectivos) y meses recientes provisionales aplican aquí.
+
+### 4.3 `COL_GWS_estimations.nc` (original del semillero, respaldo)
 
 | Campo | Valor |
 |---|---|
@@ -188,8 +230,12 @@ valores (compresión sin pérdida: 25 MB → 4,6 MB).
 | Archivo | Fuente | Unidad | Notas |
 |---|---|---|---|
 | `Coberturas MapBio/<SEDE>/*.csv` | MapBiomas Colombia | ha (**asumida** por el código; el CSV no la declara) | Colección **por confirmar**. Hay nombres con «Copia de» y «Probidencia» |
-| `Landsat/<Sede>/Areas_coberturas_por_fecha.csv` | Landsat 8/9 C2 L2, clasificación propia (Colab) | ha | El área clasificada cambia con la nubosidad: compare en % del área clasificada (vista por defecto en la app) |
-| `Landsat/<Sede>/Control_escenas.csv` | Ídem | — | ID de escena LC08/LC09 L2SP, nubosidad, fracción útil, motivo de descarte |
+| `Landsat/<Sede>/Areas_coberturas_por_fecha.csv` | Landsat C2 L2, clasificación propia (Colab) | ha | Original, sin cambios. El área clasificada cambia con la nubosidad. La app solo grafica las fechas que cumplen los criterios, en % del área clasificada |
+| `Landsat/<Sede>/Control_escenas.csv` | Ídem | — | Original, sin cambios: ID de escena (LC08, LC09, LE07; T1 y T2), nubosidad del catálogo, fracción útil del buffer, estado |
+| `Landsat/<Sede>/metadatos_escenas.csv` | `scripts/07_landsat_filtrar_escenas.py` | % | `fecha, id_escena, sensor, path_row, tier, nubosidad_catalogo_pct, nube_aoi_pct` (= 100 × (1 − fracción útil): nubes, sombras y sin dato en el buffer), `estado_original, fotograma_gif, cumple, motivos` |
+| `Landsat/<Sede>/escenas/<id_escena>.png` | Ídem | — | Solo los fotogramas de escenas que cumplen `config/landsat_criterios.toml`, extraídos de los GIF originales (que se retiraron) |
+| `Landsat/<Sede>/compuestos/*` | `scripts/08_landsat_compuestos_stac.py` | reflectancia | Mediana de temporada seca, Landsat 8/9 C2 L2 T1 con máscara QA_PIXEL: JPG color natural y falso color, `*_escenas.csv` (escenas consultadas, % del AOI despejado, si se usaron) y `*_compuesto.json` (metadatos que lee la app) |
+| `config/landsat_criterios.toml` | — | — | Umbrales: nubosidad máxima sobre el AOI, colección, nivel, tier, sensores, ventana seca por sede, buffer y realce fijo de los compuestos |
 
 ## 6. Sensores remotos (solo animaciones e imágenes)
 
@@ -208,3 +254,7 @@ valores (compresión sin pérdida: 25 MB → 4,6 MB).
 | `data/processed/gwsa/COL_GWS_estimations_2002-2026.nc` | `06_gwsa_grace_gldas_extendido.py` | GWSa 2002-04 a 2026-06 (cm), malla de la app (sección 4.1) |
 | `data/processed/gwsa/GWSa_sedes_2002-2026.csv` | `06_gwsa_grace_gldas_extendido.py` | Serie GWSa (cm) del píxel de cada sede: `sede, mes_nominal, fecha, GWSa_cm, lat_pixel, lon_pixel` |
 | `docs/gwsa_validacion_extension.csv` | `06_gwsa_grace_gldas_extendido.py` | r, sesgo, RMSE y razón de amplitud frente al NetCDF original, por sede y en la malla |
+| `data/processed/gwsa/COL_GWS_estimations_2002-2026_diferencias.nc` y `GWSa_sedes_2002-2026_diferencias.csv` | `06_gwsa_grace_gldas_extendido.py alternativa` | Serie original extendida (sección 4.2) |
+| `docs/gwsa_validacion_diferencias.csv` | Ídem | Validación del empalme (2023-05 a 2025-04) por sede y en la serie media nacional |
+| `Landsat/<Sede>/metadatos_escenas.csv`, `escenas/` | `07_landsat_filtrar_escenas.py` | Sección 5 |
+| `Landsat/<Sede>/compuestos/` | `08_landsat_compuestos_stac.py` | Sección 5 |
