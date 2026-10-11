@@ -1,0 +1,47 @@
+# Archivo de citación (https://citation-file-format.github.io/).
+# PROPUESTA: los nombres salen de los metadatos de los PDF de QGIS y de la cuenta
+# de GitHub del repositorio. El semillero debe completar la lista de integrantes
+# (con autorización de cada persona), sus ORCID y el docente coordinador.
+cff-version: 1.2.0
+message: "Si usa SIAMS, cítelo así. Lista de autores por completar por el semillero."
+title: "SIAMS: plataforma hidroambiental del Semillero SIAMS (Universidad Nacional de Colombia)"
+type: software
+version: "0.38.1-revisado"
+date-released: "2026-10-11"
+license: MIT
+repository-code: "https://github.com/Ncl-ux/Siams-Leticia-Tumaco"
+abstract: >-
+  Prototipo académico en Streamlit que reúne, por sede de la Universidad Nacional
+  de Colombia (Bogotá, Leticia, Tumaco, Medellín, San Andrés, Arauca y La Paz),
+  información climática (IDEAM y NASA POWER), anomalías de agua subterránea
+  GRACE/GLDAS, coberturas MapBiomas y Landsat, observaciones Sentinel-2 y SWOT
+  y cartografía QGIS. No reemplaza información oficial.
+keywords:
+  - hidrología
+  - agua subterránea
+  - GRACE
+  - Amazonia
+  - Pacífico colombiano
+  - Streamlit
+authors:
+  - name: "Semillero SIAMS, Universidad Nacional de Colombia"
+  - family-names: "Hernández Hernández"
+    given-names: "Jean Carlot"
+    affiliation: "Semillero SIAMS (por confirmar)"
+  - family-names: "Ruiz"
+    given-names: "Diana"
+    affiliation: "Semillero SIAMS (por confirmar)"
+  - name: "Integrantes por completar (cuenta de GitHub Ncl-ux)"
+references:
+  - type: article
+    title: "GRACE-based analysis of groundwater sustainability in the tropics"
+    authors:
+      - family-names: "Romero"
+        given-names: "P."
+      - family-names: "Piña"
+        given-names: "A."
+    journal: "Journal of Hydrology: Regional Studies"
+    volume: 62
+    start: 102756
+    year: 2025
+    doi: "10.1016/j.ejrh.2025.102756"

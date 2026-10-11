@@ -1,3 +1,36 @@
+# Entornos virtuales (nunca subirlos: el .venv del historial original pesaba ~470 MB)
 .venv/
+venv/
+env/
+.conda/
+
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Sistema operativo y editores
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# Credenciales (Earthdata, Copernicus, etc.): nunca al repositorio
+.env
+.env.*
+.streamlit/secrets.toml
+secrets.toml
+*.netrc
+.netrc
+
+# Cachés y temporales pesados
+.cache/
+*.tmp
+~$*.xlsx
+data/raw/**/*.zip
+data/cache/
+
+# Datos con información personal o sensible (consentimientos, ubicaciones de viviendas/pozos)
+privado/

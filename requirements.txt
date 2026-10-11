@@ -1,7 +1,12 @@
-streamlit
-pandas
-plotly
-openpyxl
-numpy
-xarray
-netCDF4
+# SIAMS · dependencias fijadas (probadas el 11/10/2026 con Python 3.13.5 en Linux).
+# Instalar con:  python -m pip install -r requirements.txt
+streamlit==1.65.0
+pandas==3.0.6
+numpy==2.5.4
+plotly==7.1.0
+openpyxl==3.1.5
+xarray==2026.9.0
+netCDF4==1.7.4
+pillow==12.3.0
+# Visor de los PDF de QGIS dentro de la app (sin esto se ofrece solo la descarga).
+pymupdf==1.28.2
