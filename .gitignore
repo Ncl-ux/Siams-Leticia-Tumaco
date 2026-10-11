@@ -34,3 +34,7 @@ data/cache/
 
 # Datos con información personal o sensible (consentimientos, ubicaciones de viviendas/pozos)
 privado/
+
+# Insumos crudos GRACE/GLDAS (se descargan con scripts/06_gwsa_grace_gldas_extendido.py descargar)
+data/raw/grace
+data/raw/gldas

@@ -27,7 +27,7 @@ except ImportError:
     np = None
     xr = None
 
-VERSION_APP = "PROTOTIPO-SIAMS-V38-REVISADO-2026-10-11"
+VERSION_APP = "PROTOTIPO-SIAMS-V38-REVISADO-GRACE-2026-06"
 FECHA_ACTUALIZACION = "11 de octubre de 2026 (versión corregida tras la revisión)"
 
 # Paquete local con estadística, unidades y registro de calidad (probado con pytest).
@@ -1425,9 +1425,28 @@ FUENTES_CLIMATICAS = pd.DataFrame({
 # AGUA SUBTERRÁNEA · GRACE / GLDAS
 # =========================================================
 
+# NetCDF extendido (2002-04 a 2026-06, método de anomalías; scripts/06_gwsa_grace_gldas_extendido.py).
+# Tiene prioridad sobre el NetCDF original del semillero (2002-05 a 2025-05), que queda como respaldo.
+# La variable de entorno SIAMS_ARCHIVO_GWS permite forzar otro archivo con la misma estructura.
+NOMBRE_GWS_EXTENDIDO = "COL_GWS_estimations_2002-2026.nc"
+
+
 def encontrar_archivo_gws():
-    """Localiza el NetCDF de anomalías de almacenamiento subterráneo."""
+    """Localiza el NetCDF de anomalías de almacenamiento subterráneo (prefiere el extendido)."""
     carpeta_codigo = Path(__file__).resolve().parent
+    forzado = os.environ.get("SIAMS_ARCHIVO_GWS", "").strip()
+    if forzado:
+        ruta_forzada = Path(forzado)
+        if not ruta_forzada.is_absolute():
+            ruta_forzada = carpeta_codigo / ruta_forzada
+        if ruta_forzada.is_file():
+            return ruta_forzada
+        log.warning("SIAMS_ARCHIVO_GWS apunta a un archivo inexistente: %s", forzado)
+
+    ruta_extendida = carpeta_codigo / "data" / "processed" / "gwsa" / NOMBRE_GWS_EXTENDIDO
+    if ruta_extendida.is_file():
+        return ruta_extendida
+
     carpetas = [
         carpeta_codigo,
         carpeta_codigo / "DATOS GWS",
@@ -1522,9 +1541,18 @@ def extraer_gws_territorio(ruta_texto: str, lat_obj: float, lon_obj: float, radi
         }
 
     serie = da.isel(lat=i_lat, lon=i_lon)
+    fecha_central = pd.to_datetime(ds["time"].values)
+    if "mes_nominal" in ds.coords:
+        # El NetCDF extendido trae el mes nominal JPL: dos ventanas GRACE tienen su punto medio
+        # en otro mes calendario (2012-01-01 → 2011-12; 2015-04-27 → 2015-05). Se fecha cada
+        # registro el día 15 de su mes nominal para que climatología, GGDI y mapa no los mezclen.
+        fecha = pd.to_datetime([f"{m}-15" for m in ds["mes_nominal"].values.astype(str)])
+    else:
+        fecha = fecha_central
     df = pd.DataFrame({
-        "Fecha": pd.to_datetime(ds["time"].values),
+        "Fecha": fecha,
         "GWSa (cm)": np.asarray(serie.values, dtype=float),
+        "Fecha central GRACE": fecha_central,
     }).dropna(subset=["GWSa (cm)"]).sort_values("Fecha").reset_index(drop=True)
 
     if df.empty:
@@ -1542,6 +1570,11 @@ def extraer_gws_territorio(ruta_texto: str, lat_obj: float, lon_obj: float, radi
         "fecha_final": df["Fecha"].max(),
         "registros": int(len(df)),
         "pendiente_cm_anio": pendiente,
+        "archivo": Path(ruta_texto).name,
+        "producto": str(ds.attrs.get("title", "")),
+        "fuente": str(ds.attrs.get("source", "")),
+        "linea_base": str(da.attrs.get("anomaly_baseline", "")),
+        "fin_producto": str(ds.attrs.get("time_coverage_end", "")),
     }
     return df, meta
 
@@ -7624,8 +7657,15 @@ elif seccion == "Agua subterránea (GRACE)":
                 st.caption(
                     f"Píxel utilizado: {meta_gws['lat_pixel']:.4f}, {meta_gws['lon_pixel']:.4f} · "
                     f"distancia aproximada a la sede: {meta_gws['distancia_km']:.1f} km · "
-                    f"periodo: {meta_gws['fecha_inicial']:%Y-%m} a {meta_gws['fecha_final']:%Y-%m}."
+                    f"periodo: {meta_gws['fecha_inicial']:%Y-%m} a {meta_gws['fecha_final']:%Y-%m} · "
+                    f"{meta_gws['registros']} meses con dato · archivo `{meta_gws['archivo']}`."
                 )
+                fin_producto = meta_gws.get("fin_producto", "")
+                if fin_producto and f"{meta_gws['fecha_final']:%Y-%m}" < fin_producto[:7]:
+                    st.info(
+                        f"La serie de esta sede termina en {meta_gws['fecha_final']:%Y-%m}, antes del final del "
+                        f"producto ({fin_producto[:7]}): los meses posteriores no tienen dato válido en su píxel."
+                    )
 
                 tab_serie, tab_clim, tab_ggdi, tab_mapa, tab_metodo = st.tabs([
                     "Serie histórica",
@@ -7639,7 +7679,8 @@ elif seccion == "Agua subterránea (GRACE)":
                     # Meses sin solución GRACE quedan como NaN para que la línea se corte
                     # (p. ej. el vacío GRACE/GRACE-FO jul-2017 a may-2018).
                     serie_mensual = (
-                        df_gws.assign(Fecha=pd.to_datetime(df_gws["Fecha"]).dt.to_period("M").dt.to_timestamp())
+                        df_gws[["Fecha", "GWSa (cm)"]]
+                        .assign(Fecha=pd.to_datetime(df_gws["Fecha"]).dt.to_period("M").dt.to_timestamp())
                         .groupby("Fecha", as_index=True)["GWSa (cm)"].mean()
                         .resample("MS").mean().reset_index()
                     )
@@ -7656,11 +7697,16 @@ elif seccion == "Agua subterránea (GRACE)":
                         xaxis_title="Fecha", yaxis_title="GWSa (cm)", hovermode="x unified"
                     )
                     st.plotly_chart(fig, width="stretch")
+                    linea_base = meta_gws.get("linea_base") or ""
+                    texto_base = (
+                        "la media 2004–2009" if linea_base.startswith("2004-01-01/2009-12-31 (72")
+                        else "probablemente la media 2004–2009; por confirmar con los autores del producto"
+                    )
                     st.caption(
-                        "Valores positivos y negativos indican desviaciones respecto a la referencia "
-                        "(probablemente la media 2004–2009; por confirmar con los autores del producto); "
-                        "por sí solos no equivalen a una clasificación de sostenibilidad. Los cortes de la "
-                        "línea son meses sin solución GRACE/GRACE-FO. Es una señal regional (cientos de km), "
+                        f"Valores positivos y negativos indican desviaciones respecto a la referencia "
+                        f"({texto_base}); por sí solos no equivalen a una clasificación de sostenibilidad. "
+                        "Los cortes de la línea son meses sin solución GRACE/GRACE-FO (p. ej. el vacío entre "
+                        "misiones, jul-2017 a may-2018), que no se interpolan. Es una señal regional (cientos de km), "
                         "no el nivel de un pozo."
                     )
 
@@ -7882,8 +7928,10 @@ elif seccion == "Agua subterránea (GRACE)":
 
                 with tab_mapa:
                     ds_gws = cargar_dataset_gws(str(ARCHIVO_GWS))
-                    fechas = pd.to_datetime(ds_gws["time"].values)
-                    etiquetas = [f"{f:%Y-%m}" for f in fechas]
+                    if "mes_nominal" in ds_gws.coords:
+                        etiquetas = [str(m) for m in ds_gws["mes_nominal"].values]
+                    else:
+                        etiquetas = [f"{f:%Y-%m}" for f in pd.to_datetime(ds_gws["time"].values)]
                     etiqueta = st.select_slider(
                         "Fecha del mapa", options=etiquetas, value=etiquetas[-1],
                         key=f"fecha_mapa_gws_{territorio}",
@@ -7921,8 +7969,12 @@ elif seccion == "Agua subterránea (GRACE)":
                         """
                         La metodología del artículo de Romero y Piña estima GWSa a partir de las
                         variaciones de almacenamiento total observadas por GRACE/GRACE-FO y componentes
-                        terrestres de GLDAS. Para la plataforma se usa directamente el producto NetCDF
-                        entregado y se extrae el píxel válido más cercano a cada sede. A partir de esa
+                        terrestres de GLDAS. La plataforma usa el NetCDF extendido
+                        `data/processed/gwsa/COL_GWS_estimations_2002-2026.nc` (2002-04 a 2026-06):
+                        **GWSa = TWSA − (humedad del suelo + agua en el dosel + nieve)**, con TWSA de los
+                        mascones JPL RL06.3Mv04 (escalados) y los componentes de GLDAS-2.1 Noah 0,25°
+                        como anomalías respecto a 2004–2009. Si falta, usa el NetCDF original del semillero
+                        (2002-05 a 2025-05). Se extrae el píxel válido más cercano a cada sede. A partir de esa
                         serie se construye la climatología mensual, se calcula GSD y se normaliza para
                         obtener GGDI.
 
@@ -7933,8 +7985,11 @@ elif seccion == "Agua subterránea (GRACE)":
                         - El GGDI se calcula a partir de la GWSa observada, la climatología mensual y la desviación estándar de GSD.
                         - No se calcula aún el índice integrado de sostenibilidad, resiliencia o vulnerabilidad.
                         - Si no existe un píxel válido razonablemente cercano, la plataforma lo informa y no extrapola.
+                        - Los meses sin solución GRACE/GRACE-FO no se interpolan.
                         """
                     )
+                    if meta_gws.get("fuente"):
+                        st.caption(f"Producto en uso: {meta_gws.get('producto', '')}. Fuentes: {meta_gws['fuente']}")
                     st.caption(
                         "Referencia metodológica: Romero, P. & Piña, A. (2025). GRACE-based analysis of "
                         "groundwater sustainability in the tropics. Journal of Hydrology: Regional Studies, "
@@ -8620,7 +8675,7 @@ elif seccion == "Fuentes y descargas":
                 "IDEAM", "NASA POWER", "Instituto SINCHI", "Corpoamazonia",
                 "CORPONARIÑO / POMCA Río Mira", "Parques Nacionales", "SENA",
                 "CORALINA", "Servicio Geológico Colombiano", "Alcaldía de Medellín / POT",
-                "Romero & Piña (2025) · GRACE/GLDAS", "Cartografía de ubicación · Sede Bogotá",
+                "Romero & Piña (2025) · NASA JPL GRACE/GRACE-FO RL06.3Mv04 · GLDAS-2.1 Noah", "Cartografía de ubicación · Sede Bogotá",
                 "SGC – PEXAS", "IDEAM – ENA / Anexo 7", "SIAMS",
             ],
             "Uso": [

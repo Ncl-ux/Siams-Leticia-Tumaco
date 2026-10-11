@@ -120,3 +120,40 @@ ralentiza los fotogramas de Landsat con Pillow. **Total de la carpeta de trabajo
 - [ ] Glosario y frase en lenguaje común por indicador (B7); revisar contraste del rótulo de diagnóstico.
 - [ ] Pasar por `html.escape` todo texto que venga de CSV/Excel en los 47 `unsafe_allow_html=True`.
 - [ ] Trabajo con ramas, pull requests y etiquetas (`git tag v0.38.1`) (B6).
+
+## 8. Actualización del agua subterránea GRACE/GLDAS hasta junio de 2026
+
+La serie GWSa de la app terminaba en 2025-04 (el último paso del NetCDF original, 2025-05, está vacío). Ahora llega a
+**2026-06** en todas las sedes continentales y en toda la malla nacional.
+
+| Cambio | Detalle |
+|---|---|
+| NetCDF nuevo | `data/processed/gwsa/COL_GWS_estimations_2002-2026.nc` (0,8 MB): misma variable `GWS_anom` (cm), mismas dimensiones `time, lat, lon`, misma malla (~0,12°, 135 × 99) y misma máscara (6.153 píxeles) que `COL_GWS_estimations.nc`. 258 meses, 2002-04 a 2026-06. Metadatos CF-1.8 con fuentes, versiones, método, período, línea base y lista de meses faltantes. Variables nuevas: `mes_nominal`, `time_bnds` y `factor_escala_negativo`. |
+| Datos de origen | NASA JPL GRACE/GRACE-FO Mascon CRI **RL06.3Mv04** (archivo 200204_202607, creado 2026-09-08) y **GLDAS-2.1 Noah 0,25° mensual** (`GLDAS_NOAH025_M` v2.1) 2002-01 a 2026-06. |
+| Método | `GWSA = TWSA·scale_factor − (SMSA + CWSA + SWEA)`, componentes GLDAS como anomalías respecto a 2004–2009 (método B). Se recalculó **todo** el período con el mismo método, en lugar de pegar meses nuevos al final del original, para no crear un salto artificial. |
+| Meses sin dato | Los 33 meses sin solución JPL, incluida la brecha GRACE → GRACE-FO 2017-07 a 2018-05, **no se interpolan** (igual que el original). Desde 2018-10 no falta ningún mes. |
+| Script | `scripts/06_gwsa_grace_gldas_extendido.py` (`descargar` / `procesar`), con rutas relativas a la raíz del repositorio. Los insumos crudos (`data/raw/grace`, `data/raw/gldas`) quedan fuera de Git (`.gitignore`). |
+| App | `encontrar_archivo_gws()` prefiere el NetCDF extendido; si falta, usa el original. `SIAMS_ARCHIVO_GWS` permite forzar otro archivo. Las series se fechan por **mes nominal** JPL, así que dos meses ya no se mezclan en la gráfica mensual, la climatología ni el GGDI (antes 2012-01-01 caía en enero en lugar de 2011-12, y 2015-04-27 en abril en lugar de mayo). El selector del mapa usa el mes nominal. Leyendas con el archivo y el período en uso, línea base 2004–2009 y aviso si el píxel de una sede termina antes que el producto. `VERSION_APP = "PROTOTIPO-SIAMS-V38-REVISADO-GRACE-2026-06"`. |
+| Documentación | `data/README.md` (sección 4.1, con la tabla de validación), `scripts/README.md`, `README.md`, `CREDITOS.md` y `CITATION.cff` (JPL mascon RL06.3Mv04, Watkins et al. 2015, GLDAS-2.1 Noah, Rodell et al. 2004). |
+| Pruebas | `tests/test_gwsa_extendido.py`: el producto llega a 2026-06 y empieza en 2002-04, no tiene la brecha interpolada, está en cm con metadatos CF, conserva malla y máscara del original, y las seis sedes continentales tienen dato hasta 2026-06. **37 pruebas** en total. |
+
+**Validación frente al NetCDF original** (2002-05 a 2025-05, 243 meses; `docs/gwsa_validacion_extension.csv`). r por sede:
+Leticia 0,97, Bogotá 0,94, Arauca 0,93, La Paz 0,89, Medellín 0,72 y Tumaco 0,52. En la malla: r mediano por píxel
+0,89, sesgo mediano +1,0 cm y RMSE mediano 5,1 cm. La amplitud del nuevo producto es menor (×0,6–0,85 en la mayoría de
+sedes).
+
+**Hallazgo: el NetCDF original no es el producto publicado.** Comparado con el GWSa de Romero y Piña en Zenodo
+(doi:10.5281/zenodo.14707819, 2002-04 a 2023-04), el original tiene r mediano 0,89 y amplitud ×1,28 por píxel. Se
+reproduce casi exactamente (r mediano 0,975, amplitud ×1,03) con la fórmula de diferencias mensuales del código
+UNgroundwater (`TWSA − (ΔSM + ΔSWE)`), que resta un flujo a un estado y exagera las oscilaciones. El producto nuevo
+reproduce Zenodo con r mediano 0,963, RMSE 2,1 cm y amplitud ×0,98 (Leticia r 0,99). Por eso los valores de la app
+cambian un poco, y no solo se alargan: en Arauca y La Paz la variabilidad (desviación estándar) es un 35–40 % menor.
+
+**Advertencias.**
+- San Andrés sigue sin serie: está fuera de la malla y su celda GRACE es oceánica.
+- 161 píxeles tienen factor de escala JPL negativo (franja lon −72,75 y costa pacífica, incluida la vecindad de Tumaco). Ahí la señal es poco fiable, y eso explica el r bajo de Tumaco frente al original.
+- GRACE-FO se publica con unos 2–3 meses de retraso y JPL reprocesa los meses recientes. Al actualizar con `descargar`, los últimos valores pueden cambiar un poco.
+- La serie es regional (mascones de ~3°), no el nivel de un pozo.
+
+- [ ] Pendiente para el semillero: confirmar con los autores cómo se generó `COL_GWS_estimations.nc` y decidir si se
+      retira del repositorio. La app ya no lo necesita.

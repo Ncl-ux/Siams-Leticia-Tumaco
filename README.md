@@ -21,7 +21,7 @@ así empezó el proyecto.
 |---|---|---|---|---|
 | Clima diario | [NASA POWER](https://power.larc.nasa.gov/) (API v2, comunidad AG) | 1992/2000–2026 | celda de ~0,5° | Reanálisis sin validar localmente |
 | Clima de estación | [IDEAM – DHIME](http://dhime.ideam.gov.co/atencionciudadano/) (Tumaco, Arauca) | 1985–2025 | estación | En validación; **lluvia de Tumaco inhomogénea** |
-| Agua subterránea (GWSa, GGDI) | GRACE/GRACE-FO menos GLDAS, según [Romero y Piña (2025)](https://doi.org/10.1016/j.ejrh.2025.102756) | 2002–2025 | regional (cientos de km) | Exploratorio |
+| Agua subterránea (GWSa, GGDI) | [JPL GRACE/GRACE-FO mascon RL06.3Mv04](https://doi.org/10.5067/TEMSC-3JC634) menos [GLDAS-2.1 Noah](https://doi.org/10.5067/SXAVCZFAQLNO), según [Romero y Piña (2025)](https://doi.org/10.1016/j.ejrh.2025.102756) | 2002-04 – 2026-06 | regional (cientos de km) | Exploratorio |
 | Río (nivel y ancho) | [SWOT](https://swot.jpl.nasa.gov/) vía [HydroWeb](https://hydroweb.next.theia-land.fr/) | 2023–2026 | tramo de río | Exploratorio |
 | Coberturas | [MapBiomas Colombia](https://colombia.mapbiomas.org/) (colección por confirmar), Landsat 8/9 C2 L2 | 1985–2025 | 30 m | Exploratorio |
 | Agua en superficie y vegetación | [Copernicus Sentinel-2](https://dataspace.copernicus.eu/) (NDVI, MNDWI, SCL) | 2025 | 10–20 m | Solo Arauca |
@@ -53,6 +53,7 @@ La app abre en <http://localhost:8501>. Con conda: `conda env create -f environm
 python scripts/01_descarga_nasa_power.py --sede tumaco --inicio 1992-01-01 --fin 2025-12-31
 python scripts/02_agregados_anuales.py          # series anuales en data/processed/anuales/
 python scripts/03_tendencias_homogeneidad.py    # docs/tendencias_homogeneidad.csv
+python scripts/06_gwsa_grace_gldas_extendido.py procesar   # GWSa 2002-04..2026-06 (insumos: ver data/README.md, 4.1)
 ```
 
 Ver `scripts/README.md`: ahí se explica qué se reconstruyó y qué falta (procesamiento IDEAM, Landsat, SWOT,
@@ -72,7 +73,8 @@ data/README.md             diccionario de datos (fuente, unidad, zona horaria, l
 data/processed/            productos generados por los scripts
 docs/                      notas técnicas (homogeneidad de Tumaco, tabla de tendencias)
 Analisis Hidro/            Excel de clima NASA POWER e IDEAM
-COL_GWS_estimations.nc     GWSa (NetCDF con metadatos CF)
+COL_GWS_estimations.nc     GWSa original del semillero, 2002–2025 (respaldo)
+data/processed/gwsa/       GWSa extendido 2002-04 – 2026-06 (lo usa la app) y series por sede
 Coberturas MapBio/  Landsat/  Sentinel/  Gif/  Tarjeta Tecnica Swot/
 SIAMS MAPAS/  Mapas Qgis/  Presentacion/
 ```
@@ -84,8 +86,10 @@ SIAMS MAPAS/  Mapas Qgis/  Presentacion/
   Ver `docs/homogeneidad_tumaco.md`.
 - **NASA POWER** es un reanálisis de baja resolución: en Tumaco subestima la lluvia ~60 % frente a IDEAM y llueve
   casi todos los días; en San Andrés la celda está dominada por el mar. No se ha validado contra estaciones.
-- **GWSa** es una señal regional de cientos de kilómetros, no el nivel de un pozo. Unidades, versión de GRACE/GLDAS
-  y periodo de referencia están **por confirmar** (ver `data/README.md`).
+- **GWSa** es una señal regional de cientos de kilómetros, no el nivel de un pozo. El NetCDF que usa la app
+  (2002-04 – 2026-06) está documentado y es reproducible (`scripts/06_gwsa_grace_gldas_extendido.py`); San Andrés
+  no tiene serie (celda oceánica) y los meses sin solución GRACE, como el vacío 2017-07 – 2018-05, no se interpolan.
+  Ver `data/README.md`, sección 4.
 - **Landsat:** el área clasificada cambia con las nubes; compare en porcentaje, no en hectáreas.
 - **SWOT:** las tarjetas no traen las tablas de origen ni los indicadores de calidad oficiales.
 - **Años parciales:** 2026 (NASA POWER) y 2025 (IDEAM Tumaco) están en las hojas `P_anual`, pero no entran en las
