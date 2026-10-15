@@ -1,0 +1,2 @@
+# Solo para pruebas automáticas y desarrollo.
+pytest>=8,<10

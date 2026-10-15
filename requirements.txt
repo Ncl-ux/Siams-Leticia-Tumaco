@@ -5,3 +5,5 @@ openpyxl
 numpy
 xarray
 netCDF4
+streamlit[pdf]
+pymupdf
