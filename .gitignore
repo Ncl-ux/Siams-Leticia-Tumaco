@@ -1,3 +1,12 @@
 .venv/
 __pycache__/
 *.pyc
+.siams_backups/
+.pytest_cache/
+siams_backups/
+*.bak
+*.log
+# Regeneraciones experimentales, no despliegues
+swot_regenerado_revision/
+# Descargas NASA POWER guardadas localmente: revisar licencia/procedencia antes de versionar
+# data/raw/nasa_power/*.json

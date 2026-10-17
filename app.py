@@ -33,9 +33,9 @@ except ImportError:
     np = None
     xr = None
 
-VERSION_APP = "PROTOTIPO-SIAMS-V39-RUTAS-2026-10-14"
+VERSION_APP = "PROTOTIPO-SIAMS-V42-GRACE-M10-2026-10-16"
 
-FECHA_ACTUALIZACION = "9 de octubre de 2026"
+FECHA_ACTUALIZACION = "16 de octubre de 2026"
 
 MODO_DESARROLLO = False
 
@@ -64,7 +64,23 @@ aplicar_estilos()
 from siams.catalogo import MESES, UNAL_SEDES, TERRITORIOS, ESTADO_COMPONENTES, METADATOS_MAPAS, FUENTES_CLIMATICAS
 from siams.utilidades import normalizar_etiqueta, resolver_carpeta_preferida, resolver_subcarpeta, buscar_archivo_exacto, buscar_excel_climatico, _fechas_desde_dataframe, CARPETA_PROYECTO, CARPETA_DATOS_HIDRO
 from siams.grace import encontrar_archivo_gws, ARCHIVO_GWS, cargar_dataset_gws, distancia_haversine_km, extraer_gws_territorio, climatologia_gws, calcular_ggdi
+
+# Complementos de Leticia; un fallo de importación no bloquea las demás sedes.
+try:
+    from siams.grace_leticia import mostrar_grace_leticia
+    ERROR_MODULO_GRACE_LETICIA = None
+except ImportError as error:
+    mostrar_grace_leticia = None
+    ERROR_MODULO_GRACE_LETICIA = str(error)
+
+try:
+    from siams.hidrogeoquimica import mostrar_hidrogeoquimica
+    ERROR_MODULO_HIDROGEOQUIMICA = None
+except ImportError as error:
+    mostrar_hidrogeoquimica = None
+    ERROR_MODULO_HIDROGEOQUIMICA = str(error)
 from siams.tendencias import VARIABLES_TENDENCIA, _buscar_columna_variable, extraer_series_historicas_excel, agregar_serie_anual, mann_kendall, pendiente_sen, analizar_serie_tendencia
+from siams.tendencias import mann_kendall_hamed_rao  # SIAMS_M5_IMPORTADO
 from siams.componentes import clase_estado, mostrar_semaforo, resumen_estados, mostrar_ficha_mapa, interpretacion_leticia, interpretacion_nasa, interpretacion_ideam_nasa, interpretacion_tumaco, archivo_disponible, territorio_actual, mostrar_encabezado, mostrar_tarjeta
 from siams.mapas_datos import MAPAS_LETICIA, MAPAS_TUMACO, MAPAS_MEDELLIN, MAPAS_SAN_ANDRES, MAPAS_ARAUCA, MAPAS_BOGOTA, MAPAS_UBICACION_QGIS, FICHA_QGIS_REFERENCIA, MAPAS_POR_TERRITORIO, encontrar_carpeta_mapas, CARPETA_MAPAS_QGIS, CARPETA_MAPAS
 from siams.swot import CARPETA_GIFS, GIFS_SWOT_POR_TERRITORIO, GIFS_SWOT_ANTIGUOS, buscar_gif_swot, mostrar_gifs_swot, CARPETA_TARJETAS_SWOT, TARJETAS_SWOT_POR_TERRITORIO, TARJETAS_SWOT_NOMBRES_NUEVOS, buscar_tarjeta_swot, _mostrar_tarjetas_rio_swot, mostrar_tarjetas_swot, CARPETAS_BUSQUEDA_MAPAS, EXTENSIONES_IMAGEN, EXTENSIONES_MAPA
@@ -75,6 +91,179 @@ from siams.landsat import CARPETA_LANDSAT, COLORES_LANDSAT, carpeta_landsat_sede
 from siams.sentinel import CARPETA_SENTINEL, CARPETAS_SENTINEL_POR_TERRITORIO, SENTINEL_ARCHIVOS_POR_TERRITORIO, SENTINEL_DESCRIPCIONES, carpeta_sentinel_territorio, buscar_animaciones_sentinel, _mostrar_gif_sentinel, _panel_sentinel, mostrar_sentinel_territorio
 from siams.estados import actualizar_estado_coberturas, actualizar_estado_landsat
 from siams.inicio import obtener_hallazgos_clave, mostrar_mapa_sedes_unal, tabla_disponibilidad, SIAMS_SEDES_PORTADA, CARPETA_FOTOS_SEDES, foto_sede_portada, foto_sede_data_uri, recursos_reales_sede_portada, _fecha_valida_portada, periodo_excel_sede_portada, periodo_csv_mapbiomas_portada, periodos_reales_sede_portada, ir_a_ficha_sede_siams, mostrar_sintesis_sedes_inicio
+
+# =========================================================
+# NASA POWER · Compatibilidad A2 y A3 (solo en app.py)
+# Se conservan sin modificar siams/clima.py, siams/tendencias.py
+# y los complementos nuevos de GRACE e hidrogeoquímica.
+# =========================================================
+
+
+def _columna_nasa(df: pd.DataFrame, opciones: tuple[str, ...], hoja: str) -> str:
+    """Reconoce encabezados antiguos y A2/A3 sin confundir variables."""
+    actuales = {normalizar_etiqueta(col): col for col in df.columns}
+    for candidato in opciones:
+        encontrada = actuales.get(normalizar_etiqueta(candidato))
+        if encontrada is not None:
+            return encontrada
+    raise ValueError(
+        f"La hoja {hoja} no tiene ninguna de las columnas esperadas: "
+        + ", ".join(opciones)
+    )
+
+
+@st.cache_data(show_spinner=False)
+def _leer_nasa_climatologia_a2a3(ruta: str, version_archivo: tuple[int, int], tumaco_ideam: bool = False):
+    """Carga regímenes antiguos/A2-A3; no transforma valores numéricos."""
+    p = pd.read_excel(ruta, sheet_name="Regimen_P")
+    t = pd.read_excel(ruta, sheet_name="Regimen_T")
+    hr = pd.read_excel(ruta, sheet_name="Regimen_HR")
+    clim = pd.read_excel(ruta, sheet_name="Climatologia_mensual")
+    indicadores_df = pd.read_excel(ruta, sheet_name="Indicadores")
+
+    col_p = _columna_nasa(p, (
+        "precipitacion_media_mensual_multianual_mm_mes",
+        "precipitacion_media_mensual_mm_mes",
+        "precipitacion_acumulada_mm_mes",
+        "precipitacion_mm_dia",
+    ), "Regimen_P")
+    # Regimen_P representa la MEDIA de acumulados de cada mes, no lluvia diaria.
+    etiqueta_p = "Precipitación NASA (mm)" if tumaco_ideam else "Precipitación mensual (mm)"
+    p = p[["mes", col_p]].rename(columns={col_p: etiqueta_p})
+
+    temp = {
+        "temperatura_media_C": "Temperatura media NASA (°C)" if tumaco_ideam else "Temperatura media (°C)",
+        "temperatura_maxima_C": "Temperatura máxima NASA (°C)" if tumaco_ideam else "Temperatura máxima (°C)",
+        "temperatura_minima_C": "Temperatura mínima NASA (°C)" if tumaco_ideam else "Temperatura mínima (°C)",
+    }
+    columnas_t = ["mes"]
+    renombrar_t = {}
+    for original, destino in temp.items():
+        if original in t.columns:
+            columnas_t.append(original)
+            renombrar_t[original] = destino
+        elif original == "temperatura_media_C":
+            raise ValueError("Regimen_T no contiene temperatura_media_C")
+    t = t[columnas_t].rename(columns=renombrar_t)
+
+    col_hr = _columna_nasa(hr, ("humedad_relativa_pct",), "Regimen_HR")
+    etiqueta_hr = "Humedad NASA (%)" if tumaco_ideam else "Humedad relativa (%)"
+    hr = hr[["mes", col_hr]].rename(columns={col_hr: etiqueta_hr})
+
+    col_radiacion = _columna_nasa(clim, (
+        "radiacion_solar_media_diaria_MJ_m2_dia",
+        "radiacion_solar_media_MJ_m2_dia",
+        "radiacion_solar_MJ_m2_dia",
+        "radiacion_solar_kWh_m2_dia",
+    ), "Climatologia_mensual")
+    # Los seis Excel de SIAMS se generaron con POWER AG. El campo antiguo decía
+    # kWh, pero el procesamiento original no convirtió el valor entregado en MJ.
+    # La corrección es de ETIQUETA; no se multiplica ni divide la serie.
+    m = " NASA" if tumaco_ideam else ""
+    otras = clim[["mes", "viento_2m_m_s", "presion_superficie_kPa", col_radiacion]].rename(
+        columns={
+            "viento_2m_m_s": f"Viento a 2 m{m} (m/s)",
+            "presion_superficie_kPa": f"Presión{m} (kPa)" if tumaco_ideam else "Presión superficial (kPa)",
+            col_radiacion: f"Radiación{m} (MJ/m²/día)" if tumaco_ideam else "Radiación solar (MJ/m²/día)",
+        }
+    )
+
+    df = p.merge(t, on="mes", how="inner").merge(hr, on="mes", how="inner")
+    df = df.merge(otras, on="mes", how="inner").sort_values("mes").reset_index(drop=True)
+    df["Mes"] = df["mes"].map(dict(enumerate(MESES, start=1)))
+    df = df.drop(columns="mes")
+    orden = ["Mes", etiqueta_p, *renombrar_t.values(), etiqueta_hr, *otras.columns.drop("mes")]
+    df = df[orden]
+
+    indicadores = dict(zip(indicadores_df["Indicador"].astype(str), indicadores_df["Valor"]))
+    for clave in ("Fecha inicial", "Fecha final"):
+        if clave in indicadores:
+            indicadores[clave] = convertir_fecha_excel(indicadores[clave])
+    return df, indicadores
+
+
+def cargar_clima_leticia(ruta_texto: str):
+    """Lector adaptado A2/A3 para todas las sedes NASA sin cambiar clima.py."""
+    archivo = Path(ruta_texto)
+    st_archivo = archivo.stat()
+    return _leer_nasa_climatologia_a2a3(str(archivo), (st_archivo.st_mtime_ns, st_archivo.st_size))
+
+
+def cargar_nasa_tumaco(ruta_texto: str):
+    """Lector compatible NASA POWER + IDEAM para Tumaco y Arauca."""
+    archivo = Path(ruta_texto)
+    st_archivo = archivo.stat()
+    return _leer_nasa_climatologia_a2a3(str(archivo), (st_archivo.st_mtime_ns, st_archivo.st_size), True)
+
+
+_series_tendencia_original = series_tendencia_territorio
+
+
+def series_tendencia_territorio(nombre_territorio: str, info_territorio: dict):
+    """Preserva IDEAM/GRACE e incluye radiación MJ y excluye años NASA parciales."""
+    paquetes = _series_tendencia_original(nombre_territorio, info_territorio)
+    ruta = archivo_nasa_territorio(nombre_territorio)
+    if ruta is None or not Path(ruta).is_file():
+        return paquetes
+
+    try:
+        diarios = pd.read_excel(ruta, sheet_name="Datos_diarios")
+        col_rad = _columna_nasa(diarios, (
+            "radiacion_solar_MJ_m2_dia", "radiacion_solar_kWh_m2_dia",
+        ), "Datos_diarios")
+        fechas = diarios["fecha"].map(convertir_fecha_excel)
+        valores = pd.to_numeric(diarios[col_rad], errors="coerce")
+        serie_rad = pd.DataFrame({"Fecha": fechas, "Valor": valores}).dropna()
+        serie_rad = serie_rad.sort_values("Fecha").drop_duplicates(subset="Fecha", keep="last")
+        if len(serie_rad) >= 20 and serie_rad["Fecha"].dt.year.nunique() >= 3:
+            paquetes["Radiación solar"] = {
+                "serie": serie_rad.reset_index(drop=True),
+                "unidad": "MJ/m²/día",
+                "agregacion": "mean",
+                "fuente": "NASA POWER",
+                "archivo": Path(ruta).name,
+                "hoja": "Datos_diarios",
+            }
+
+        # El último año del archivo NO debe analizarse como completo si no
+        # existen registros hasta el 31 de diciembre. No alteramos IDEAM/GWSa.
+        fechas_validas = fechas.dropna()
+        if not fechas_validas.empty:
+            ultima = fechas_validas.max()
+            if (ultima.month, ultima.day) != (12, 31):
+                for paquete in paquetes.values():
+                    if paquete.get("fuente") == "NASA POWER":
+                        tabla = paquete["serie"]
+                        paquete["serie"] = tabla.loc[
+                            pd.to_datetime(tabla["Fecha"], errors="coerce").dt.year < ultima.year
+                        ].reset_index(drop=True)
+    except (ValueError, KeyError, OSError) as error:
+        # Un libro NASA incompleto no debe bloquear los análisis IDEAM ni GRACE.
+        st.warning(f"No se pudo revisar la serie diaria NASA de {nombre_territorio}: {error}")
+    return paquetes
+
+# M10 · Vacíos temporales de GRACE (sin interpolación)
+def _siams_meses_grace_con_vacios(tabla: pd.DataFrame, columnas: list[str]) -> pd.DataFrame:
+    """Crea un eje mensual íntegro y deja NaN en los meses sin observación.
+
+    Solo se usa para VISUALIZAR. No modifica las mediciones, el GGDI,
+    los cálculos estadísticos ni los archivos de descarga originales.
+    """
+    nombres = [nombre for nombre in columnas if nombre in tabla.columns]
+    if tabla.empty or not nombres:
+        return pd.DataFrame(columns=["Fecha", *nombres])
+    serie = tabla[["Fecha", *nombres]].copy()
+    serie["Fecha"] = pd.to_datetime(serie["Fecha"], errors="coerce")
+    serie = serie.dropna(subset=["Fecha"])
+    if serie.empty:
+        return pd.DataFrame(columns=["Fecha", *nombres])
+    serie["_mes"] = serie["Fecha"].dt.to_period("M")
+    serie = serie.sort_values("Fecha").drop_duplicates(subset="_mes", keep="last")
+    eje = pd.period_range(serie["_mes"].min(), serie["_mes"].max(), freq="M")
+    serie = serie.set_index("_mes")[nombres].reindex(eje)
+    serie.index = serie.index.to_timestamp()
+    return serie.rename_axis("Fecha").reset_index()
+
 
 from siams.catalogo import restablecer_estados_componentes
 restablecer_estados_componentes()
@@ -269,10 +458,13 @@ if MODO_DESARROLLO:
         )
         st.write(f"**Carpeta de coberturas:** `{CARPETA_COBERTURAS}`")
         csv_detectados = []
+        carpeta_tablas_mapbiomas = CARPETA_PROYECTO / "data/processed/mapbiomas"
         for config_cob in COBERTURAS_POR_TERRITORIO.values():
-            carpeta_cob = resolver_subcarpeta(CARPETA_COBERTURAS, config_cob["carpeta"])
+            carpeta_cob = resolver_subcarpeta(carpeta_tablas_mapbiomas, config_cob["carpeta"])
+            if not carpeta_cob.is_dir():
+                carpeta_cob = resolver_subcarpeta(CARPETA_COBERTURAS, config_cob["carpeta"])
             if carpeta_cob.is_dir():
-                csv_detectados.extend(str(p.relative_to(CARPETA_COBERTURAS)) for p in carpeta_cob.iterdir() if p.is_file() and p.suffix.casefold() == ".csv")
+                csv_detectados.extend(str(p.relative_to(CARPETA_PROYECTO)) for p in carpeta_cob.iterdir() if p.is_file() and p.suffix.casefold() == ".csv")
         st.code("\n".join(sorted(csv_detectados)) if csv_detectados else "Ningún CSV de coberturas detectado", language=None)
         gifs_detectados = []
         if CARPETA_GIFS.exists() and CARPETA_GIFS.is_dir():
@@ -769,7 +961,7 @@ elif seccion == "Clima":
                     opciones = {
                         "Viento a 2 m": "Viento a 2 m NASA (m/s)",
                         "Presión superficial": "Presión NASA (kPa)",
-                        "Radiación solar": "Radiación NASA (kWh/m²/día)",
+                        "Radiación solar": "Radiación NASA (MJ/m²/día)",
                     }
                     seleccion = st.selectbox(
                         "Variable NASA POWER",
@@ -1011,7 +1203,7 @@ elif seccion == "Clima":
                 columnas_otras = [
                     "Viento a 2 m (m/s)",
                     "Presión superficial (kPa)",
-                    "Radiación solar (kWh/m²/día)",
+                    "Radiación solar (MJ/m²/día)",
                 ]
                 disponibles = [col for col in columnas_otras if col in df.columns]
                 if disponibles:
@@ -1049,7 +1241,7 @@ elif seccion == "Clima":
 
 elif seccion == "Análisis de tendencias":
     st.title(f"📈 Análisis de tendencias · {territorio}")
-    st.caption("Mann-Kendall + pendiente de Sen · series históricas reales")
+    st.caption("Mann–Kendall original · Hamed–Rao con autocorrelación · pendiente de Sen")
 
     st.markdown(dedent("""
         <div class="soft-box">
@@ -1083,6 +1275,7 @@ elif seccion == "Análisis de tendencias":
                     )
                     if res is None:
                         continue
+                    hr = mann_kendall_hamed_rao(anual["Año"], anual["Valor"])
                     resumen_tendencias.append({
                         "Variable": variable,
                         "Fuente": paquete["fuente"],
@@ -1090,6 +1283,8 @@ elif seccion == "Análisis de tendencias":
                         "Años": len(anual),
                         "Tau": res["tau"],
                         "p-value": res["p"],
+                        "p Hamed–Rao": hr["p"],
+                        "Resultado Hamed–Rao": hr["tendencia"],
                         "Pendiente Sen": res["pendiente"],
                         "Unidad/año": f"{paquete['unidad']}/año",
                         "Resultado": res["tendencia"],
@@ -1105,12 +1300,89 @@ elif seccion == "Análisis de tendencias":
             else:
                 df_resumen_tend = pd.DataFrame(resumen_tendencias)
 
-                st.subheader("Resumen de tendencias disponibles")
+                # M5_VISUAL_INICIO — lectura comparativa sin cambiar los cálculos de MK, Hamed–Rao o Sen.
+                evaluables_hr = df_resumen_tend["p Hamed–Rao"].notna()
+                comparables_hr = df_resumen_tend.loc[evaluables_hr]
+                cambios_hr = int((
+                    comparables_hr["Resultado"] != comparables_hr["Resultado Hamed–Rao"]
+                ).sum())
+                n_no_evaluables = int((~evaluables_hr).sum())
+
+                st.subheader("Panorama estadístico del territorio")
+                r1, r2, r3, r4 = st.columns(4)
+                r1.metric("Variables analizadas", len(df_resumen_tend))
+                r2.metric("Con corrección Hamed–Rao", int(evaluables_hr.sum()))
+                r3.metric("Significativas corregidas", int((comparables_hr["p Hamed–Rao"] < 0.05).sum()))
+                r4.metric("Conclusiones que cambian", cambios_hr)
+
+                st.markdown("#### ¿Cuánto cambia la significancia al considerar autocorrelación?")
+                fig_hr = go.Figure()
+                # Segmentos unen los p-values de la misma variable, solo cuando hay ambos.
+                lineas_x, lineas_y = [], []
+                for _, fila_hr in comparables_hr.iterrows():
+                    lineas_x.extend([max(float(fila_hr["p-value"]), 1e-6),
+                                     max(float(fila_hr["p Hamed–Rao"]), 1e-6), None])
+                    lineas_y.extend([fila_hr["Variable"], fila_hr["Variable"], None])
+                fig_hr.add_trace(go.Scatter(
+                    x=lineas_x, y=lineas_y, mode="lines",
+                    line=dict(color="#B3C2CF", width=2),
+                    showlegend=False, hoverinfo="skip",
+                ))
+                for campo_p, etiqueta, color in (
+                    ("p-value", "Mann–Kendall original", "#2563EB"),
+                    ("p Hamed–Rao", "Hamed–Rao corregido", "#EA580C"),
+                ):
+                    serie_p = df_resumen_tend[["Variable", campo_p]].dropna()
+                    fig_hr.add_trace(go.Scatter(
+                        x=serie_p[campo_p].clip(lower=1e-6),
+                        y=serie_p["Variable"],
+                        customdata=serie_p[campo_p],
+                        mode="markers", name=etiqueta,
+                        marker=dict(size=13, color=color, line=dict(color="white", width=1.5)),
+                        hovertemplate="%{y}<br>p = %{customdata:.6g}<extra>%{fullData.name}</extra>",
+                    ))
+                fig_hr.add_vline(x=0.05, line_color="#B91C1C", line_dash="dash",
+                                 annotation_text="α = 0,05", annotation_position="top right")
+                fig_hr.update_layout(
+                    xaxis=dict(type="log", range=[-6.1, 0.04], title="p-value (escala logarítmica)",
+                               tickvals=[1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 5e-2, 1e-1, 1],
+                               ticktext=["10⁻⁶", "10⁻⁵", "10⁻⁴", "0,001", "0,01", "0,05", "0,1", "1"]),
+                    yaxis=dict(autorange="reversed", title=""),
+                    height=max(390, 90 + 46 * len(df_resumen_tend)),
+                    margin=dict(l=8, r=16, t=48, b=28),
+                    legend=dict(orientation="h", y=1.15, x=0),
+                    hovermode="closest",
+                )
+                st.plotly_chart(fig_hr, use_container_width=True,
+                                key=f"siams_m5_comparacion_{territorio}")
+                st.caption(
+                    "A la izquierda de la línea roja (p < 0,05): resultado significativo. "
+                    "La escala logarítmica permite ver valores muy pequeños sin perder los grandes. "
+                    f"No evaluables con Hamed–Rao: {n_no_evaluables}; se muestran solo con su p original. "
+                    "Los puntos en p = 0 en el cálculo se dibujan en 10⁻⁶ para poder representarlos."
+                )
+                # M5_VISUAL_FIN
+
+                st.subheader("Resultados por variable")
                 tabla_tend = df_resumen_tend.copy()
+                tabla_tend["Cambio tras corregir"] = [
+                    ("No evaluable" if pd.isna(fila["p Hamed–Rao"]) else
+                     "Sí" if fila["Resultado"] != fila["Resultado Hamed–Rao"] else "No")
+                    for _, fila in tabla_tend.iterrows()
+                ]
                 tabla_tend["Tau"] = tabla_tend["Tau"].map(lambda x: f"{x:+.3f}")
                 tabla_tend["p-value"] = tabla_tend["p-value"].map(lambda x: f"{x:.4f}")
+                tabla_tend["p Hamed–Rao"] = tabla_tend["p Hamed–Rao"].map(
+                    lambda x: f"{x:.4f}" if pd.notna(x) else "—"
+                )
                 tabla_tend["Pendiente Sen"] = tabla_tend["Pendiente Sen"].map(lambda x: f"{x:+.4f}")
                 st.dataframe(tabla_tend, use_container_width=True, hide_index=True)
+                st.caption(
+                    "p-value: Mann–Kendall original. p Hamed–Rao: varianza corregida "
+                    "por autocorrelación de los rangos sin tendencia (hasta 3 rezagos). "
+                    "«No evaluable» indica años no consecutivos o datos insuficientes. "
+                    "La pendiente de Sen no cambia."
+                )
 
                 variables_validas = df_resumen_tend["Variable"].tolist()
                 seleccion = st.selectbox(
@@ -1144,6 +1416,28 @@ elif seccion == "Análisis de tendencias":
                         "Pendiente de Sen",
                         f"{res['pendiente']:+.4f} {paquete['unidad']}/año",
                     )
+
+                    hr_detalle = mann_kendall_hamed_rao(anual["Año"], anual["Valor"])
+                    st.markdown("#### Efecto de la autocorrelación en esta variable")
+                    if hr_detalle["disponible"]:
+                        h1, h2, h3 = st.columns(3)
+                        h1.metric("p Hamed–Rao", f"{hr_detalle['p']:.4f}")
+                        h2.metric("Factor de varianza", f"{hr_detalle['factor_varianza']:.3f}")
+                        rezagos = hr_detalle["lags_significativos"]
+                        h3.metric("Rezagos significativos", ", ".join(map(str, rezagos)) if rezagos else "Ninguno")
+                        if hr_detalle["tendencia"] != res["tendencia"]:
+                            st.warning(
+                                f"**La conclusión cambia:** Mann–Kendall original: {res['tendencia']}; "
+                                f"corregido por Hamed–Rao: {hr_detalle['tendencia']}. "
+                                "La pendiente de Sen y Tau no se modifican."
+                            )
+                        else:
+                            st.success(
+                                f"**La conclusión se mantiene:** {hr_detalle['tendencia']}. "
+                                "Hamed–Rao ajusta la significancia; Tau y la pendiente de Sen se conservan."
+                            )
+                    else:
+                        st.warning(f"**Hamed–Rao no evaluable:** {hr_detalle['motivo']}")
 
                     tendencia_sen = res["intercepto"] + res["pendiente"] * anual["Año"].astype(float)
                     fig = go.Figure()
@@ -1192,15 +1486,16 @@ elif seccion == "Análisis de tendencias":
                     with st.expander("Ver datos anuales utilizados", expanded=False):
                         st.dataframe(anual.round(4), use_container_width=True, hide_index=True)
 
-                st.markdown(dedent("""
-                    <div class="warning-box">
-                        <strong>Limitaciones:</strong> Mann-Kendall identifica tendencias monotónicas,
-                        pero no demuestra su causa. La significancia puede verse afectada por
-                        autocorrelación, cambios de instrumento, vacíos de información o cambios en
-                        la fuente. Para estudios definitivos conviene revisar homogeneidad y, cuando
-                        corresponda, aplicar variantes que corrijan autocorrelación.
-                    </div>
-                    """).strip(), unsafe_allow_html=True)
+                with st.expander("Cómo leer Mann–Kendall, Hamed–Rao y Sen", expanded=False):
+                    st.markdown(
+                        "**Mann–Kendall** prueba si existe una tendencia monotónica; "
+                        "**Hamed–Rao** ajusta su varianza para considerar autocorrelación temporal; "
+                        "**Sen** estima la magnitud del cambio por año. "
+                        "El umbral α = 0,05 determina si el p-value es significativo. "
+                        "Cuando Hamed–Rao es *No evaluable* no debe interpretarse como ausencia de tendencia. "
+                        "Que ambos métodos coincidan no demuestra la causa física de los cambios. "
+                        "Hay que valorar homogeneidad, años ausentes, cambios de instrumento y representatividad espacial."
+                    )
 
                 st.caption(
                     "El módulo queda preparado para incorporar en el futuro niveles de sonda, caudales "
@@ -1466,6 +1761,23 @@ elif seccion == "Hidrogeología":
 elif seccion == "Agua subterránea (GRACE)":
     st.title(f"🌐 Agua subterránea satelital · {territorio}")
     st.caption("GWSa + índice de sequía de agua subterránea (GGDI) · GRACE/GRACE-FO + GLDAS")
+    st.markdown(
+        "**¿Qué aprenderás aquí?** Los satélites ayudan a identificar si el agua "
+        "almacenada bajo la superficie está por encima o por debajo de una referencia "
+        "histórica. Puedes explorar cuándo ocurren cambios y compararlos entre fechas. "
+        "No es una medición de cuántos metros hay hasta el agua en un pozo."
+    )
+    with st.expander("Primera vez aquí: ¿cómo interpretar GRACE y GGDI?", expanded=False):
+        st.markdown(
+            "**1. GWSa (cm):** cambio de almacenamiento subterráneo respecto a una "
+            "referencia. Un valor positivo significa *más que en la referencia*; "
+            "un valor negativo, *menos*. Cero no significa ausencia de agua.\n\n"
+            "**2. GGDI:** compara cada mes con lo habitual para ese mismo mes. "
+            "Un GGDI negativo indica una condición más seca que la referencia mensual, "
+            "pero no demuestra por sí solo que un pozo vaya a secarse.\n\n"
+            "**3. Alcance:** GRACE observa regiones amplias, no un pozo individual. "
+            "Para decisiones locales hay que contrastarlo con mediciones de campo."
+        )
 
     st.markdown(dedent("""
         <div class="soft-box">
@@ -1481,8 +1793,8 @@ elif seccion == "Agua subterránea (GRACE)":
         st.code("pip install xarray netCDF4 numpy", language="bash")
     elif ARCHIVO_GWS is None:
         st.warning(
-            "No se encontró `COL_GWS_estimations.nc`. Pon el archivo junto a `app.py` "
-            "o dentro de `datos/gws` o `datos/agua_subterranea`."
+            "No se encontró `COL_GWS_estimations.nc` en `data/processed/grace/`. "
+            "Comprueba el archivo y revisa el procedimiento A5 de GRACE."
         )
     else:
         try:
@@ -1529,9 +1841,17 @@ elif seccion == "Agua subterránea (GRACE)":
                 ])
 
                 with tab_serie:
-                    fig = px.line(
-                        df_gws, x="Fecha", y="GWSa (cm)",
-                        title=f"Anomalía de almacenamiento de agua subterránea · {territorio}",
+                    # M10: también en el GRACE ORIGINAL se conservan meses ausentes.
+                    serie_grace_viz = _siams_meses_grace_con_vacios(df_gws, ["GWSa (cm)"])
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(
+                        x=serie_grace_viz["Fecha"],
+                        y=serie_grace_viz["GWSa (cm)"],
+                        mode="lines", name="GWSa · GRACE/GLDAS",
+                        connectgaps=False,
+                    ))
+                    fig.update_layout(
+                        title=f"Anomalía de almacenamiento de agua subterránea · {territorio}"
                     )
                     fig.add_hline(
                         y=0, line_dash="dash",
@@ -1542,8 +1862,9 @@ elif seccion == "Agua subterránea (GRACE)":
                     )
                     st.plotly_chart(fig, use_container_width=True)
                     st.caption(
-                        "Valores positivos y negativos indican desviaciones respecto a la referencia; "
-                        "por sí solos no equivalen a una clasificación de sostenibilidad."
+                        "Los meses sin datos GRACE se muestran como cortes en la línea: no se interpolan "
+                        "ni se unen observaciones a través de vacíos. Los valores positivos y negativos "
+                        "son desviaciones frente a la referencia, no clasificaciones de sostenibilidad."
                     )
 
                     csv_gws = df_gws.to_csv(index=False).encode("utf-8-sig")
@@ -1619,12 +1940,14 @@ elif seccion == "Agua subterránea (GRACE)":
                             f"{meta_ggdi['sigma_gsd_cm']:.2f} cm",
                         )
 
+                        serie_ggdi_viz = _siams_meses_grace_con_vacios(df_ggdi, ["GGDI"])
                         fig = go.Figure()
                         fig.add_trace(go.Scatter(
-                            x=df_ggdi["Fecha"],
-                            y=df_ggdi["GGDI"],
+                            x=serie_ggdi_viz["Fecha"],
+                            y=serie_ggdi_viz["GGDI"],
                             mode="lines",
                             name="GGDI",
+                            connectgaps=False,
                         ))
                         fig.add_hline(
                             y=0,
@@ -1643,6 +1966,7 @@ elif seccion == "Agua subterránea (GRACE)":
                             use_container_width=True,
                             key=f"ggdi_serie_{territorio}",
                         )
+                        st.caption("El GGDI no une meses sin dato. Los vacíos se conservan en la visualización.")
 
                         st.subheader("Revisar un año observado contra su climatología")
                         anios_ggdi = sorted(df_ggdi["Año"].unique().tolist())
@@ -1654,18 +1978,27 @@ elif seccion == "Agua subterránea (GRACE)":
                             key=f"anio_ggdi_{territorio}",
                         )
                         df_anio = df_ggdi[df_ggdi["Año"] == anio_sel].copy()
+                        # M10: cada mes del año se muestra, incluso si falta el producto.
+                        meses_eje = pd.DataFrame({
+                            "Mes_num": list(range(1, 13)), "Mes": list(MESES)
+                        })
+                        df_anio_viz = meses_eje.merge(
+                            df_anio.drop(columns=["Mes"], errors="ignore")
+                            .drop_duplicates(subset=["Mes_num"]),
+                            on="Mes_num", how="left",
+                        )
 
                         fig_comp = go.Figure()
                         fig_comp.add_trace(go.Scatter(
-                            x=df_anio["Mes"],
-                            y=df_anio["GWSa (cm)"],
-                            mode="lines+markers",
+                            x=df_anio_viz["Mes"],
+                            y=df_anio_viz["GWSa (cm)"],
+                            mode="lines+markers", connectgaps=False,
                             name=f"GWSa observada {anio_sel}",
                         ))
                         fig_comp.add_trace(go.Scatter(
-                            x=df_anio["Mes"],
-                            y=df_anio["GWSa climatológica (cm)"],
-                            mode="lines+markers",
+                            x=df_anio_viz["Mes"],
+                            y=df_anio_viz["GWSa climatológica (cm)"],
+                            mode="lines+markers", connectgaps=False,
                             name="Climatología mensual",
                             line=dict(dash="dash"),
                         ))
@@ -1827,55 +2160,76 @@ elif seccion == "Agua subterránea (GRACE)":
             st.error("Se encontró el NetCDF, pero ocurrió un error al procesar GWSa.")
             st.code(str(error), language=None)
 
+    # Complemento: GRACE/GRACE-FO frente a niveles medidos en Leticia.
+    # Se mantiene independiente del NetCDF de Colombia para mostrarlo aunque
+    # el producto nacional no esté disponible temporalmente.
+    if territorio == "Leticia":
+        if mostrar_grace_leticia is None:
+            st.warning("No se pudo cargar el módulo de niveles y GRACE de Leticia.")
+            st.code(ERROR_MODULO_GRACE_LETICIA, language=None)
+            st.caption("Comprueba que exista siams/grace_leticia.py y sus dependencias.")
+        else:
+            mostrar_grace_leticia()
+
 # =========================================================
 # HIDROGEOQUÍMICA
 # =========================================================
 
 elif seccion == "Hidrogeoquímica":
-    st.title(f"🧪 Hidrogeoquímica de {territorio}")
+    if territorio == "Leticia":
+        # Calculadora del taller, datos de laboratorio y diagramas.
+        if mostrar_hidrogeoquimica is None:
+            st.title("🧪 Hidrogeoquímica de Leticia")
+            st.warning("No se pudo cargar la calculadora fisicoquímica de SIAMS.")
+            st.code(ERROR_MODULO_HIDROGEOQUIMICA, language=None)
+            st.caption("Verifica siams/hidrogeoquimica.py, hidrogeoquimica_datos.py e hidrogeoquimica_nucleo.py.")
+        else:
+            mostrar_hidrogeoquimica(territorio)
+    else:
+        st.title(f"🧪 Hidrogeoquímica de {territorio}")
 
-    st.write(
-        "Esta sección mostrará puntos de muestreo, parámetros fisicoquímicos y, "
-        "cuando los datos lo permitan, diagramas hidroquímicos."
-    )
-
-    if territorio == "San Andrés":
-        mostrar_mapa_imagen(
-            "nitratos", "Concentraciones de nitratos en aguas subterráneas de San Andrés",
-            "CORALINA",
-            "El mapa se integra como antecedente de calidad de aguas subterráneas. Los valores deben interpretarse según la fecha y los puntos de muestreo de la fuente original.",
+        st.write(
+            "Esta sección mostrará puntos de muestreo, parámetros fisicoquímicos y, "
+            "cuando los datos lo permitan, diagramas hidroquímicos."
         )
 
-    c1, c2 = st.columns(2)
+        if territorio == "San Andrés":
+            mostrar_mapa_imagen(
+                "nitratos", "Concentraciones de nitratos en aguas subterráneas de San Andrés",
+                "CORALINA",
+                "El mapa se integra como antecedente de calidad de aguas subterráneas. Los valores deben interpretarse según la fecha y los puntos de muestreo de la fuente original.",
+            )
 
-    with c1:
-        parametros = pd.DataFrame(
-            {
-                "Grupo": [
-                    "Campo",
-                    "Iones mayoritarios",
-                    "Calidad",
-                ],
-                "Parámetros": [
-                    "pH, conductividad, temperatura y sólidos disueltos",
-                    "Ca, Mg, Na, K, HCO₃, Cl y SO₄",
-                    "Nitratos, hierro y otros parámetros disponibles",
-                ],
-            }
-        )
+        c1, c2 = st.columns(2)
 
-        st.dataframe(
-            parametros,
-            use_container_width=True,
-            hide_index=True,
-        )
+        with c1:
+            parametros = pd.DataFrame(
+                {
+                    "Grupo": [
+                        "Campo",
+                        "Iones mayoritarios",
+                        "Calidad",
+                    ],
+                    "Parámetros": [
+                        "pH, conductividad, temperatura y sólidos disueltos",
+                        "Ca, Mg, Na, K, HCO₃, Cl y SO₄",
+                        "Nitratos, hierro y otros parámetros disponibles",
+                    ],
+                }
+            )
 
-    with c2:
-        mostrar_tarjeta(
-            "Diagramas futuros",
-            "Piper, Schoeller o Stiff, únicamente si las muestras y unidades están completas.",
-            "📈",
-        )
+            st.dataframe(
+                parametros,
+                use_container_width=True,
+                hide_index=True,
+            )
+
+        with c2:
+            mostrar_tarjeta(
+                "Diagramas futuros",
+                "Piper, Schoeller o Stiff, únicamente si las muestras y unidades están completas.",
+                "📈",
+            )
 
 # =========================================================
 # CALIDAD DEL AGUA E IRCA
@@ -2190,7 +2544,7 @@ elif seccion == "Comparar territorios":
                 "Humedad relativa (%)": humedad,
                 "Viento a 2 m (m/s)": combinado.get("Viento a 2 m NASA (m/s)", pd.NA),
                 "Presión superficial (kPa)": combinado.get("Presión NASA (kPa)", pd.NA),
-                "Radiación solar (kWh/m²/día)": combinado.get("Radiación NASA (kWh/m²/día)", pd.NA),
+                "Radiación solar (MJ/m²/día)": combinado.get("Radiación NASA (MJ/m²/día)", pd.NA),
                 "Territorio": nombre,
                 "Fuente principal": "IDEAM + NASA POWER",
             })
@@ -2298,7 +2652,7 @@ elif seccion == "Comparar territorios":
             opciones = {
                 "Viento a 2 m": "Viento a 2 m (m/s)",
                 "Presión superficial": "Presión superficial (kPa)",
-                "Radiación solar": "Radiación solar (kWh/m²/día)",
+                "Radiación solar": "Radiación solar (MJ/m²/día)",
             }
             seleccion = st.selectbox(
                 "Variable",
@@ -2334,7 +2688,7 @@ elif seccion == "Comparar territorios":
                     Humedad_media_pct=("Humedad relativa (%)", "mean"),
                     Viento_medio_m_s=("Viento a 2 m (m/s)", "mean"),
                     Presion_media_kPa=("Presión superficial (kPa)", "mean"),
-                    Radiacion_media_kWh_m2_dia=("Radiación solar (kWh/m²/día)", "mean"),
+                    Radiacion_media_MJ_m2_dia=("Radiación solar (MJ/m²/día)", "mean"),
                 )
                 .reset_index()
             )

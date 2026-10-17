@@ -125,27 +125,33 @@ La compilación comprueba **sintaxis**, pero no garantiza que todas las hojas de
 
 ## 4. Estructura del repositorio
 
-La reorganización de los nombres se encuentra en curso. Los nombres siguientes corresponden a la estructura que se está adoptando en la rama de mejoras; antes de desplegar, comprueba las mayúsculas y minúsculas exactas de cada carpeta.
+La estructura A5 separa datos, scripts reproducibles y recursos visuales; los módulos de SIAMS leen los datos desde `data/processed/`.
 
 ```text
 Siams-Leticia-Tumaco/
-├── app.py                    # Aplicación Streamlit
-├── requirements.txt          # Dependencias de Python
-├── README.md                 # Documentación del proyecto
-├── .gitignore                # Exclusiones de Git
-├── Datos_Climaticos/         # Excel procesados IDEAM y NASA POWER
-├── Coberturas_MapBiomas/     # CSV y animaciones por sede
-├── Animaciones_SWOT/         # Animaciones de ríos
-├── Tarjetas_SWOT/            # Fichas técnicas de WSE, ancho, área y pendiente
-├── Mapas_Qgis/               # PDF de localización multiescala
-├── Mapas_Tematicos/          # Imágenes cartográficas de referencia
-├── Landsat/                 # Series y animaciones por sede
-├── Sentinel/                # Animaciones NDVI, MNDWI y SCL por sede
-├── Fotos_Sedes/             # Fotografías utilizadas en la portada
-└── COL_GWS_estimations.nc    # Producto regional GWSa, sujeto a metadatos pendientes
+├── app.py                     # Interfaz principal de Streamlit
+├── siams/                     # Módulos de la aplicación
+├── scripts/                   # Descarga, procesamiento y verificación A5
+├── data/
+│   ├── raw/swot/              # plot_*.csv originales de HydroWeb
+│   ├── processed/clima/       # Excel IDEAM y NASA POWER
+│   ├── processed/swot/        # Tablas por reach_id
+│   ├── processed/grace/       # NetCDF y tablas derivadas
+│   ├── processed/hidrogeoquimica/
+│   ├── processed/mapbiomas/
+│   └── processed/landsat/
+├── Animaciones_SWOT/          # GIF (sin modificar)
+├── Tarjetas_SWOT/             # PNG técnicos (sin modificar)
+├── Coberturas_MapBiomas/      # Recursos visuales
+├── Landsat/ y Sentinel/       # Recursos visuales
+├── Mapas_Qgis/ y Mapas_Tematicos/
+├── Fotos_Sedes/ y Recursos_Hidrogeoquimica/
+├── tests/ y docs/
+├── README.md y .gitignore
+└── requirements.txt
 ```
 
-No todas las sedes tienen archivos en cada carpeta. Los archivos con nombres históricos pueden seguir presentes durante la migración y deben revisarse en `app.py` antes de eliminarlos o renombrarlos.
+Las descargas originales aún no disponibles se incorporarán progresivamente a `data/raw/`. No crear copias adicionales de Excel o CSV procesados en las carpetas visuales. Consulta `data/README.md` para la trazabilidad y las limitaciones de A5.
 
 ### Convención de nombres
 
@@ -244,3 +250,11 @@ Flujo recomendado para colaborar:
 ---
 
 *Documento de trabajo actualizado para la reorganización técnica de SIAMS (octubre de 2026). Las afirmaciones científicas y los permisos de redistribución siguen sujetos a verificación de las fuentes originales.*
+
+## Reproducibilidad de datos · revisión A5 (octubre de 2026)
+
+El código de la plataforma permanece en `siams/`. Los scripts de obtención, consolidación y verificación se documentan en `scripts/`. Los datos originales se ubican en `data/raw/` y los productos estructurados usados por la plataforma en `data/processed/`. Los PDF, PNG y GIF permanecen en sus carpetas de recursos para mantener la compatibilidad visual.
+
+Para verificar la migración de archivos, ejecutar `python scripts/verificar_a5.py`. Para rehacer las tablas exploratorias SWOT a partir de 80 exportaciones HydroWeb, ejecutar `python scripts/procesar_swot.py --out data/processed/swot_regenerado_revision`; no sustituir las tablas publicadas hasta comparar la versión regenerada. NASA POWER puede descargarse y transformarse con `python scripts/nasa_power.py --help`. Los ejemplos, las advertencias y los datos todavía no reproducibles se encuentran en [`data/README.md`](data/README.md) y [`docs/PLAN_VALIDACION_A5.md`](docs/PLAN_VALIDACION_A5.md).
+
+**Importante:** la migración conserva los datos procesados recibidos, pero no demuestra que los archivos históricos de IDEAM, GRACE/GLDAS, MapBiomas, Landsat o Sentinel puedan reconstruirse sin obtener las fuentes y scripts que faltan. Tampoco autoriza a publicar mediciones personales, pozos ni recursos con licencia no verificada.

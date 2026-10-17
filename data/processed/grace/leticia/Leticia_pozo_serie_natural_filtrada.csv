@@ -1,0 +1,47 @@
+fechahora,fila_excel,qc,notas_formato,hora_decimal,prof_m_bbp,hampel_mediana_m,hampel_z,a1_hampel_bombeo,a1_hampel_somero,lowess_m,lowess_z,a2_lowess_bombeo,a2_lowess_somero,envolvente_m,b_envolvente_exceso_m,b_envolvente_bombeo,rio_48017010_cm_lag,c_rio_pred_m,c_rio_resid_z,c_rio_disponible,c_rio_bombeo,c_rio_PtoTriunfo_bombeo,n_metodos_bombeo,n_metodos_aplicables,bombeo_consenso,clase_bombeo,somera_atipica,en_serie_natural,prof_natural_m
+2026-03-30 11:12,2,ok,,11.2,2.8,,,False,False,3.461,-2.36,False,False,,,False,1611.8125000000048,3.291,-1.26,True,False,False,0.0,2.0,False,sin_indicio,False,True,2.8
+2026-03-31 15:25,3,ok,,15.417,3.6,3.49,0.82,False,False,3.462,0.49,False,False,2.8,0.8,True,1606.062500000003,3.298,0.77,True,False,False,1.0,4.0,False,posible_bombeo(1 metodo),False,True,3.6
+2026-04-01 10:42,4,ok,,10.7,3.6,3.49,0.82,False,False,3.463,0.49,False,False,2.8,0.8,True,1600.8750000000057,3.304,0.76,True,False,False,1.0,4.0,False,posible_bombeo(1 metodo),False,True,3.6
+2026-04-06 11:07,5,ok,hora_minuto_1digito,11.117,3.56,3.45,0.49,False,False,3.464,0.34,False,False,,,False,1582.5625000000016,3.327,0.6,True,False,False,0.0,3.0,False,sin_indicio,False,True,3.56
+2026-04-13 11:47,6,ok,,11.783,3.42,3.56,-0.86,False,False,3.452,-0.11,False,False,,,False,1572.4375000000014,3.339,0.21,True,False,False,0.0,3.0,False,sin_indicio,False,True,3.42
+2026-04-15 12:33,7,ok,,12.55,3.45,3.56,-0.59,False,False,3.445,0.02,False,False,3.42,0.03,False,1570.0625,3.342,0.28,True,False,False,0.0,4.0,False,sin_indicio,False,True,3.45
+2026-04-17 09:20,8,ok,,9.333,3.56,3.45,0.34,False,False,3.437,0.44,False,False,3.42,0.14,False,1570.0,3.342,0.56,True,False,False,0.0,4.0,False,sin_indicio,False,True,3.56
+2026-04-20 09:04,9,ok,,9.067,3.67,3.45,0.59,False,False,3.389,1.0,False,False,3.42,0.25,False,1574.437499999999,3.337,0.85,True,False,False,0.0,4.0,False,sin_indicio,False,True,3.67
+2026-04-22 13:10,10,ok,,13.167,3.7,3.45,0.77,False,False,3.35,1.25,False,False,3.56,0.14,False,1579.999999999997,3.33,0.95,True,False,False,0.0,4.0,False,sin_indicio,False,True,3.7
+2026-04-24 09:00,11,ok,,9.0,2.72,3.615,-4.83,False,True,3.312,-2.11,False,False,2.97,-0.25,False,1584.0,3.325,-1.55,True,False,False,0.0,4.0,False,sin_indicio,True,True,2.72
+2026-04-27 11:50,12,ok,,11.833,4.65,3.135,3.52,True,False,3.245,5.02,True,False,2.97,1.68,True,1585.687499999996,3.323,3.4,True,True,False,4.0,4.0,True,afectada_bombeo(>=2 metodos),False,False,
+2026-04-29 16:00,13,ok,,16.0,2.97,3.22,-0.37,False,False,3.187,-0.77,False,False,2.97,0.0,False,1590.5624999999986,3.317,-0.89,True,False,False,0.0,4.0,False,sin_indicio,False,True,2.97
+2026-05-04 11:30,14,ok,,11.5,3.15,3.045,0.26,False,False,3.037,0.4,False,False,2.67,0.48,True,1599.937500000001,3.305,-0.4,True,False,False,1.0,4.0,False,posible_bombeo(1 metodo),False,True,3.15
+2026-05-06 10:20,15,ok,,10.333,3.12,3.06,0.15,False,False,2.99,0.46,False,False,2.67,0.45,True,1596.6875000000064,3.309,-0.48,True,False,False,1.0,4.0,False,posible_bombeo(1 metodo),False,True,3.12
+2026-05-08 10:10,16,ok,,10.167,3.22,2.97,0.94,False,False,2.958,0.94,False,False,2.67,0.55,True,1595.4374999999984,3.311,-0.23,True,False,False,1.0,4.0,False,posible_bombeo(1 metodo),False,True,3.22
+2026-05-11 10:45,17,ok,,10.75,2.67,2.995,-1.15,False,False,2.92,-0.89,False,False,,,False,1604.5624999999948,3.3,-1.62,True,False,False,0.0,3.0,False,sin_indicio,False,True,2.67
+2026-05-13 09:40,18,ok,,9.667,2.58,3.12,-3.64,False,True,2.911,-1.18,False,False,2.6,-0.02,False,1616.3749999999984,3.285,-1.81,True,False,False,0.0,4.0,False,sin_indicio,True,True,2.58
+2026-05-15 15:30,19,excluido_celda_corrupta(fecha 2026-10-03),candidatos 3.1 m; ambiguo=no,,,,,,,,,,,,,,,,,,,,,,,,,False,
+2026-05-18 11:04,20,ok,,11.067,2.6,2.87,-0.65,False,False,2.917,-1.13,False,False,,,False,1634.437499999999,3.263,-1.7,True,False,False,0.0,3.0,False,sin_indicio,False,True,2.6
+2026-05-20 10:45,21,ok,,10.75,2.87,2.67,1.5,False,False,2.92,-0.18,False,False,2.6,0.27,False,1638.4374999999984,3.258,-0.99,True,False,False,0.0,4.0,False,sin_indicio,False,True,2.87
+2026-05-22 12:30,22,ok,,12.5,3.15,2.87,0.67,False,False,2.921,0.82,False,False,2.6,0.55,True,1642.4374999999984,3.253,-0.26,True,False,False,1.0,4.0,False,posible_bombeo(1 metodo),False,True,3.15
+2026-05-26 09:45,23,ok,espacio_en_valor,9.75,4.9,3.01,9.11,True,False,2.92,7.07,True,False,2.87,2.03,True,1645.0,3.25,4.23,True,True,True,4.0,4.0,True,afectada_bombeo(>=2 metodos),False,False,
+2026-06-01 09:30,24,ok,,9.5,3.15,2.9,2.5,False,False,2.924,0.81,False,False,2.9,0.25,False,1650.062499999999,3.243,-0.24,True,False,False,0.0,4.0,False,sin_indicio,False,True,3.15
+2026-06-05 14:30,25,ok,hora_con_punto,14.5,2.9,3.025,-0.62,False,False,2.938,-0.14,False,False,,,False,1650.5000000000014,3.243,-0.88,True,False,False,0.0,3.0,False,sin_indicio,False,True,2.9
+2026-06-12 15:00,26,ok,,15.0,2.88,2.9,-0.18,False,False,3.002,-0.44,False,False,,,False,1621.8750000000066,3.278,-1.02,True,False,False,0.0,3.0,False,sin_indicio,False,True,2.88
+2026-06-18 15:05,27,ok,,15.083,2.9,2.89,0.09,False,False,3.062,-0.58,False,False,,,False,1567.5000000000073,3.346,-1.14,True,False,False,0.0,3.0,False,sin_indicio,False,True,2.9
+2026-06-26 23:00,28,ok,hora_dudosa(fuera de jornada; posible am/pm invertido),23.0,2.75,2.9,-1.5,False,False,3.202,-1.61,False,False,,,False,1425.1250000000146,3.522,-1.98,True,False,False,0.0,3.0,False,sin_indicio,False,True,2.75
+2026-06-30 15:00,29,ok,,15.0,3.6,,,False,False,3.271,1.17,False,False,,,False,1260.5000000000562,3.726,-0.32,True,False,False,0.0,2.0,False,sin_indicio,False,True,3.6
+2026-07-22 15:00,30,ok,hora_formato_irregular(3:000 pm),15.0,3.7,,,False,False,3.636,0.23,False,False,,,False,1005.0,4.042,-0.88,True,False,False,0.0,2.0,False,sin_indicio,False,True,3.7
+2026-07-27 15:20,31,excluido_celda_corrupta(fecha 2026-08-03),candidatos 3.08/3.8 m; ambiguo=si,,,,,,,,,,,,,,,,,,,,,,,,,False,
+2026-07-29 14:50,32,ok,,14.833,3.75,3.8,-0.34,False,False,3.773,-0.08,False,False,3.7,0.05,False,943.25,4.118,-0.94,True,False,False,0.0,4.0,False,sin_indicio,False,True,3.75
+2026-08-03 15:30,33,ok,,15.5,3.8,3.875,-0.34,False,False,3.841,-0.15,False,False,3.75,0.05,False,895.9375000000098,4.177,-0.97,True,False,False,0.0,4.0,False,sin_indicio,False,True,3.8
+2026-08-05 14:40,34,ok,,14.667,4.0,3.775,2.25,False,False,3.85,0.53,False,False,,,False,876.5625000000044,4.201,-0.52,True,False,False,0.0,3.0,False,sin_indicio,False,True,4.0
+2026-08-20 09:00,35,ok,,9.0,4.6,3.8,2.25,False,False,3.952,2.31,False,False,,,False,,,,False,False,False,0.0,2.0,False,sin_indicio,False,True,4.6
+2026-08-25 08:30,36,ok,,8.5,3.8,3.88,-0.15,False,False,4.003,-0.72,False,False,3.56,0.24,False,,,,False,False,False,0.0,3.0,False,sin_indicio,False,True,3.8
+2026-08-27 10:40,37,ok,,10.667,3.56,4.0,-0.84,False,False,4.019,-1.64,False,False,3.49,0.07,False,,,,False,False,False,0.0,3.0,False,sin_indicio,False,True,3.56
+2026-09-01 11:00,38,ok,,11.0,3.49,4.275,-1.51,False,False,4.055,-2.02,False,False,3.49,0.0,False,,,,False,False,False,0.0,3.0,False,sin_indicio,False,True,3.49
+2026-09-03 09:25,39,ok,,9.417,4.2,4.2,0.0,False,False,4.068,0.47,False,False,3.49,0.71,True,,,,False,False,False,1.0,3.0,False,posible_bombeo(1 metodo),False,True,4.2
+2026-09-08 10:30,40,ok,,10.5,4.5,4.2,1.35,False,False,4.106,1.41,False,False,3.49,1.01,True,,,,False,False,False,1.0,3.0,False,posible_bombeo(1 metodo),False,True,4.5
+2026-09-09 11:17,41,ok,,11.283,5.52,4.2,5.94,True,False,4.114,5.02,True,False,4.2,1.32,True,,,,False,False,False,3.0,3.0,True,afectada_bombeo(>=2 metodos),False,False,
+2026-09-10 09:30,42,ok,,9.5,4.35,4.2,0.34,False,False,4.122,0.82,False,False,3.7,0.65,True,,,,False,False,False,1.0,3.0,False,posible_bombeo(1 metodo),False,True,4.35
+2026-09-11 11:30,43,ok,,11.5,4.2,4.325,-0.56,False,False,4.131,0.25,False,False,3.7,0.5,True,,,,False,False,False,1.0,3.0,False,posible_bombeo(1 metodo),False,True,4.2
+2026-09-14 15:00,44,excluido_celda_corrupta(fecha 2026-09-03),candidatos 3.09/3.9 m; ambiguo=si,,,,,,,,,,,,,,,,,,,,,,,,,False,
+2026-09-15 09:30,45,excluido_celda_corrupta(fecha 2026-08-03),candidatos 3.08/3.8 m; ambiguo=si,,,,,,,,,,,,,,,,,,,,,,,,,False,
+2026-09-16 13:15,46,ok,,13.25,3.7,4.35,-2.92,False,False,4.176,-1.7,False,False,3.7,0.0,False,,,,False,False,False,0.0,3.0,False,sin_indicio,False,True,3.7
+2026-09-17 09:25,47,ok,,9.417,4.3,,,False,False,4.183,0.42,False,False,,,False,720.2500000000163,4.394,-0.24,True,False,False,0.0,2.0,False,sin_indicio,False,True,4.3

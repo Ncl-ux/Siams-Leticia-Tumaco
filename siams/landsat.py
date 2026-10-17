@@ -28,6 +28,7 @@ except ImportError:
 from .utilidades import CARPETA_PROYECTO, normalizar_etiqueta
 
 CARPETA_LANDSAT = CARPETA_PROYECTO / "Landsat"
+CARPETA_LANDSAT_CSV = CARPETA_PROYECTO / "data/processed/landsat"
 
 COLORES_LANDSAT = {
     "Agua": "#2b83ba",
@@ -61,6 +62,9 @@ def inventario_landsat(nombre_territorio: str) -> dict:
         key=lambda p: p.name.casefold(),
     )
     def csv_buscar(nombre):
+        nuevo = CARPETA_LANDSAT_CSV / carpeta.name / nombre
+        if nuevo.is_file():
+            return nuevo
         return next((p for p in archivos if p.name.casefold() == nombre.casefold()), None)
     return {
         "carpeta": carpeta,

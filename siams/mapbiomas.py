@@ -28,6 +28,7 @@ except ImportError:
 from .utilidades import buscar_archivo_exacto, normalizar_etiqueta, resolver_carpeta_preferida, resolver_subcarpeta
 
 CARPETA_COBERTURAS = resolver_carpeta_preferida("Coberturas_MapBiomas", "Coberturas MapBio")
+CARPETA_CSV_MAPBIOMAS = resolver_carpeta_preferida("data/processed/mapbiomas", "Coberturas_MapBiomas")
 
 COBERTURAS_POR_TERRITORIO = {
     "Arauca": {"carpeta": "Arauca", "zonas": {"A": "Arauca"}},
@@ -55,7 +56,9 @@ def encontrar_csv_coberturas(nombre_territorio: str, codigo: str) -> dict:
     resultado = {"anual": [], "serie": []}
     if config is None or codigo not in config["zonas"]:
         return resultado
-    carpeta = resolver_subcarpeta(CARPETA_COBERTURAS, config["carpeta"])
+    carpeta = resolver_subcarpeta(CARPETA_CSV_MAPBIOMAS, config["carpeta"])
+    if not carpeta.is_dir() or not any(carpeta.glob("*.csv")):
+        carpeta = resolver_subcarpeta(CARPETA_COBERTURAS, config["carpeta"])
     if not carpeta.is_dir():
         return resultado
     for archivo in sorted(carpeta.iterdir(), key=lambda p: p.name.casefold()):
@@ -218,7 +221,9 @@ def buscar_csv_natural_antropico(nombre_territorio: str, codigo: str):
     cfg = COBERTURAS_POR_TERRITORIO.get(nombre_territorio)
     if not cfg or codigo not in cfg["zonas"]:
         return [], []
-    carpeta = resolver_subcarpeta(CARPETA_COBERTURAS, cfg["carpeta"])
+    carpeta = resolver_subcarpeta(CARPETA_CSV_MAPBIOMAS, cfg["carpeta"])
+    if not carpeta.is_dir() or not any(carpeta.glob("*.csv")):
+        carpeta = resolver_subcarpeta(CARPETA_COBERTURAS, cfg["carpeta"])
     if not carpeta.is_dir():
         return [], []
 

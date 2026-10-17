@@ -1,0 +1,8 @@
+site,site_lat,site_lon,inside_grid,near_i,near_j,near_lat,near_lon,near_dist_km,near_valid,valid_i,valid_j,valid_lat,valid_lon,valid_dist_km,used,scale_factor_at_used_cell,land_mask_at_used_cell,note
+Leticia,-4.1942,-69.9431,True,0,24,-4.25,-69.75,22.29,True,0,24,-4.25,-69.75,22.29,nearest,1.564157193161919,1.0,
+La_Paz,10.3797,-73.1818,True,29,17,10.25,-73.25,16.24,True,29,17,10.25,-73.25,16.24,nearest,0.8551314594972442,1.0,
+Tumaco,1.6385,-78.6806,True,12,6,1.75,-78.75,14.6,True,12,6,1.75,-78.75,14.6,nearest,1.0,1.0,
+Arauca,7.0125,-70.7842,True,23,22,7.25,-70.75,26.68,True,23,22,7.25,-70.75,26.68,nearest,1.13200670265498,1.0,
+Bogota,4.6381,-74.084,True,18,15,4.75,-74.25,22.21,True,18,15,4.75,-74.25,22.21,nearest,0.9928992398495626,1.0,
+San_Andres,12.5512,-81.7114,True,34,0,12.75,-81.75,22.5,True,34,0,12.75,-81.75,22.5,nearest,,0.0,celda oceanica (land_mask=0): NO representa almacenamiento terrestre
+Medellin,6.2612,-75.5776,True,21,12,6.25,-75.75,19.1,True,21,12,6.25,-75.75,19.1,nearest,1.6305018530383601,1.0,

@@ -31,6 +31,7 @@ def encontrar_archivo_gws():
     """Localiza el NetCDF de anomalías de almacenamiento subterráneo."""
     carpeta_codigo = Path(__file__).resolve().parent.parent
     carpetas = [
+        carpeta_codigo / "data" / "processed" / "grace",
         carpeta_codigo,
         carpeta_codigo / "DATOS GWS",
         carpeta_codigo / "datos",

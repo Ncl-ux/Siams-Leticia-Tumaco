@@ -89,7 +89,7 @@ def buscar_excel_climatico(territorio: str, fuente: str) -> Path | None:
         'Medellín': 'medellin', 'San Andrés': 'san_andres', 'La Paz': 'la_paz',
     }
     slug = nombres_sede.get(territorio, normalizar_etiqueta(territorio))
-    origenes = [CARPETA_DATOS_HIDRO, CARPETA_PROYECTO]
+    origenes = [CARPETA_DATOS_HIDRO, CARPETA_PROYECTO / "data/processed/clima", CARPETA_PROYECTO]
     origenes += [CARPETA_PROYECTO / p for p in ('Analisis Hidro', 'Datos_Climaticos')]
     if fuente == 'nasa':
         alternativas = [f'nasa_power_{slug}.xlsx', f'nasa_power_{slug}_final.xlsx',
@@ -160,6 +160,6 @@ def _fechas_desde_dataframe(df: pd.DataFrame):
 
 CARPETA_PROYECTO = Path(__file__).resolve().parent.parent
 
-CARPETA_DATOS_HIDRO = resolver_carpeta_preferida("Datos_Climaticos", "Analisis Hidro")
+CARPETA_DATOS_HIDRO = resolver_carpeta_preferida("data/processed/clima", "Datos_Climaticos", "Analisis Hidro")
 
 __all__ = ['normalizar_etiqueta', 'resolver_carpeta_preferida', 'resolver_subcarpeta', 'buscar_archivo_exacto', 'buscar_excel_climatico', '_fechas_desde_dataframe', 'CARPETA_PROYECTO', 'CARPETA_DATOS_HIDRO']

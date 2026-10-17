@@ -268,3 +268,77 @@ def analizar_serie_tendencia(serie: pd.DataFrame, agregacion: str, alpha: float 
     return anual, resultado
 
 __all__ = ['VARIABLES_TENDENCIA', '_buscar_columna_variable', 'extraer_series_historicas_excel', 'agregar_serie_anual', 'mann_kendall', 'pendiente_sen', 'analizar_serie_tendencia']
+
+
+# SIAMS_M5_INICIO — corrección por autocorrelación Hamed–Rao (1998)
+def mann_kendall_hamed_rao(anios, valores, alpha: float = 0.05, max_lags: int = 3) -> dict:
+    """MK Hamed–Rao de serie anual CONSECUTIVA, tras eliminar tendencia de Sen.
+
+    Corrige la varianza de S usando la autocorrelación significativa de los
+    rangos de la serie sin tendencia. Se prueban como máximo los tres primeros
+    rezagos, de forma explícita y reproducible. S, tau y Sen no se modifican.
+    Si los años no son consecutivos, no se presupone un intervalo uniforme.
+    Ref.: Hamed & Rao (1998), Journal of Hydrology 204, 182–196.
+    """
+    import numpy as np
+    import pandas as pd
+    import math
+
+    x = np.asarray(anios, dtype=float)
+    y = np.asarray(valores, dtype=float)
+    validos = np.isfinite(x) & np.isfinite(y)
+    x, y = x[validos], y[validos]
+    n = len(y)
+    base = {"disponible": False, "motivo": "", "n": n,
+            "p": float("nan"), "tendencia": "No evaluable",
+            "lag1": float("nan"), "lags_significativos": [],
+            "factor_varianza": float("nan")}
+    if n < 10:
+        return {**base, "motivo": "Se requieren al menos 10 años válidos para esta corrección exploratoria."}
+    if len(np.unique(x)) != n or not np.allclose(np.diff(x), 1.0):
+        return {**base, "motivo": "Hay años faltantes o repetidos; Hamed–Rao requiere pasos anuales consecutivos."}
+
+    original = mann_kendall(y, alpha=alpha)
+    if original["var_S"] <= 0:
+        return {**base, "motivo": "La serie no presenta variabilidad suficiente para evaluar la tendencia."}
+
+    sen = pendiente_sen(x, y)
+    if not np.isfinite(sen["pendiente"]):
+        return {**base, "motivo": "No fue posible estimar la pendiente de Sen."}
+    sin_tendencia = y - sen["pendiente"] * (x - x[0])
+    rangos = pd.Series(sin_tendencia).rank(method="average").to_numpy(dtype=float)
+    r = rangos - rangos.mean()
+    suma_cuadrados = float(np.dot(r, r))
+    numero_lags = min(int(max_lags), n - 1)
+    if numero_lags < 1:
+        return {**base, "motivo": "No existen rezagos disponibles."}
+
+    acf = {}
+    umbral = 1.959963984540054 / math.sqrt(n)
+    lags_validos = []
+    suma_ponderada = 0.0
+    for lag in range(1, numero_lags + 1):
+        rho = (float(np.dot(r[:-lag], r[lag:])) / suma_cuadrados) if suma_cuadrados > 0 else 0.0
+        acf[lag] = rho
+        if abs(rho) > umbral:
+            lags_validos.append(lag)
+            suma_ponderada += (n - lag) * (n - lag - 1) * (n - lag - 2) * rho
+
+    # Factor de inflación de varianza empleado en pyMannKendall (Hamed–Rao).
+    factor = 1.0 + 2.0 * abs(suma_ponderada) / (n * (n - 1) * (n - 2))
+    var_corr = float(original["var_S"]) * factor
+    s = original["S"]
+    z = ((s - 1.0) / math.sqrt(var_corr) if s > 0 else
+         (s + 1.0) / math.sqrt(var_corr) if s < 0 else 0.0)
+    p_corr = math.erfc(abs(z) / math.sqrt(2.0))
+    significativa = p_corr < alpha
+    resultado = ("Creciente significativa" if significativa and original["tau"] > 0 else
+                 "Decreciente significativa" if significativa and original["tau"] < 0 else
+                 "Sin tendencia significativa")
+    return {**base, "disponible": True, "motivo": "", "p": float(p_corr),
+            "Z": float(z), "var_S": var_corr, "tau": original["tau"],
+            "S": original["S"], "significativa": bool(significativa),
+            "tendencia": resultado, "lag1": acf.get(1, float("nan")),
+            "lags_significativos": lags_validos, "factor_varianza": float(factor),
+            "max_lags": numero_lags, "umbral_acf": umbral}
+# SIAMS_M5_FIN
