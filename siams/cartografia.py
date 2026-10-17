@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from textwrap import dedent
 from html import escape
+import logging
 import math
 import unicodedata
 import base64
@@ -26,6 +27,8 @@ except ImportError:
     xr = None
 
 from .catalogo import TERRITORIOS
+
+logger = logging.getLogger(__name__)
 from .utilidades import buscar_archivo_exacto, normalizar_etiqueta
 from .componentes import mostrar_tarjeta
 from .mapas_datos import CARPETA_MAPAS, CARPETA_MAPAS_QGIS, FICHA_QGIS_REFERENCIA, MAPAS_BOGOTA, MAPAS_UBICACION_QGIS
@@ -72,6 +75,8 @@ def mostrar_pdf_mapa(ruta_pdf: Path, altura: int = 900) -> None:
     Así se evita el cuadro blanco que algunos navegadores muestran con PDF embebidos.
     """
     ruta_pdf = Path(ruta_pdf)
+    errores = []
+    fallo_visor_nativo = False
 
     # 1) Visor PDF nativo de Streamlit, cuando está disponible.
     if hasattr(st, "pdf"):
@@ -79,10 +84,11 @@ def mostrar_pdf_mapa(ruta_pdf: Path, altura: int = 900) -> None:
             st.pdf(str(ruta_pdf), height=altura)
             return
         except Exception:
-            pass
+            logger.exception("M3: falló el visor nativo del PDF %s; se probará rasterización", ruta_pdf)
+            errores.append("El visor nativo de Streamlit no pudo mostrar el PDF.")
+            fallo_visor_nativo = True
 
     imagen_png = None
-    errores = []
 
     # 2) PyMuPDF / fitz.
     try:
@@ -142,6 +148,8 @@ def mostrar_pdf_mapa(ruta_pdf: Path, altura: int = 900) -> None:
             errores.append(f"pdftoppm: {error}")
 
     if imagen_png is not None:
+        if fallo_visor_nativo:
+            st.caption("El visor PDF nativo no funcionó; se muestra una vista alternativa del mapa.")
         st.image(
             imagen_png,
             caption=f"{ruta_pdf.name} · vista generada directamente desde el PDF original",

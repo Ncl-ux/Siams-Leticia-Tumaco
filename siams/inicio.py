@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from textwrap import dedent
 from html import escape
+import logging
 import math
 import unicodedata
 import base64
@@ -26,6 +27,8 @@ except ImportError:
     xr = None
 
 from .catalogo import TERRITORIOS, UNAL_SEDES
+
+logger = logging.getLogger(__name__)
 from .utilidades import normalizar_etiqueta, resolver_carpeta_preferida, resolver_subcarpeta
 from .mapas_datos import MAPAS_POR_TERRITORIO, MAPAS_UBICACION_QGIS
 from .swot import GIFS_SWOT_POR_TERRITORIO, TARJETAS_SWOT_POR_TERRITORIO, buscar_gif_swot, buscar_tarjeta_swot
@@ -70,7 +73,8 @@ def obtener_hallazgos_clave(nombre_territorio: str):
                         f"Temperatura media mensual aproximada: {df_n[t].mean():.1f} °C."
                     )
     except Exception:
-        pass
+        logger.exception("M3: fallo al elaborar hallazgos climáticos de portada para %s", nombre_territorio)
+        st.warning(f"{nombre_territorio}: no fue posible calcular todos los hallazgos climáticos de portada.")
 
     particularidades = {
         "Bogotá": "Piloto cartográfico multiescala con navegación desde Colombia hasta la Ciudad Universitaria.",
@@ -333,7 +337,8 @@ def recursos_reales_sede_portada(nombre: str) -> list[str]:
         if buscar_animaciones_sentinel(nombre):
             etiquetas.append("Sentinel-2")
     except (OSError, ValueError, KeyError, TypeError):
-        pass
+        logger.exception("M3: inventario incompleto de recursos para la sede %s", nombre)
+        st.warning(f"{nombre}: no fue posible verificar todos los recursos de la sede; el inventario puede estar incompleto.")
     return etiquetas
 
 def _fecha_valida_portada(valor):
@@ -412,7 +417,8 @@ def periodo_excel_sede_portada(ruta_texto: str, fecha_cambio_ns: int):
                 if inicio <= fin:
                     return (int(inicio.year), int(fin.year))
     except (OSError, ValueError, KeyError, ImportError, TypeError):
-        pass
+        logger.exception("M3: no fue posible leer el periodo del Excel %s", ruta_texto)
+        st.warning(f"No fue posible identificar el periodo de cobertura de {Path(ruta_texto).name}.")
     return None
 
 @st.cache_data(show_spinner=False, max_entries=48)
@@ -430,7 +436,8 @@ def periodo_csv_mapbiomas_portada(ruta_texto: str, fecha_cambio_ns: int):
         if anios:
             return (anios[0], anios[-1])
     except (OSError, ValueError, TypeError):
-        pass
+        logger.exception("M3: no fue posible leer los años del CSV MapBiomas %s", ruta_texto)
+        st.warning(f"No fue posible identificar los años de MapBiomas en {Path(ruta_texto).name}.")
     return None
 
 def periodos_reales_sede_portada(nombre: str) -> list[tuple[str, str]]:

@@ -7,10 +7,13 @@ from __future__ import annotations
 
 from io import BytesIO
 from pathlib import Path
+import logging
 import math
 import re
 import pandas as pd
 from . import hidrogeoquimica_nucleo as hq
+
+logger = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / "data/processed/hidrogeoquimica" / "siams_fq_largo.csv"
@@ -172,14 +175,16 @@ def analizar(df: pd.DataFrame, *, nitratos_en_no3: bool = False, regla_ld: str =
                 resumen["hco3_mg"] = car["hco3_mg"]
                 resumen["co3_mg"] = car["co3_mg"]
             except (ValueError, OverflowError, ZeroDivisionError):
-                pass
+                logger.warning("M3: no se pudo calcular carbonatos de la muestra %s", id_muestra, exc_info=True)
+                resumen["banderas"] = "; ".join(filter(None, (resumen["banderas"], "Carbonatos no calculables")))
         if set(IONICOS_REQUERIDOS).issubset(p):
             try:
                 b = hq.balance(p, regla_ld)
                 resumen.update(error_balance_pct=b["error_pct"],
                                nak_inferido_meq=b["nak_dif_meq"], CE_estimada=b["ce_estimada"])
             except (ValueError, OverflowError, ZeroDivisionError):
-                pass
+                logger.warning("M3: no se pudo calcular balance iónico de la muestra %s", id_muestra, exc_info=True)
+                resumen["banderas"] = "; ".join(filter(None, (resumen["banderas"], "Balance iónico no calculable")))
         if "conductividad" in p:
             resumen["CE_medida"] = p["conductividad"][1]
         filas.append(resumen)

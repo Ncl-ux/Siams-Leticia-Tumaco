@@ -4,6 +4,8 @@ from textwrap import dedent
 
 from html import escape
 
+import logging
+
 import math
 
 import unicodedata
@@ -32,6 +34,8 @@ try:
 except ImportError:
     np = None
     xr = None
+
+logger = logging.getLogger(__name__)
 
 VERSION_APP = "PROTOTIPO-SIAMS-V42-GRACE-M10-2026-10-16"
 
@@ -2481,7 +2485,8 @@ elif seccion == "Comparar territorios":
                 "Viento / presión / radiación": "NASA POWER",
             })
         except Exception:
-            pass
+            logger.exception("M3: fallo al cargar NASA POWER en comparación territorial: %s", nombre)
+            st.warning(f"No fue posible incorporar los datos NASA POWER de {nombre} en la comparación.")
 
     # -----------------------------------------------------
     # TUMACO Y ARAUCA: IDEAM + NASA POWER
@@ -2507,33 +2512,40 @@ elif seccion == "Comparar territorios":
                         "Viento / presión / radiación": "NASA POWER",
                     })
                 except Exception:
-                    pass
+                    logger.exception("M3: fallo en la fuente alternativa NASA POWER para %s", nombre)
+                    st.warning(f"{nombre}: IDEAM no está disponible y tampoco se pudo cargar NASA POWER; el territorio se omite de la comparación.")
             continue
 
         try:
             df_i, _, _, _ = cargar_ideam_tumaco(str(archivo_i))
             combinado = df_i.copy()
+            contraste_nasa_disponible = False
 
             if archivo_n is not None:
                 try:
                     df_n, _ = cargar_nasa_tumaco(str(archivo_n))
                     combinado = combinado.merge(df_n, on="Mes", how="left")
+                    contraste_nasa_disponible = True
                 except Exception:
-                    pass
+                    logger.exception("M3: fallo al combinar NASA POWER con IDEAM para %s", nombre)
+                    st.warning(f"{nombre}: no se pudo incorporar el contraste NASA POWER. Se conservan los datos IDEAM disponibles.")
 
             if nombre == "Arauca":
                 humedad = (
                     combinado["Humedad IDEAM (%)"]
                     if "Humedad IDEAM (%)" in combinado.columns else pd.NA
                 )
-                fuente_hr = "IDEAM con advertencia + contraste NASA"
+                fuente_hr = ("IDEAM con advertencia + contraste NASA" if contraste_nasa_disponible
+                             else "IDEAM (sin contraste NASA)")
             else:
                 humedad = (
                     combinado["Humedad NASA (%)"]
                     if "Humedad NASA (%)" in combinado.columns
                     else combinado.get("Humedad IDEAM (%)", pd.NA)
                 )
-                fuente_hr = "NASA POWER + contraste IDEAM"
+                fuente_hr = ("NASA POWER + contraste IDEAM" if "Humedad NASA (%)" in combinado.columns
+                             else "IDEAM" if "Humedad IDEAM (%)" in combinado.columns
+                             else "No disponible")
 
             temporal = pd.DataFrame({
                 "Mes": combinado["Mes"],
@@ -2546,7 +2558,7 @@ elif seccion == "Comparar territorios":
                 "Presión superficial (kPa)": combinado.get("Presión NASA (kPa)", pd.NA),
                 "Radiación solar (MJ/m²/día)": combinado.get("Radiación NASA (MJ/m²/día)", pd.NA),
                 "Territorio": nombre,
-                "Fuente principal": "IDEAM + NASA POWER",
+                "Fuente principal": "IDEAM + NASA POWER" if contraste_nasa_disponible else "IDEAM (sin contraste NASA POWER)",
             })
             datasets.append(temporal)
 
@@ -2555,10 +2567,11 @@ elif seccion == "Comparar territorios":
                 "Precipitación": "IDEAM",
                 "Temperatura": "IDEAM",
                 "Humedad": fuente_hr,
-                "Viento / presión / radiación": "NASA POWER",
+                "Viento / presión / radiación": "NASA POWER" if contraste_nasa_disponible else "No disponible (sin contraste NASA POWER)",
             })
         except Exception:
-            pass
+            logger.exception("M3: fallo al procesar IDEAM en comparación territorial: %s", nombre)
+            st.warning(f"No fue posible incorporar los datos IDEAM de {nombre} en la comparación.")
 
     # -----------------------------------------------------
     # VISUALIZACIÓN

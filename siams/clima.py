@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from textwrap import dedent
 from html import escape
+import logging
 import math
 import unicodedata
 import base64
@@ -26,6 +27,8 @@ except ImportError:
     xr = None
 
 from .catalogo import MESES
+
+logger = logging.getLogger(__name__)
 from .utilidades import CARPETA_DATOS_HIDRO, CARPETA_PROYECTO, buscar_excel_climatico, normalizar_etiqueta
 from .grace import ARCHIVO_GWS, extraer_gws_territorio
 from .tendencias import extraer_series_historicas_excel
@@ -46,7 +49,8 @@ def series_tendencia_territorio(nombre_territorio: str, info_territorio: dict):
                     "archivo": Path(archivo_clima).name,
                 }
         except Exception:
-            pass
+            logger.exception("M3: no se pudo leer la serie NASA POWER de %s (%s)", nombre_territorio, archivo_clima)
+            st.warning(f"{nombre_territorio}: no fue posible cargar la serie histórica NASA POWER; se mostrarán otras fuentes si están disponibles.")
 
     # 2) IDEAM: se intenta priorizar cuando el Excel conserva series históricas completas.
     # El archivo compacto de Arauca puede no incluir hojas diarias; en ese caso NASA se mantiene.
@@ -65,7 +69,8 @@ def series_tendencia_territorio(nombre_territorio: str, info_territorio: dict):
                         "archivo": Path(archivo_ideam).name,
                     }
         except Exception:
-            pass
+            logger.exception("M3: no se pudo leer la serie IDEAM de %s (%s)", nombre_territorio, archivo_ideam)
+            st.warning(f"{nombre_territorio}: no fue posible cargar la serie histórica IDEAM; se conservarán las demás fuentes disponibles.")
 
     # 3) GWSa GRACE/GLDAS.
     if ARCHIVO_GWS is not None and xr is not None and np is not None:
@@ -83,7 +88,8 @@ def series_tendencia_territorio(nombre_territorio: str, info_territorio: dict):
                     "hoja": "NetCDF",
                 }
         except Exception:
-            pass
+            logger.exception("M3: no se pudo extraer GWSa GRACE/GLDAS de %s", nombre_territorio)
+            st.warning(f"{nombre_territorio}: no fue posible extraer GWSa del archivo GRACE; no se publicará esa serie.")
 
     return disponibles
 
