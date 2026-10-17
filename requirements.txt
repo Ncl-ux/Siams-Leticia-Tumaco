@@ -1,9 +1,12 @@
-streamlit
-pandas
-plotly
-openpyxl
-numpy
-xarray
-netCDF4
-streamlit[pdf]
-pymupdf
+# SIAMS M2: dependencias directas fijadas con el .venv del proyecto.
+# Python 3.12; no actualizar sin ejecutar pruebas.
+streamlit[pdf]==1.66.0
+pandas==3.0.6
+plotly==7.1.0
+openpyxl==3.1.5
+numpy==2.5.4
+xarray==2026.9.0
+netCDF4==1.7.4
+pymupdf==1.28.2
+pillow==12.3.0
+pypdfium2==5.14.0
