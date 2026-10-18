@@ -112,11 +112,21 @@ def buscar_gif_mapbiomas(nombre_territorio: str, nombre_archivo: str):
     if config is None:
         return None
     carpeta = resolver_subcarpeta(CARPETA_COBERTURAS, config['carpeta'])
+    # SIAMS_M1_MP4_PRECEDENCIA: MP4 primero; GIF alternativo para versiones previas.
+    if nombre_archivo:
+        video = buscar_archivo_exacto(carpeta, Path(nombre_archivo).with_suffix('.mp4').name)
+        if video is not None:
+            return video
     return buscar_archivo_exacto(carpeta, nombre_archivo,
                                 MAPBIOMAS_GIFS_NOMBRES_ANTIGUOS.get(nombre_archivo, ''))
 
 def _mostrar_gif_mapbiomas(ruta: Path, titulo: str, descripcion: str) -> None:
     """Renderiza el GIF sin convertirlo para conservar la animación."""
+    # SIAMS_M1_MP4_PRECEDENCIA: usa el MP4 en lugar de cargar el GIF en base64.
+    if ruta.suffix.casefold() == '.mp4':
+        st.video(str(ruta), autoplay=True, loop=True, muted=True)
+        st.caption(descripcion)
+        return
     gif_b64 = base64.b64encode(ruta.read_bytes()).decode("ascii")
     st.markdown(
         f"""

@@ -70,6 +70,10 @@ GIFS_SWOT_ANTIGUOS = {'swot_leticia_amazonas_ancho.gif': 'R_o_Amazonas_Leticia_S
 
 def buscar_gif_swot(nombre_archivo: str):
     """Selecciona la animación SWOT exacta de río y sede, sin confusiones."""
+    # SIAMS_M1_MP4_PRECEDENCIA: MP4 primero; GIF de respaldo.
+    video = buscar_archivo_exacto(CARPETA_GIFS, Path(nombre_archivo).with_suffix('.mp4').name)
+    if video is not None:
+        return video
     return buscar_archivo_exacto(CARPETA_GIFS, nombre_archivo,
                                 GIFS_SWOT_ANTIGUOS.get(nombre_archivo, ''))
 
@@ -109,11 +113,16 @@ def mostrar_gifs_swot(nombre_territorio: str) -> None:
                 continue
 
             st.markdown(f"### {item['titulo']}")
-            st.image(
-                str(ruta),
-                caption=f"{item['descripcion']} · Fuente: HydroWeb / SWOT",
-                use_container_width=True,
-            )
+            # SIAMS_M1_MP4_PRECEDENCIA: reproducir video en bucle, conservando imagen alternativa.
+            if ruta.suffix.casefold() == '.mp4':
+                st.video(str(ruta), autoplay=True, loop=True, muted=True)
+                st.caption(f"{item['descripcion']} · Fuente: HydroWeb / SWOT")
+            else:
+                st.image(
+                    str(ruta),
+                    caption=f"{item['descripcion']} · Fuente: HydroWeb / SWOT",
+                    use_container_width=True,
+                )
             st.caption(f"Archivo: {CARPETA_GIFS.name}/{ruta.name}")
 
     st.markdown(

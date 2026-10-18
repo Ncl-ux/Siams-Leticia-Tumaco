@@ -95,6 +95,8 @@ from siams.landsat import CARPETA_LANDSAT, COLORES_LANDSAT, carpeta_landsat_sede
 from siams.sentinel import CARPETA_SENTINEL, CARPETAS_SENTINEL_POR_TERRITORIO, SENTINEL_ARCHIVOS_POR_TERRITORIO, SENTINEL_DESCRIPCIONES, carpeta_sentinel_territorio, buscar_animaciones_sentinel, _mostrar_gif_sentinel, _panel_sentinel, mostrar_sentinel_territorio
 from siams.estados import actualizar_estado_coberturas, actualizar_estado_landsat
 from siams.inicio import obtener_hallazgos_clave, mostrar_mapa_sedes_unal, tabla_disponibilidad, SIAMS_SEDES_PORTADA, CARPETA_FOTOS_SEDES, foto_sede_portada, foto_sede_data_uri, recursos_reales_sede_portada, _fecha_valida_portada, periodo_excel_sede_portada, periodo_csv_mapbiomas_portada, periodos_reales_sede_portada, ir_a_ficha_sede_siams, mostrar_sintesis_sedes_inicio
+from siams.fuentes_creditos import mostrar_fuentes_y_creditos, mostrar_creditos_institucionales
+from siams.homogeneidad_a1 import renderizar_a1_homogeneidad  # SIAMS_A1_IMPORT
 
 # =========================================================
 # NASA POWER · Compatibilidad A2 y A3 (solo en app.py)
@@ -392,6 +394,7 @@ SUBMENUS = {
     "Clima y datos": [
         "Clima",
         "Análisis de tendencias",
+        "Homogeneidad (A1)",
         "Estaciones y datos",
     ],
     "Subsuelo y calidad del agua": [
@@ -425,6 +428,7 @@ else:
 
 st.sidebar.divider()
 
+st.sidebar.caption("Semillero de Investigación de Aguas y Modelación Subterránea")
 st.sidebar.caption("Prototipo académico. Información sujeta a revisión.")
 
 st.sidebar.success(f"Versión activa: {VERSION_APP}")
@@ -1508,6 +1512,21 @@ elif seccion == "Análisis de tendencias":
 
 
 # =========================================================
+# A1 · PRUEBAS DE HOMOGENEIDAD IDEAM (TUMACO)
+# =========================================================
+
+elif seccion == "Homogeneidad (A1)":
+    if territorio == "Tumaco":
+        renderizar_a1_homogeneidad()
+    else:
+        st.title(f"🌧️ Homogeneidad de series · {territorio}")
+        st.info(
+            "El análisis A1 con Pettitt, SNHT y contraste entre estaciones IDEAM "
+            "está disponible inicialmente para Tumaco. Para este territorio aún "
+            "no se han integrado resultados de homogeneidad validados."
+        )
+
+# =========================================================
 # HIDROLOGÍA
 # =========================================================
 
@@ -1765,6 +1784,19 @@ elif seccion == "Hidrogeología":
 elif seccion == "Agua subterránea (GRACE)":
     st.title(f"🌐 Agua subterránea satelital · {territorio}")
     st.caption("GWSa + índice de sequía de agua subterránea (GGDI) · GRACE/GRACE-FO + GLDAS")
+    # SIAMS_A4_REFERENCIA_CF
+    st.caption(
+        "Referencia metodológica: Romero, P. y Piña, A. (2025), "
+        "GRACE-based analysis of groundwater sustainability in the tropics. "
+        "Journal of Hydrology: Regional Studies, 62, 102756. "
+        "https://doi.org/10.1016/j.ejrh.2025.102756"
+    )
+    st.caption(
+        "Producto regional: el archivo de SIAMS cubre 2002–2025. "
+        "La versión exacta de los insumos y el periodo base de la anomalía "
+        "no están documentados en el NetCDF original; se requiere confirmación de los autores. "
+        "Los resultados no representan niveles de pozos y pueden incluir efectos de agua superficial."
+    )
     st.markdown(
         "**¿Qué aprenderás aquí?** Los satélites ayudan a identificar si el agua "
         "almacenada bajo la superficie está por encima o por debajo de una referencia "
@@ -2306,13 +2338,11 @@ elif seccion == "Landsat":
 
 elif seccion == "Cobertura y relieve":
     st.title(f"🌿 Cobertura y relieve de {territorio}")
-    tab_coberturas, tab_landsat, tab_cartografia = st.tabs([
-        "Coberturas MapBiomas", "Landsat · evolución por fechas", "Mapas y relieve"
+    tab_coberturas, tab_cartografia = st.tabs([
+        "Coberturas MapBiomas", "Mapas y relieve"
     ])
     with tab_coberturas:
         mostrar_coberturas_mapbiomas(territorio)
-    with tab_landsat:
-        mostrar_landsat_territorio(territorio)
     with tab_cartografia:
         if territorio in {"Leticia", "Tumaco"}:
             tab1, tab2 = st.tabs(["Cobertura", "Relieve y geomorfología"])
@@ -2797,8 +2827,9 @@ elif seccion == "Fuentes y descargas":
 
     st.title("📂 Fuentes y descargas")
 
-    tab_archivos, tab_mapas, tab_fuentes = st.tabs([
-        "Archivos de datos", "Estado de mapas", "Inventario de fuentes"
+    tab_archivos, tab_mapas, tab_fuentes, tab_creditos = st.tabs([
+        "Archivos de datos", "Estado de mapas", "Inventario de fuentes",
+        "Procedencia y créditos",
     ])
 
     with tab_archivos:
@@ -2905,6 +2936,10 @@ elif seccion == "Fuentes y descargas":
             "Antes de redistribuir mapas o documentos completos debe verificarse la licencia y la forma de citación de cada entidad."
         )
 
+    # SIAMS_A6_A8_FUENTES_CREDITOS
+    with tab_creditos:
+        mostrar_fuentes_y_creditos()
+
 # =========================================================
 # SOBRE SIAMS
 # =========================================================
@@ -2939,18 +2974,9 @@ elif seccion == "Sobre SIAMS":
             "📘",
         )
 
-    st.subheader("Información institucional pendiente")
-
-    st.markdown(
-        """
-        - Reseña oficial del semillero.
-        - Docente coordinador.
-        - Integrantes autorizados.
-        - Líneas de trabajo.
-        - Logos.
-        - Contacto institucional.
-        """
-    )
+    st.subheader("Identidad y créditos")
+    mostrar_creditos_institucionales()
+    st.caption("Coordinación, líneas de investigación y contacto: pendientes de confirmación institucional.")
 
 st.divider()
 

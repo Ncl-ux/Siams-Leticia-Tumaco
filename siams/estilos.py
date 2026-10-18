@@ -564,7 +564,7 @@ def aplicar_estilos():
         }
         /* La altura es idéntica aunque varíen los textos y las imágenes. */
         .siams-sede-content {
-            height: 385px; min-width: 0; display: flex;
+            height: 375px; min-width: 0; display: flex;
             flex-direction: column; color: var(--text-color);
             overflow: hidden; border-radius: 12px;
         }
@@ -590,6 +590,26 @@ def aplicar_estilos():
             padding: 14px 9px 7px;
             background:linear-gradient(0deg,rgba(0,0,0,.57),rgba(0,0,0,0));
         }
+
+        /* SIAMS_A6_FOTOS_PORTADA_CREDITOS | crédito fotográfico junto a cada imagen */
+        .siams-sede-photo-credit {
+            position: absolute;
+            top: 7px;
+            right: 7px;
+            z-index: 2;
+            max-width: calc(100% - 14px);
+            padding: .19rem .42rem;
+            border-radius: 7px;
+            background: rgba(8, 28, 25, .80);
+            color: #fff !important;
+            font-size: .65rem;
+            font-weight: 650;
+            line-height: 1.35;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            cursor: help;
+        }
         .siams-sede-body {
             min-height:0; flex:1; display: flex; flex-direction: column;
         }
@@ -611,9 +631,9 @@ def aplicar_estilos():
         .siams-sede-description {
             color:var(--text-color) !important;
             font-size:.77rem; line-height:1.42; opacity:.91;
-            margin:0 0 .50rem; min-height:2.85em;
+            margin:0 0 .35rem; min-height:4.26em;
             display:-webkit-box; -webkit-box-orient:vertical;
-            -webkit-line-clamp:2; overflow:hidden;
+            -webkit-line-clamp:3; overflow:hidden;
         }
         .siams-sede-dates {
             border-top:1px solid var(--siams-borde);

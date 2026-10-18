@@ -279,6 +279,53 @@ def foto_sede_portada(nombre_sede: str):
             return ruta
     return None
 
+
+
+def credito_foto_sede(nombre_sede: str, ruta_foto: Path) -> tuple[str, str]:
+    """Crédito visible y texto ampliado a partir del inventario de fotos.
+
+    No confundir la copia recibida por SIAMS con el autor o fuente original.
+    """
+    import csv
+
+    inventario = Path(__file__).resolve().parents[1] / "docs" / "CREDITOS_FOTOS_SEDES.csv"
+    sin_confirmar = {"", "por confirmar", "por verificar", "pendiente", "desconocido", "—", "-"}
+    etiqueta = "Foto: crédito pendiente"
+    detalle = (f"{nombre_sede}: autor y fuente original sin verificar. "
+               "Consultar docs/CREDITOS_FOTOS_SEDES.csv antes de atribuir autoría.")
+    if not inventario.is_file():
+        return etiqueta, detalle
+
+    try:
+        with inventario.open("r", encoding="utf-8-sig", newline="") as archivo:
+            for fila in csv.DictReader(archivo):
+                if (normalizar_etiqueta(str(fila.get("Sede", ""))) != normalizar_etiqueta(nombre_sede)
+                        or str(fila.get("Archivo", "")).casefold() != ruta_foto.name.casefold()):
+                    continue
+                autor = str(fila.get("Autor/a de la foto", "")).strip()
+                fuente = str(fila.get("Fuente original", "")).strip()
+                enlace = str(fila.get("Enlace fuente original", "")).strip()
+                autoria_confirmada = autor.casefold() not in sin_confirmar
+                fuente_confirmada = fuente.casefold() not in sin_confirmar
+                enlace_confirmado = enlace.casefold() not in sin_confirmar
+                if autoria_confirmada:
+                    etiqueta = f"Foto: {autor}"
+                elif fuente_confirmada:
+                    etiqueta = f"Foto: {fuente}"
+                elif enlace_confirmado:
+                    etiqueta = "Foto: fuente registrada"
+                detalle = " · ".join([
+                    f"Sede: {nombre_sede}",
+                    f"Autor/a: {autor if autoria_confirmada else 'sin verificar'}",
+                    f"Fuente original: {fuente if fuente_confirmada else 'sin verificar'}",
+                    *([f"Enlace: {enlace}"] if enlace_confirmado else []),
+                ])
+                return etiqueta, detalle
+    except (OSError, UnicodeError, csv.Error) as error:
+        import logging
+        logging.getLogger(__name__).warning("No se pudieron leer créditos fotográficos: %s", error)
+    return etiqueta, detalle
+
 @st.cache_data(show_spinner=False, max_entries=20)
 def foto_sede_data_uri(ruta_texto: str, fecha_cambio_ns: int) -> str:
     """Crea una miniatura liviana en memoria. No modifica el JPG original del proyecto."""
@@ -496,10 +543,19 @@ def mostrar_sintesis_sedes_inicio() -> None:
             ruta_foto = foto_sede_portada(nombre)
             if ruta_foto is not None:
                 imagen = foto_sede_data_uri(str(ruta_foto), ruta_foto.stat().st_mtime_ns)
+                credito, titulo_credito = credito_foto_sede(nombre, ruta_foto)
+                # SIAMS_FOTOS_CREDITOS_VERIFICADOS_V2: no exhibir créditos sin fuente demostrada.
+                credito_html = ""
+                if credito and credito != "Foto: crédito pendiente":
+                    credito_html = (
+                        f'<span class="siams-sede-photo-credit" title="{escape(titulo_credito, quote=True)}">'
+                        f'{escape(credito)}</span>'
+                    )
                 visual = (
                     '<div class="siams-sede-media">'
                     f'<img src="{imagen}" alt="Fotografía de {escape(nombre)}" loading="lazy">'
                     f'<span class="siams-sede-photo-label">{escape(nombre)}</span>'
+                    f'{credito_html}'
                     '</div>'
                 )
             else:
@@ -536,7 +592,7 @@ def mostrar_sintesis_sedes_inicio() -> None:
                 f'<span class="siams-sede-region">{escape(str(region))}</span>'
                 f'<div class="siams-sede-title">{escape(nombre)}</div>'
                 f'<div class="siams-sede-focus">{escape(datos["tema"])}</div>'
-                f'<p class="siams-sede-description">{escape(datos["descripcion"])}</p>'
+                f'<p class="siams-sede-description" title="{escape(datos["descripcion"], quote=True)}">{escape(datos["descripcion"])}</p>'
                 '<div class="siams-sede-dates">'
                 '<div class="siams-sede-date-heading">PERIODOS CON DATOS</div>'
                 + lineas_fecha + '</div>'
