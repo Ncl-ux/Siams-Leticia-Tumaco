@@ -23,6 +23,40 @@ AZUL = "#4679a3"
 NARANJA = "#c48a3d"
 GRIS = "#687784"
 
+# Datos de campo comunicados el 20-10-2026. La profundidad de instalación
+# está medida desde el TERRENO hasta el sensor (no desde el brocal).
+# No son calibraciones del transductor ni validan el campo h_natural_m.
+SONDAS_LETICIA = {
+    "Numae": {
+        "punto": "Numae · indicador de columna",
+        "cota_terreno_msnm": 77.0,
+        "profundidad_instalacion_m": 7.0,  # excepción: NO son 17 m
+    },
+    "SONDA01_CasaProfeArturo": {
+        "punto": "Casa del profesor Arturo · indicador de columna",
+        "cota_terreno_msnm": 80.0,
+        "profundidad_instalacion_m": 17.0,
+    },
+}
+# Pachovela no aparece como serie temporal validada en el CSV procesado.
+# Se guarda su ficha de referencia sin fabricar observaciones.
+PACHOVELA = {"punto": "Colegio Pachovela", "cota_terreno_msnm": 78.0,
+             "profundidad_instalacion_m": 17.0}
+
+
+def _tabla_referencias_sondas() -> pd.DataFrame:
+    """Ficha de terreno e instalación (no depende de los CSV)."""
+    filas = [
+        {"Punto": "Numae", "Cota terreno (m s. n. m.)": 77.0,
+         "Instalación bajo terreno (m)": 7.0, "Estado": "Referencia informada"},
+        {"Punto": "Casa del profesor Arturo", "Cota terreno (m s. n. m.)": 80.0,
+         "Instalación bajo terreno (m)": 17.0, "Estado": "Referencia informada"},
+        {"Punto": "Colegio Pachovela", "Cota terreno (m s. n. m.)": 78.0,
+         "Instalación bajo terreno (m)": 17.0,
+         "Estado": "Solo ficha; sin serie histórica validada"},
+    ]
+    return pd.DataFrame(filas)
+
 
 @st.cache_data(show_spinner=False)
 def _leer_csv(nombre: str) -> pd.DataFrame:
@@ -52,17 +86,46 @@ def _serie_grace() -> pd.DataFrame:
 
 
 def _niveles_campo() -> pd.DataFrame:
+    """Carga datos de campo sin sobrescribir mediciones originales.
+
+    Si h_natural_m equivale a metros de columna de agua SOBRE el sensor,
+    la profundidad al agua = profundidad de instalación - h_natural_m y
+    la elevación = cota del terreno - profundidad instalación + h_natural_m.
+    Hasta verificar conversión/compensación de presión y datum altimétrico,
+    ambas columnas calculadas se consideran PROVISIONALES.
+    """
+    columnas = ["Fecha", "Punto", "Valor", "Tipo", "Referencia", "Lectura_original_m",
+                "Cota_terreno_msnm", "Profundidad_instalacion_m", "Cota_sensor_msnm",
+                "Profundidad_agua_m", "Cota_agua_msnm", "Estado_conversion"]
     sensores = _leer_csv("transductores_natural_diario.csv")
     sensores = sensores[["fecha", "equipo", "h_natural_m", "fuente_h_natural"]].copy()
     sensores["Fecha"] = pd.to_datetime(sensores["fecha"], errors="coerce")
     sensores["Valor"] = pd.to_numeric(sensores["h_natural_m"], errors="coerce")
-    sensores["Punto"] = sensores["equipo"].map({
-        "Numae": "Numae · indicador de columna",
-        "SONDA01_CasaProfeArturo": "Casa del profesor Arturo · indicador de columna",
-    })
+    sensores["Punto"] = sensores["equipo"].map(
+        {equipo: meta["punto"] for equipo, meta in SONDAS_LETICIA.items()}
+    )
     sensores["Tipo"] = "Columna de agua inferida de presión (m; provisional)"
-    sensores["Referencia"] = "Interpretación de presión pendiente de validación"
-    sensores = sensores[["Fecha", "Punto", "Valor", "Tipo", "Referencia"]]
+    sensores["Referencia"] = "Lectura de presión/columna aún pendiente de validar"
+    sensores["Lectura_original_m"] = sensores["Valor"]
+    sensores["Cota_terreno_msnm"] = sensores["equipo"].map(
+        {equipo: meta["cota_terreno_msnm"] for equipo, meta in SONDAS_LETICIA.items()}
+    )
+    sensores["Profundidad_instalacion_m"] = sensores["equipo"].map(
+        {equipo: meta["profundidad_instalacion_m"] for equipo, meta in SONDAS_LETICIA.items()}
+    )
+    sensores["Cota_sensor_msnm"] = (
+        sensores["Cota_terreno_msnm"] - sensores["Profundidad_instalacion_m"]
+    )
+    sensores["Profundidad_agua_m"] = (
+        sensores["Profundidad_instalacion_m"] - sensores["Valor"]
+    )
+    sensores["Cota_agua_msnm"] = sensores["Cota_sensor_msnm"] + sensores["Valor"]
+    sensores["Estado_conversion"] = "Provisional; verificar columna de agua, compensación y datum"
+    dudosos = (sensores["Valor"] < 0) | (sensores["Valor"] > sensores["Profundidad_instalacion_m"])
+    sensores.loc[dudosos, "Estado_conversion"] = (
+        "Revisar: columna fuera de 0 a profundidad de instalación (posible referencia o condición surgente)"
+    )
+    sensores = sensores[columnas]
 
     unal = _leer_csv("Leticia_pozo_serie_natural_filtrada.csv")
     # No publicar como 'natural' una medición descartada por el filtrado.
@@ -73,7 +136,12 @@ def _niveles_campo() -> pd.DataFrame:
     unal["Punto"] = "Pozo UNAL · medición manual"
     unal["Tipo"] = "Profundidad bajo brocal (m)"
     unal["Referencia"] = "Referencia local del brocal; sin cota absoluta verificada"
-    unal = unal[["Fecha", "Punto", "Valor", "Tipo", "Referencia"]]
+    unal["Lectura_original_m"] = unal["Valor"]
+    for campo in ["Cota_terreno_msnm", "Profundidad_instalacion_m", "Cota_sensor_msnm",
+                  "Profundidad_agua_m", "Cota_agua_msnm"]:
+        unal[campo] = np.nan
+    unal["Estado_conversion"] = "Sin elevación del brocal: no se calcula cota absoluta"
+    unal = unal[columnas]
     return pd.concat([sensores, unal], ignore_index=True).dropna(
         subset=["Fecha", "Punto", "Valor"]
     ).sort_values("Fecha").reset_index(drop=True)
@@ -121,9 +189,9 @@ def _mensual_con_huecos(df: pd.DataFrame, columna: str) -> pd.DataFrame:
     return serie.rename_axis("Fecha").reset_index()
 
 
-def _diaria_con_huecos(df: pd.DataFrame) -> pd.DataFrame:
+def _diaria_con_huecos(df: pd.DataFrame, columna: str = "Valor") -> pd.DataFrame:
     """Para sondas/pozos, distingue días sin registro de datos continuos."""
-    salida = df[["Fecha", "Valor"]].copy()
+    salida = df[["Fecha", columna]].rename(columns={columna: "Valor"}).copy()
     salida["Fecha"] = pd.to_datetime(salida["Fecha"], errors="coerce")
     salida = salida.dropna(subset=["Fecha"])
     if salida.empty:
@@ -156,7 +224,12 @@ def _meses_comunes_normalizados(
         if punto == "Río Amazonas · IDEAM":
             temporal = rio[["Fecha", "Valor"]].copy()
         else:
-            temporal = campo.loc[campo["Punto"] == punto, ["Fecha", "Valor"]].copy()
+            es_pozo_unal = punto.startswith("Pozo UNAL")
+            # Series de sondas convertidas a cota provisoria: la estandarización
+            # no cambia al sumar/restar una constante por estación.
+            columna = "Valor" if es_pozo_unal else "Cota_agua_msnm"
+            temporal = campo.loc[campo["Punto"] == punto, ["Fecha", columna]].copy()
+            temporal = temporal.rename(columns={columna: "Valor"})
         temporal["Fecha"] = temporal["Fecha"].dt.to_period("M").dt.to_timestamp()
         serie = temporal.groupby("Fecha")["Valor"].mean()
         if punto.startswith("Pozo UNAL"):
@@ -325,62 +398,110 @@ def mostrar_grace_leticia() -> None:
 
     with tab_pozos:
         st.markdown(
-            "**¿Qué vas a ver?** Estas curvas proceden de observaciones en pozos "
-            "de Leticia, no del satélite. **UNAL** tiene mediciones manuales de "
-            "profundidad desde el brocal; **Numae** y **Casa del profesor Arturo** "
-            "tienen señales de sondas cuya referencia instrumental sigue en revisión. "
-            "Por eso no deben combinarse como si fueran alturas absolutas comparables."
+            "**¿Qué vas a ver?** Las sondas cuentan ahora con cotas del terreno y "
+            "profundidades de instalación informadas el 20/10/2026. El nivel "
+            "calculado es **provisional**, pues el campo `h_natural_m` se infiere de "
+            "presión y aún falta verificar su interpretación y compensación. "
+            "Las mediciones UNAL siguen referidas al brocal, cuya elevación falta."
         )
-        st.markdown("**Registros de campo, con sus referencias originales**")
-        puntos = list(campo["Punto"].unique())
-        punto = st.selectbox("Punto de monitoreo", puntos, key="siams_grace_leticia_pozo")
-        seleccion = campo.loc[campo["Punto"] == punto].copy().sort_values("Fecha")
-        valor = seleccion["Tipo"].iloc[0]
-        fig = _figura(f"Evolución de la medición · {punto}", valor)
-        campo_visual = _diaria_con_huecos(seleccion)
-        fig.add_trace(go.Scatter(
-            x=campo_visual["Fecha"], y=campo_visual["Valor"],
-            mode="lines+markers" if len(seleccion) < 70 else "lines",
-            name=punto, connectgaps=False,
-            line=dict(color=VERDE, width=2.6), marker=dict(size=5),
-        ))
-        if punto.startswith("Pozo UNAL"):
-            fig.update_yaxes(autorange="reversed")
-            st.caption("En profundidad bajo brocal, un número menor indica agua más cercana al brocal. "
-                       "El eje se invierte para facilitar la lectura. No es una cota sobre el nivel del mar.")
+        st.markdown("**Referencias de instalación informadas por sede**")
+        referencias = _tabla_referencias_sondas()
+        st.dataframe(referencias, use_container_width=True, hide_index=True)
+        st.caption(
+            "La cota del sensor se obtiene restando la profundidad de instalación "
+            "a la del terreno: Numae 70 m; Casa del profesor Arturo 63 m; "
+            "Colegio Pachovela 61 m. Comprobar datum vertical y precisión de cotas."
+        )
+        _descargar(referencias, "SIAMS_Leticia_referencias_sondas.csv",
+                   "⬇️ Descargar referencias de instalación", "siams_grace_leticia_descargar_referencias")
+        st.markdown("**Registros de campo y niveles calculados bajo supuesto de columna de agua**")
+        puntos_campo = list(campo["Punto"].unique())
+        if not puntos_campo:
+            st.info("No hay mediciones de pozo/sonda disponibles en los CSV procesados.")
         else:
-            st.warning("Lectura provisional: la conversión de presión y la referencia de instalación "
-                       "requieren validación. No tratar estos valores como profundidad absoluta del acuífero.")
-        st.plotly_chart(fig, use_container_width=True, key="siams_grace_leticia_pozos_fig")
-        st.caption("Los días sin registro no se unen mediante líneas ni se rellenan con valores estimados.")
-        st.caption(f"{len(seleccion)} observaciones válidas · {seleccion['Fecha'].min():%Y-%m-%d} a "
-                   f"{seleccion['Fecha'].max():%Y-%m-%d} · {seleccion['Referencia'].iloc[0]}.")
-        primera, ultima = seleccion.iloc[0], seleccion.iloc[-1]
-        variacion = float(ultima["Valor"] - primera["Valor"])
-        if len(seleccion) > 1 and primera["Fecha"] != ultima["Fecha"]:
-            if punto.startswith("Pozo UNAL"):
-                sentido = ("el agua terminó más alejada del brocal" if variacion > 0
-                           else "el agua terminó más cercana al brocal" if variacion < 0
-                           else "la profundidad inicial y final resultó igual")
-                st.markdown(
-                    f"**¿Qué nos dicen las mediciones?** Entre la primera y la última "
-                    f"observación, la profundidad pasó de **{primera['Valor']:.2f} m** "
-                    f"a **{ultima['Valor']:.2f} m**. En esa comparación, **{sentido}**. "
-                    "Puede haber variaciones intermedias y efectos locales que requieren revisión."
-                )
+            punto = st.selectbox("Punto de monitoreo", puntos_campo, key="siams_grace_leticia_pozo")
+            seleccion = campo.loc[campo["Punto"] == punto].copy().sort_values("Fecha")
+            es_unal = punto.startswith("Pozo UNAL")
+            if es_unal:
+                columna_grafica = "Valor"
+                unidad = "Profundidad bajo brocal (m)"
+                st.caption("UNAL: nivel manual referido al brocal; no se le aplican las cotas de las sondas.")
             else:
-                st.markdown(
-                    f"**¿Qué nos dicen los registros?** El indicador instrumental cambió "
-                    f"de **{primera['Valor']:.2f} m** a **{ultima['Valor']:.2f} m** "
-                    "entre las dos fechas extremas. Antes de hablar de ascenso o descenso "
-                    "real del nivel de agua debemos validar la calibración y el punto de referencia."
+                alternativas = {
+                    "Elevación calculada (provisional)": ("Cota_agua_msnm", "Elevación calculada (m s. n. m.; provisional)"),
+                    "Profundidad al agua (provisional)": ("Profundidad_agua_m", "Profundidad bajo terreno (m; provisional)"),
+                    "Lectura instrumental original": ("Valor", "Columna de agua inferida (m; provisional)"),
+                }
+                vista = st.radio("Variable para visualizar", list(alternativas), horizontal=True,
+                                key="siams_grace_leticia_vista_nivel")
+                columna_grafica, unidad = alternativas[vista]
+                datos_referencia = seleccion.iloc[0]
+                st.caption(
+                    f"Cota del terreno: {datos_referencia['Cota_terreno_msnm']:.2f} m s. n. m. · "
+                    f"Profundidad del sensor desde terreno: "
+                    f"{datos_referencia['Profundidad_instalacion_m']:.2f} m · "
+                    f"Cota del sensor: {datos_referencia['Cota_sensor_msnm']:.2f} m s. n. m."
                 )
-        else:
-            st.info("Este punto no tiene suficientes fechas distintas para describir un cambio temporal.")
-        _descargar(seleccion, "SIAMS_Leticia_niveles_seleccion.csv", "⬇️ Descargar mediciones filtradas", "siams_descargar_niveles_leticia")
+                st.warning(
+                    "**Conversión provisional:** se supone que `h_natural_m` es la altura de "
+                    "agua sobre el sensor (m de columna de agua), ya compensada por "
+                    "presión atmosférica cuando corresponde. Antes de publicar el nivel "
+                    "como definitivo, confirmar esta condición con la ficha del transductor, "
+                    "el datum de las cotas y alguna medición manual de contraste."
+                )
+                anomalias = seleccion[seleccion["Estado_conversion"].str.startswith("Revisar:")]
+                if not anomalias.empty:
+                    st.warning(
+                        f"{len(anomalias)} registros requieren revisión: la lectura "
+                        "está fuera del intervalo 0–profundidad de instalación. "
+                        "Podría deberse a referencia/calibración o a nivel surgente; "
+                        "no se borraron ni se recortaron automáticamente."
+                    )
+            fig = _figura(f"Evolución de la medición · {punto}", unidad)
+            campo_visual = _diaria_con_huecos(seleccion, columna_grafica)
+            fig.add_trace(go.Scatter(
+                x=campo_visual["Fecha"], y=campo_visual["Valor"],
+                mode="lines+markers" if len(seleccion) < 70 else "lines",
+                name=punto, connectgaps=False,
+                line=dict(color=VERDE, width=2.6), marker=dict(size=5),
+            ))
+            if es_unal or (not es_unal and columna_grafica == "Profundidad_agua_m"):
+                fig.update_yaxes(autorange="reversed")
+            st.plotly_chart(fig, use_container_width=True, key="siams_grace_leticia_pozos_fig")
+            st.caption("Los días sin registro se dejan en blanco: sin interpolación ni líneas a través de huecos.")
+            st.caption(f"{len(seleccion)} observaciones válidas · {seleccion['Fecha'].min():%Y-%m-%d} a "
+                       f"{seleccion['Fecha'].max():%Y-%m-%d} · {seleccion['Referencia'].iloc[0]}.")
+            primera, ultima = seleccion.iloc[0], seleccion.iloc[-1]
+            variacion = float(ultima[columna_grafica] - primera[columna_grafica])
+            if len(seleccion) > 1 and primera["Fecha"] != ultima["Fecha"]:
+                if es_unal:
+                    sentido = ("el agua terminó más alejada del brocal" if variacion > 0
+                               else "el agua terminó más cercana al brocal" if variacion < 0
+                               else "la profundidad inicial y final resultó igual")
+                    st.markdown(
+                        f"**¿Qué nos dicen las mediciones?** La profundidad pasó de "
+                        f"**{primera['Valor']:.2f} m** a **{ultima['Valor']:.2f} m**; "
+                        f"{sentido}. La referencia es el brocal, no el nivel del mar."
+                    )
+                else:
+                    st.markdown(
+                        f"**Cambio en la variable seleccionada:** de "
+                        f"**{primera[columna_grafica]:.2f}** a "
+                        f"**{ultima[columna_grafica]:.2f}** ({variacion:+.2f} m). "
+                        "La interpretación de ascenso/descenso depende de la calibración "
+                        "y del tipo de variable representada."
+                    )
+            else:
+                st.info("Este punto no tiene suficientes fechas distintas para describir un cambio temporal.")
+            _descargar(seleccion, "SIAMS_Leticia_niveles_y_cotas_seleccion.csv",
+                       "⬇️ Descargar lecturas originales y niveles calculados", "siams_descargar_niveles_leticia")
         with st.expander("¿Dónde está la sonda de Pachovela?", expanded=False):
-            st.info("El archivo de Pachovela contiene una lectura de prueba de unos segundos, "
-                    "no una serie temporal de monitoreo. Por eso no se presenta como una curva histórica.")
+            st.info(
+                "Pachovela: terreno 78 m s. n. m. e instalación a 17 m bajo terreno "
+                "(cota del sensor 61 m s. n. m.). El archivo existente contiene "
+                "una prueba de pocos segundos, no una serie validada para comparación "
+                "histórica. No se inventan registros ni se agrega una curva ficticia."
+            )
 
     with tab_comparar:
         st.markdown(
@@ -396,7 +517,8 @@ def mostrar_grace_leticia() -> None:
                     'Con los pocos meses coincidentes no se concluye causalidad ni significancia estadística.'
                     '</div>',
                     unsafe_allow_html=True)
-        opciones = ["Numae · indicador de columna", "Pozo UNAL · medición manual", "Río Amazonas · IDEAM"]
+        opciones = ["Numae · indicador de columna", "Casa del profesor Arturo · indicador de columna",
+                    "Pozo UNAL · medición manual", "Río Amazonas · IDEAM"]
         puntos = st.multiselect(
             "Mediciones para comparar", opciones, default=opciones[:2],
             key="siams_grace_leticia_comparar_selecciones",
@@ -490,7 +612,9 @@ def mostrar_grace_leticia() -> None:
             "(no interpolados); GWSA B disponible hasta junio de 2026; "
             "las mediciones de Casa del profesor Arturo son de agosto–septiembre de 2026 "
             "y por ahora no se superponen con GWSA B. "
-            "La referencia instrumental de Numae sigue bajo revisión."
+            "Las cotas y profundidades de instalación fueron informadas el 20/10/2026, "
+            "pero falta verificar el datum vertical y la interpretación/compensación "
+            "de la presión de las sondas, especialmente Numae."
         )
         with st.expander("Fuentes, trazabilidad y notas para la revisión", expanded=False):
             st.markdown(
@@ -498,6 +622,13 @@ def mostrar_grace_leticia() -> None:
                 "- **GRACE/GRACE-FO:** JPL Mascon RL06.3Mv04; estimación GWSA B con GLDAS Noah 0,25° v2.1.\n"
                 "- **Referencia comparativa:** Romero–Piña, Zenodo DOI 10.5281/zenodo.14707819.\n"
                 "- **Pozos:** registro manual UNAL y transductores Keller; valores depurados según reportes del proyecto.\n"
+                "- **Referencias informadas (20/10/2026):** Numae terreno 77 m s. n. m., "
+                "instalación 7 m; Casa del profesor Arturo 80 m, instalación 17 m; "
+                "Colegio Pachovela 78 m, instalación 17 m (sin serie histórica). "
+                "Cotas pendientes de confirmar datum vertical.\n"
+                "- **Corrección provisional:** elevación = cota del terreno - profundidad "
+                "de instalación + h_natural_m, solo si h_natural_m es altura de columna "
+                "de agua sobre el sensor correctamente compensada.\n"
                 "- **Río:** nivel IDEAM 48017010; no se ajusta arbitrariamente la cota de referencia.\n"
                 "- **Publicación:** validar niveles y comparaciones con el equipo antes de denominarlos resultados concluyentes."
             )
@@ -505,4 +636,5 @@ def mostrar_grace_leticia() -> None:
                    "⬇️ Descargar GWSA y componentes", "siams_descargar_grace_metodo")
 
 
-__all__ = ["mostrar_grace_leticia", "_serie_grace", "_niveles_campo", "_meses_comunes_normalizados"]
+__all__ = ["mostrar_grace_leticia", "_serie_grace", "_niveles_campo",
+           "_meses_comunes_normalizados", "_tabla_referencias_sondas"]
