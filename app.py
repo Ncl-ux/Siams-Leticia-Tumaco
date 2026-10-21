@@ -436,27 +436,13 @@ st.sidebar.divider()
 
 st.sidebar.caption("Semillero de Investigación de Aguas y Modelación Subterránea")
 st.sidebar.caption("Prototipo académico. Información sujeta a revisión.")
-# Contacto del semillero. Cambia ÚNICAMENTE el color de los enlaces
-# en el menú lateral para evitar el azul predeterminado de Streamlit.
-st.markdown("""
-<style>
-section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] a[href^="mailto:"],
-section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] a[href^="mailto:"]:visited,
-section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] a[href^="mailto:"]:hover {
-    color: #F0FFF8 !important;
-    -webkit-text-fill-color: #F0FFF8 !important;
-    text-decoration: none !important;
-    font-weight: 500 !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
+# Contacto del semillero: componentes nativos para respetar el CSS de SIAMS.
 # El nombre del desarrollador solo aparece en «Sobre SIAMS → Identidad y créditos».
 st.sidebar.markdown("**✉️ Contacto**")
 st.sidebar.caption("Semillero SIAMS")
-st.sidebar.markdown("[siamsfi_bog@unal.edu.co](mailto:siamsfi_bog@unal.edu.co)")
+st.sidebar.markdown("siamsfi_bog@unal.edu.co")
 st.sidebar.caption("Contacto de la plataforma")
-st.sidebar.markdown("[yomontoyaz@unal.edu.co](mailto:yomontoyaz@unal.edu.co)")
+st.sidebar.markdown("yomontoyaz@unal.edu.co")
 
 st.sidebar.success(f"Versión activa: {VERSION_APP}")
 
@@ -3038,6 +3024,9 @@ elif seccion == "Sobre SIAMS":
         "**Contacto del desarrollador:** [yomontoyaz@unal.edu.co](mailto:yomontoyaz@unal.edu.co)"
     )
     st.caption("Los productos de terceros conservan sus autorías y condiciones de uso originales.")
+
+    with st.expander("Ver créditos institucionales del semillero", expanded=False):
+        mostrar_creditos_institucionales()
 
 st.divider()
 
