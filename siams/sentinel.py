@@ -42,16 +42,16 @@ CARPETAS_SENTINEL_POR_TERRITORIO = {
 SENTINEL_ARCHIVOS_POR_TERRITORIO = {
     "Leticia": {
         2025: {
-            "NDVI": "animacion_ndvi_2025_leticia.gif",
-            "MNDWI": "animacion_mndwi_2025_leticia.gif",
-            "SCL": "animacion_scl_2025_leticia.gif",
+            "NDVI": "animacion_NDVI_2025 Leticia.mp4",
+            "MNDWI": "animacion_MNDWI_2025 Leticia.mp4",
+            "SCL": "animacion_SCL_2025 Leticia.mp4",
         },
     },
     "Arauca": {
         2025: {
-            "NDVI": "animacion_ndvi_2025_arauca.gif",
-            "MNDWI": "animacion_mndwi_2025_arauca.gif",
-            "SCL": "animacion_scl_2025_arauca.gif",
+            "NDVI": "animacion_NDVI_2025 Arauca.gif",
+            "MNDWI": "animacion_MNDWI_2025 Arauca.gif",
+            "SCL": "animacion_SCL_2025 Arauca.gif",
         },
     },
 }
@@ -105,41 +105,74 @@ def carpeta_sentinel_territorio(nombre_territorio: str) -> Path:
                 return carpeta
     return directa
 
-def buscar_animaciones_sentinel(nombre_territorio: str) -> dict:
-    """Obtiene {año: {'NDVI': ruta, 'MNDWI': ruta, 'SCL': ruta}} de la sede.
+def _tokens_nombre_sentinel(texto: str) -> list[str]:
+    """Tokeniza nombres con espacios, guiones, mayúsculas o tildes."""
+    sin_tildes = "".join(
+        letra for letra in unicodedata.normalize("NFKD", texto.casefold())
+        if not unicodedata.combining(letra)
+    )
+    return re.findall(r"[a-z0-9]+", sin_tildes)
 
-    Los nombres como 'animacion_MNDWI_2025 Leticia.gif' se reconocen sin
-    renombrarlos. No se confunden los GIF de sedes diferentes.
+
+def buscar_animaciones_sentinel(nombre_territorio: str) -> dict:
+    """Busca MP4 o GIF por sede y año; prefiere MP4 si coexisten ambos.
+
+    Admite, por ejemplo, 'animacion_MNDWI_2025 Leticia.mp4' y
+    'animacion_mndwi_2025_leticia.gif', sin mezclar sedes.
     """
     carpeta = carpeta_sentinel_territorio(nombre_territorio)
     if not carpeta.is_dir():
         return {}
 
-    encontrados = {}
-    # Primero se respetan los archivos explícitamente registrados para cada sede.
+    encontrados: dict[int, dict[str, Path]] = {}
+
+    # Los nombres registrados tienen prioridad cuando hay varias copias
+    # del mismo formato, pero cualquier MP4 prevalece sobre un GIF.
     for anio, indices in SENTINEL_ARCHIVOS_POR_TERRITORIO.get(nombre_territorio, {}).items():
         for tipo, nombre_archivo in indices.items():
             ruta = carpeta / nombre_archivo
             if ruta.is_file():
                 encontrados.setdefault(anio, {})[tipo] = ruta
 
-    # Después se incorporan archivos de otros años y variantes de nombres.
+    tokens_sede = _tokens_nombre_sentinel(nombre_territorio)
     for ruta in sorted(carpeta.iterdir(), key=lambda p: p.name.casefold()):
-        if not ruta.is_file() or ruta.suffix.casefold() != ".gif":
+        if not ruta.is_file() or ruta.suffix.casefold() not in (".mp4", ".gif"):
             continue
-        partes = normalizar_etiqueta(ruta.stem).split("_")
-        tipo = next((p.upper() for p in partes if p.upper() in SENTINEL_DESCRIPCIONES), None)
-        anio_texto = next((p for p in partes if p.isdigit() and len(p) == 4 and 2000 <= int(p) <= 2100), None)
+
+        tokens = _tokens_nombre_sentinel(ruta.stem)
+        # Comprobación explícita de la sede en el nombre para evitar mezclas.
+        if not any(tokens[i:i + len(tokens_sede)] == tokens_sede
+                   for i in range(len(tokens) - len(tokens_sede) + 1)):
+            continue
+
+        tipo = next((t.upper() for t in tokens if t.upper() in SENTINEL_DESCRIPCIONES), None)
+        anio_texto = next((t for t in tokens if len(t) == 4 and t.isdigit()
+                           and 2000 <= int(t) <= 2100), None)
         if tipo is None or anio_texto is None:
             continue
+
         anio = int(anio_texto)
-        # Se prioriza la primera coincidencia para no elegir copias arbitrarias.
-        encontrados.setdefault(anio, {}).setdefault(tipo, ruta)
+        actual = encontrados.setdefault(anio, {}).get(tipo)
+        if actual is None or (actual.suffix.casefold() == ".gif" and ruta.suffix.casefold() == ".mp4"):
+            encontrados[anio][tipo] = ruta
+
     return encontrados
 
+
 def _mostrar_gif_sentinel(ruta: Path, titulo: str, descripcion: str) -> None:
-    """Inserta el GIF tal cual para conservar sus fotogramas y leyendas."""
-    _mostrar_gif_mapbiomas(ruta, titulo, descripcion)
+    """Muestra un MP4 en bucle o conserva el visor GIF heredado."""
+    if ruta.suffix.casefold() == ".mp4":
+        # Silenciado: los navegadores permiten así la reproducción automática.
+        st.video(
+            str(ruta),
+            format="video/mp4",
+            autoplay=True,
+            loop=True,
+            muted=True,
+        )
+        st.caption(descripcion)
+    else:
+        _mostrar_gif_mapbiomas(ruta, titulo, descripcion)
 
 def _panel_sentinel(nombre_territorio: str, tipo: str, archivos: dict, anio: int, *, descarga: bool = True) -> None:
     meta = SENTINEL_DESCRIPCIONES[tipo]
@@ -162,7 +195,7 @@ def _panel_sentinel(nombre_territorio: str, tipo: str, archivos: dict, anio: int
             "⬇️ Descargar animación " + tipo,
             data=ruta.read_bytes(),
             file_name=ruta.name,
-            mime="image/gif",
+            mime="video/mp4" if ruta.suffix.casefold() == ".mp4" else "image/gif",
             key=f"sentinel_descarga_{normalizar_etiqueta(nombre_territorio)}_{anio}_{tipo}",
         )
 
@@ -185,7 +218,7 @@ def mostrar_sentinel_territorio(nombre_territorio: str) -> None:
 
     if not animaciones:
         st.info(
-            f"Aún no se encontraron GIF de Sentinel-2 para **{nombre_territorio}**. "
+            f"Aún no se encontraron animaciones MP4 o GIF de Sentinel-2 para **{nombre_territorio}**. "
             "Cuando los agregues, aparecerán automáticamente aquí."
         )
         st.code(str(carpeta), language=None)
@@ -229,8 +262,10 @@ def mostrar_sentinel_territorio(nombre_territorio: str) -> None:
                 unsafe_allow_html=True,
             )
 
-    tab_ndvi, tab_mndwi, tab_scl, tab_comparacion = st.tabs([
-        "🌳 Vegetación · NDVI", "💧 Agua · MNDWI", "🛰️ Agua · SCL", "🔎 Comparar métodos"
+    # Cada video se inserta una sola vez: evita StreamlitDuplicateElementId
+    # sin usar key, que no está admitido por st.video en esta versión.
+    tab_ndvi, tab_mndwi, tab_scl = st.tabs([
+        "🌳 Vegetación · NDVI", "💧 Agua · MNDWI", "🛰️ Agua · SCL"
     ])
     with tab_ndvi:
         _panel_sentinel(nombre_territorio, "NDVI", archivos, anio)
@@ -238,36 +273,6 @@ def mostrar_sentinel_territorio(nombre_territorio: str) -> None:
         _panel_sentinel(nombre_territorio, "MNDWI", archivos, anio)
     with tab_scl:
         _panel_sentinel(nombre_territorio, "SCL", archivos, anio)
-
-    with tab_comparacion:
-        st.markdown("### Comparación visual de la detección del agua")
-        st.write(
-            "MNDWI y SCL representan dos procedimientos de identificación de agua. "
-            "Obsérvalos juntos para localizar diferencias aparentes en la continuidad "
-            "del cauce o en píxeles de su entorno."
-        )
-        c_mndwi, c_scl = st.columns(2, gap="medium")
-        for columna, tipo, titulo in (
-            (c_mndwi, "MNDWI", "MNDWI · índice espectral"),
-            (c_scl, "SCL", "SCL · clasificación de escena"),
-        ):
-            with columna:
-                st.markdown(f"#### {titulo}")
-                ruta = archivos.get(tipo)
-                if ruta is None:
-                    st.info(f"No se encontró el GIF de {tipo} para {anio}.")
-                else:
-                    _mostrar_gif_sentinel(ruta, titulo, f"{tipo} · {nombre_territorio} · {anio}")
-        st.markdown(
-            "**Interpretación:** las discrepancias visuales pueden relacionarse con el "
-            "umbral usado para el MNDWI, la clasificación SCL, las sombras, los bordes "
-            "del agua y otros efectos de adquisición o procesamiento."
-        )
-        st.warning(
-            "Esta comparación es visual. Los GIF pueden reproducirse sin sincronización exacta "
-            "entre fotogramas. Para calcular coincidencias, áreas o diferencias de píxeles "
-            "se necesitan las máscaras originales georreferenciadas y las fechas correspondientes."
-        )
 
     with st.expander("📖 Metodología e interpretación de los índices", expanded=False):
         st.markdown(
@@ -284,8 +289,8 @@ def mostrar_sentinel_territorio(nombre_territorio: str) -> None:
             "la clase 6 representa agua. Es una clasificación, no una medición directa del cauce."
         )
         st.caption(
-            "Los GIF son productos visuales generados previamente. La plataforma los presenta, "
-            "pero no recalcula los índices ni valida su exactitud espacial a partir del GIF."
+            "Los GIF y MP4 son productos visuales generados previamente. La plataforma los presenta, "
+            "pero no recalcula los índices ni valida su exactitud espacial a partir de estas animaciones."
         )
 
     st.caption(

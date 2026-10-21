@@ -379,6 +379,8 @@ grupo = st.sidebar.selectbox(
     key="siams_nav_grupo",
 )
 
+from siams.ideam_leticia import mostrar_ideam_leticia
+
 SUBMENUS = {
     "Inicio": [
         "Inicio",
@@ -416,6 +418,10 @@ SUBMENUS = {
 }
 
 opciones_submenu = SUBMENUS[grupo]
+if grupo == 'Clima y datos' and territorio == 'Leticia':
+    opciones_submenu = list(opciones_submenu)
+    opciones_submenu.insert(opciones_submenu.index('Clima') + 1, 'Precipitación IDEAM')
+# SIAMS_IDEAM_CLIMA_V2
 
 if len(opciones_submenu) == 1:
     seccion = opciones_submenu[0]
@@ -430,6 +436,27 @@ st.sidebar.divider()
 
 st.sidebar.caption("Semillero de Investigación de Aguas y Modelación Subterránea")
 st.sidebar.caption("Prototipo académico. Información sujeta a revisión.")
+# Contacto del semillero. Cambia ÚNICAMENTE el color de los enlaces
+# en el menú lateral para evitar el azul predeterminado de Streamlit.
+st.markdown("""
+<style>
+section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] a[href^="mailto:"],
+section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] a[href^="mailto:"]:visited,
+section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] a[href^="mailto:"]:hover {
+    color: #F0FFF8 !important;
+    -webkit-text-fill-color: #F0FFF8 !important;
+    text-decoration: none !important;
+    font-weight: 500 !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# El nombre del desarrollador solo aparece en «Sobre SIAMS → Identidad y créditos».
+st.sidebar.markdown("**✉️ Contacto**")
+st.sidebar.caption("Semillero SIAMS")
+st.sidebar.markdown("[siamsfi_bog@unal.edu.co](mailto:siamsfi_bog@unal.edu.co)")
+st.sidebar.caption("Contacto de la plataforma")
+st.sidebar.markdown("[yomontoyaz@unal.edu.co](mailto:yomontoyaz@unal.edu.co)")
 
 st.sidebar.success(f"Versión activa: {VERSION_APP}")
 
@@ -1246,6 +1273,12 @@ elif seccion == "Clima":
 # =========================================================
 # ANÁLISIS DE TENDENCIAS · MANN-KENDALL + SEN
 # =========================================================
+
+elif seccion == "Precipitación IDEAM":
+    if territorio == "Leticia":
+        mostrar_ideam_leticia()
+    else:
+        st.info("Selecciona Leticia para consultar precipitación IDEAM.")
 
 elif seccion == "Análisis de tendencias":
     st.title(f"📈 Análisis de tendencias · {territorio}")
@@ -2975,8 +3008,36 @@ elif seccion == "Sobre SIAMS":
         )
 
     st.subheader("Identidad y créditos")
-    mostrar_creditos_institucionales()
-    st.caption("Coordinación, líneas de investigación y contacto: pendientes de confirmación institucional.")
+    st.markdown("**Semillero de Investigación de Aguas y Modelación Subterránea (SIAMS)**")
+    st.caption("Universidad Nacional de Colombia · Proyecto académico en desarrollo")
+
+    st.markdown("#### Equipo y contribuciones")
+    creditos_desarrollo, creditos_apoyo = st.columns(2)
+    with creditos_desarrollo:
+        st.markdown(dedent("""
+            <div class="card" style="min-height:185px;">
+              <h3>Desarrollo de la plataforma</h3>
+              <p><strong>Yoseph Nicolas Montoya Zambrano</strong></p>
+              <p>Integrante del Semillero SIAMS y responsable del diseño,
+              desarrollo e integración de la plataforma web.</p>
+            </div>
+        """).strip(), unsafe_allow_html=True)
+    with creditos_apoyo:
+        st.markdown(dedent("""
+            <div class="card" style="min-height:185px;">
+              <h3>Apoyo académico y colaborativo</h3>
+              <p><strong>Semillero de Investigación de Aguas y Modelación Subterránea (SIAMS)</strong></p>
+              <p>Universidad Nacional de Colombia. Apoyo en la construcción,
+              revisión e integración de contenidos del proyecto.</p>
+            </div>
+        """).strip(), unsafe_allow_html=True)
+
+    st.markdown("#### Contacto")
+    st.markdown(
+        "**Correo del semillero:** [siamsfi_bog@unal.edu.co](mailto:siamsfi_bog@unal.edu.co)  \n"
+        "**Contacto del desarrollador:** [yomontoyaz@unal.edu.co](mailto:yomontoyaz@unal.edu.co)"
+    )
+    st.caption("Los productos de terceros conservan sus autorías y condiciones de uso originales.")
 
 st.divider()
 

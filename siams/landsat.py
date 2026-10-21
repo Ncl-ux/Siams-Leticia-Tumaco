@@ -51,24 +51,61 @@ def carpeta_landsat_sede(nombre_territorio: str):
     return None
 
 def inventario_landsat(nombre_territorio: str) -> dict:
-    """Devuelve todos los GIF disponibles y los CSV existentes para una sede."""
+    """Inventario de videos MP4, GIF y CSV asociados a una sede.
+
+    Se mantienen las claves anteriores para que app.py y los tests existentes
+    sigan funcionando. Se prefiere MP4 sin ocultar otros años disponibles.
+    """
     carpeta = carpeta_landsat_sede(nombre_territorio)
     if carpeta is None:
-        return {"carpeta": None, "gifs": [], "areas": None, "control": None}
+        return {
+            "carpeta": None, "gifs": [], "videos": [], "animaciones": [],
+            "areas": None, "control": None,
+        }
+
     archivos = [p for p in carpeta.iterdir() if p.is_file()]
     gifs = sorted(
         [p for p in archivos if p.suffix.casefold() == ".gif"
          and normalizar_etiqueta(p.stem).startswith("gif_landsat")],
         key=lambda p: p.name.casefold(),
     )
+    videos = sorted(
+        [p for p in archivos if p.suffix.casefold() == ".mp4"
+         and "landsat" in normalizar_etiqueta(p.stem)],
+        key=lambda p: p.name.casefold(),
+    )
+
+    # Si se dejó una versión _COMPRIMIDO junto con la de nombre definitivo,
+    # preferimos la definitiva para no duplicar visualmente el mismo año.
+    anios_normales = {
+        anio_gif_landsat(p) for p in videos
+        if not p.stem.casefold().endswith("_comprimido")
+    }
+    videos = [
+        p for p in videos
+        if not (p.stem.casefold().endswith("_comprimido")
+                and anio_gif_landsat(p) in anios_normales)
+    ]
+    animaciones = sorted(
+        [*videos, *gifs],
+        key=lambda p: (
+            -(anio_gif_landsat(p) or 0),
+            0 if p.suffix.casefold() == ".mp4" else 1,
+            p.name.casefold(),
+        ),
+    )
+
     def csv_buscar(nombre):
         nuevo = CARPETA_LANDSAT_CSV / carpeta.name / nombre
         if nuevo.is_file():
             return nuevo
         return next((p for p in archivos if p.name.casefold() == nombre.casefold()), None)
+
     return {
         "carpeta": carpeta,
         "gifs": gifs,
+        "videos": videos,
+        "animaciones": animaciones,
         "areas": csv_buscar("Areas_coberturas_por_fecha.csv"),
         "control": csv_buscar("Control_escenas.csv"),
     }
@@ -167,41 +204,53 @@ def preparar_gif_landsat_lento(
     return salida.getvalue(), len(fotogramas)
 
 def mostrar_landsat_territorio(nombre_territorio: str) -> None:
-    """Panel Landsat para animación, áreas estimadas y trazabilidad de escenas."""
+    """Panel Landsat por territorio: MP4 preferido y GIF compatible."""
     inv = inventario_landsat(nombre_territorio)
-    st.markdown("### 🛰️ Landsat · evolución por fechas disponibles")
-    st.write(
-        "Animaciones con observaciones Landsat de fechas reales: cada fotograma "
-        "muestra una clasificación espectral preliminar en el entorno seleccionado. "
-        "La animación omite fechas sin observaciones aprovechables."
+    slug = normalizar_etiqueta(nombre_territorio)
+    animaciones = inv["animaciones"]
+
+    st.markdown(
+        """<div style="background:linear-gradient(110deg,#0b3d36,#146c5c);
+        border-radius:16px;padding:18px 22px;margin:0 0 12px 0;">
+        <div style="font-size:0.74rem;letter-spacing:0.12em;font-weight:750;
+        color:#b9efe3!important;">SIAMS · OBSERVACIÓN SATELITAL</div>
+        <div style="font-size:1.45rem;line-height:1.25;font-weight:800;
+        color:#ffffff!important;margin-top:5px;">Evolución de coberturas · Landsat</div>
+        <div style="font-size:0.92rem;line-height:1.55;color:#e5fbf5!important;
+        margin-top:5px;">Composiciones satelitales y clasificación preliminar
+        para explorar cambios visuales en el territorio.</div></div>""",
+        unsafe_allow_html=True,
     )
-    if not inv["gifs"]:
+
+    if not animaciones:
         st.info(
-            f"Todavía no hay GIF Landsat de {nombre_territorio} en `Landsat/{nombre_territorio}`. "
-            "Agrega el GIF y los dos CSV exportados desde Colab a esa carpeta."
+            f"Todavía no hay animaciones Landsat de {nombre_territorio} en "
+            f"`Landsat/{nombre_territorio}/`. Puedes agregar MP4 o GIF. "
+            "Las tablas CSV de clasificación y control son opcionales."
         )
         return
 
-    archivos_gif = inv["gifs"]
-    if len(archivos_gif) > 1:
-        ruta_gif = st.selectbox(
-            "Año de observación",
-            archivos_gif,
-            format_func=lambda p: f"{anio_gif_landsat(p) or 'Sin año'} · {p.name}",
-            key=f"landsat_gif_{normalizar_etiqueta(nombre_territorio)}",
+    if len(animaciones) > 1:
+        ruta_animacion = st.selectbox(
+            "Animación disponible",
+            animaciones,
+            format_func=lambda p: (
+                f"{anio_gif_landsat(p) or 'Sin año'} · "
+                f"{'Video MP4' if p.suffix.casefold() == '.mp4' else 'GIF'} · "
+                f"{p.stem.replace('_', ' ')}"
+            ),
+            key=f"landsat_animacion_{slug}",
         )
     else:
-        ruta_gif = archivos_gif[0]
-    anio = anio_gif_landsat(ruta_gif)
+        ruta_animacion = animaciones[0]
+
+    anio = anio_gif_landsat(ruta_animacion)
+    es_video = ruta_animacion.suffix.casefold() == ".mp4"
     st.caption(
-        f"Sede: {nombre_territorio} · Año: {anio if anio else 'no especificado'} · "
-        "Fuente: Landsat Collection 2 Level 2 · Resolución nominal: 30 m"
+        f"Territorio: {nombre_territorio} · Año: {anio if anio else 'no especificado'} "
+        f"· Formato: {'MP4' if es_video else 'GIF'} · "
+        "Fuente de referencia: Landsat Collection 2 Level 2 · Resolución nominal: 30 m."
     )
-    if len(archivos_gif) > 1:
-        st.info(
-            "Hay varios GIF en la carpeta. Los CSV con nombres genéricos pueden "
-            "corresponder a un único año; antes de compararlos, comprueba sus fechas."
-        )
 
     df_areas_original = _leer_landsat_si_existe(inv["areas"])
     df_control = _leer_landsat_si_existe(inv["control"])
@@ -227,81 +276,101 @@ def mostrar_landsat_territorio(nombre_territorio: str) -> None:
             fechas_ctl = pd.to_datetime(df_control[col_fecha], errors="coerce")
             df_control = df_control.loc[fechas_ctl.dt.year.eq(anio)].copy()
 
-    vistas = st.tabs(["🎞️ Animación", "📈 Series de coberturas", "🔎 Calidad y descargas"])
+    vistas = st.tabs(["🎬 Animación satelital", "📈 Series de coberturas", "🔎 Calidad y descargas"])
     with vistas[0]:
-        st.markdown(f"#### {nombre_territorio} · animación Landsat {anio or ''}")
-        # Estos controles sí modifican el tamaño de salida y el tiempo real
-        # de cada frame; st.image del GIF original no permitiría ralentizarlo.
-        control_tamano, control_velocidad = st.columns(2)
-        with control_tamano:
-            ancho_gif = st.select_slider(
-                "Tamaño de la animación",
-                options=[280, 320, 360, 400, 440],
-                value=360,
-                format_func=lambda n: f"{n} px",
-                key=f"landsat_tamano_{normalizar_etiqueta(nombre_territorio)}",
-            )
-        with control_velocidad:
-            segundos_frame = st.slider(
-                "Tiempo por fecha (segundos)",
-                min_value=1.0,
-                max_value=5.0,
-                value=2.5,
-                step=0.5,
-                key=f"landsat_duracion_{normalizar_etiqueta(nombre_territorio)}",
-            )
-
-        gif_ajustado = None
-        try:
-            with st.spinner("Preparando animación Landsat a la velocidad seleccionada…"):
-                gif_ajustado, cantidad_frames = preparar_gif_landsat_lento(
-                    str(ruta_gif),
-                    ruta_gif.stat().st_mtime_ns,
-                    int(ancho_gif),
-                    int(segundos_frame * 1000),
-                )
-        except Exception as error:
-            st.warning(f"No se pudo ajustar el GIF: {error}. Se muestra el original.")
-
-        # Ancho físico fijo en píxeles: no ocupa toda la pantalla en escritorio.
-        _, columna_gif, _ = st.columns([1, 2, 1])
-        with columna_gif:
-            st.image(
-                gif_ajustado if gif_ajustado is not None else str(ruta_gif),
-                width=int(ancho_gif),
-            )
-        if gif_ajustado is not None:
-            st.caption(
-                f"Vista previa: {cantidad_frames} fotogramas originales; "
-                f"{segundos_frame:g} segundos por fecha. "
-                "Puedes descargar esta versión más lenta sin modificar tu GIF original."
-            )
-        st.caption(
-            "Los colores representan clases estimadas por reglas espectrales y no una "
-            "clasificación oficial de uso del suelo. El radio del buffer y las fechas "
-            "deben consultarse en el GIF y en el registro de escenas."
+        st.markdown(
+            f"#### {nombre_territorio} · comparativo satelital "
+            f"{anio if anio else ''}"
         )
-        boton_lento, boton_original = st.columns(2)
-        with boton_lento:
+
+        if es_video:
+            st.markdown(
+                "Compara **composición en color natural** (izquierda) y "
+                "**coberturas espectrales preliminares** (derecha). "
+                "En cada fotograma se indican la fecha seleccionada y la "
+                "información disponible de nubosidad por sector."
+            )
+            _, columna_video, _ = st.columns([1, 9, 1])
+            with columna_video:
+                # Se dibuja una sola vez; no se duplica como GIF ni se re-encodea
+                # durante cada ejecución de Streamlit.
+                st.video(str(ruta_animacion), format="video/mp4")
+            st.caption(
+                "El porcentaje de área libre de nube/sombra del compuesto mensual "
+                "no equivale a la nubosidad de cada sector de la mejor escena individual. "
+                "Los porcentajes se consultan por separado en el propio video."
+            )
+            st.download_button(
+                "⬇️ Descargar animación Landsat (MP4)",
+                data=ruta_animacion.read_bytes(),
+                file_name=ruta_animacion.name,
+                mime="video/mp4",
+                key=f"landsat_mp4_descarga_{slug}_{ruta_animacion.name}",
+            )
+        else:
+            # Los antiguos GIF siguen siendo compatibles sin alterar su fuente.
+            control_tamano, control_velocidad = st.columns(2)
+            with control_tamano:
+                ancho_gif = st.select_slider(
+                    "Tamaño de la animación",
+                    options=[280, 320, 360, 400, 440, 520, 640],
+                    value=440,
+                    format_func=lambda n: f"{n} px",
+                    key=f"landsat_tamano_{slug}",
+                )
+            with control_velocidad:
+                segundos_frame = st.slider(
+                    "Tiempo por fecha (segundos)",
+                    min_value=1.0, max_value=5.0, value=2.5, step=0.5,
+                    key=f"landsat_duracion_{slug}",
+                )
+            gif_ajustado = None
+            try:
+                with st.spinner("Preparando animación GIF…"):
+                    gif_ajustado, cantidad_frames = preparar_gif_landsat_lento(
+                        str(ruta_animacion),
+                        ruta_animacion.stat().st_mtime_ns,
+                        int(ancho_gif),
+                        int(segundos_frame * 1000),
+                    )
+            except Exception as error:
+                st.warning(f"No fue posible ajustar el GIF: {error}. Se muestra el original.")
+
+            _, columna_gif, _ = st.columns([1, 4, 1])
+            with columna_gif:
+                st.image(
+                    gif_ajustado if gif_ajustado is not None else str(ruta_animacion),
+                    width=int(ancho_gif),
+                )
             if gif_ajustado is not None:
+                st.caption(
+                    f"Vista previa: {cantidad_frames} fotogramas · "
+                    f"{segundos_frame:g} s por fecha."
+                )
+            boton_lento, boton_original = st.columns(2)
+            with boton_lento:
+                if gif_ajustado is not None:
+                    st.download_button(
+                        "⬇️ Descargar GIF ajustado", data=gif_ajustado,
+                        file_name=f"{ruta_animacion.stem}_lento_{segundos_frame:g}s.gif",
+                        mime="image/gif", key=f"landsat_desc_lento_{slug}",
+                        use_container_width=True,
+                    )
+            with boton_original:
                 st.download_button(
-                    "⬇️ Descargar GIF lento y compacto",
-                    data=gif_ajustado,
-                    file_name=f"{ruta_gif.stem}_lento_{segundos_frame:g}s.gif",
-                    mime="image/gif",
-                    key=f"landsat_desc_lento_{normalizar_etiqueta(nombre_territorio)}",
+                    "⬇️ Descargar GIF original", data=ruta_animacion.read_bytes(),
+                    file_name=ruta_animacion.name, mime="image/gif",
+                    key=f"landsat_desc_gif_{slug}_{ruta_animacion.name}",
                     use_container_width=True,
                 )
-        with boton_original:
-            st.download_button(
-                "⬇️ Descargar GIF original",
-                data=ruta_gif.read_bytes(),
-                file_name=ruta_gif.name,
-                mime="image/gif",
-                key=f"landsat_desc_gif_{normalizar_etiqueta(nombre_territorio)}_{ruta_gif.name}",
-                use_container_width=True,
-            )
-        st.markdown("**Leyenda de clases estimadas**")
+
+        st.markdown("##### Cómo interpretar las coberturas")
+        st.caption(
+            "Las clases de cobertura representan una interpretación espectral "
+            "preliminar; no equivalen a una cartografía oficial validada. "
+            "Los píxeles sin datos, las sombras y la nubosidad no deben "
+            "interpretarse automáticamente como cambios reales de cobertura."
+        )
         etiquetas = " ".join(
             f'<span style="display:inline-block;margin:0.15rem 0.45rem 0.3rem 0;'
             f'border:1px solid rgba(125,125,125,.25);border-radius:8px;padding:5px 8px;">'
