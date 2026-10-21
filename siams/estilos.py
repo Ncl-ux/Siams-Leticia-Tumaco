@@ -36,6 +36,23 @@ def aplicar_estilos():
             min-width: 0 !important;
         }
 
+        /* SIAMS_COLOR_CORREOS_SIDEBAR_V1 */
+        /* Solo los enlaces de correo del lateral; no altera otros enlaces ni créditos. */
+        [data-testid="stSidebar"] a[href^="mailto:"],
+        [data-testid="stSidebar"] a[href^="mailto:"]:visited,
+        [data-testid="stSidebar"] a[href^="mailto:"]:focus,
+        [data-testid="stSidebar"] a[href^="mailto:"]:hover {
+            color: #E3F5ED !important;
+            -webkit-text-fill-color: #E3F5ED !important;
+            text-decoration: none !important;
+            font-weight: 500 !important;
+        }
+        [data-testid="stSidebar"] a[href^="mailto:"]:hover {
+            color: #FFFFFF !important;
+            -webkit-text-fill-color: #FFFFFF !important;
+            text-decoration: underline !important;
+        }
+
         /* SIDEBAR */
         [data-testid="stSidebar"] {
             background: linear-gradient(180deg, #0b3d36 0%, #124f45 100%);
