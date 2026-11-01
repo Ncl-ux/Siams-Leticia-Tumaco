@@ -55,3 +55,6 @@ data/raw/gldas
 
 # Copias temporales de datos crudos de las sedes (no versionar)
 data/raw/sedes/
+
+# Datos crudos de sedes (no se versionan)
+data/raw/

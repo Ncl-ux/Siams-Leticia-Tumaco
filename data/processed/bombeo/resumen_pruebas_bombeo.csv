@@ -1,0 +1,24 @@
+sede,pozo_id,parametro,valor,unidad,metodo,fecha_prueba,fuente,pagina_pdf,cita,observacion
+Arauca,ARA-PTAP,caudal_constante,0.843,L/s,macromedidor (promedio),2025-08-05,"ECOLAVF S.I. SAS (2025). Informe prueba de bombeo UNAL Puntillo PTAP. Drive appinaf: Orinoquia/POZOS/INFORME PRUEBA DE BOMBEO UNAL PUNTILLO PTAP.pdf",5,"""...a caudal constante con una descarga promedio de 0,843 L/s con una duración en la etapa de bombeo de 8 horas""",
+Arauca,ARA-PTAP,duracion_bombeo,8,h,,2025-08-05,ECOLAVF 2025,5,"""...duración en la etapa de bombeo de 8 horas y registro adicional de 100 minutos en el periodo de recuperación""",
+Arauca,ARA-PTAP,nivel_estatico,1.32,m (profundidad),sonda,2025-08-05,ECOLAVF 2025,11,"""Nivel estático: 1,32""",
+Arauca,ARA-PTAP,nivel_dinamico,1.64,m (profundidad),sonda,2025-08-05,ECOLAVF 2025,5,"""...nivel dinámico de 1,64 metros""",
+Arauca,ARA-PTAP,abatimiento,0.32,m,sonda (t = 180-480 min),2025-08-05,ECOLAVF 2025,11,"Tabla N° 4: abatimiento 0,32 m desde los 180 min",
+Arauca,ARA-PTAP,capacidad_especifica,2.6343,L/s/m,Q/s,2025-08-05,ECOLAVF 2025,14,"""Capacidad especifica = 2,6343 L/s/m""",
+Arauca,ARA-PTAP,transmisividad,2.692695,m2/d,"T = 0,183 Q/Δs (línea de tendencia)",2025-08-05,ECOLAVF 2025,15,"""T = 2,692695 m2/dia""","Valor reportado; el Δs (4,95 m) se calcula como 0,0275 × 180 min (pendiente de una línea de tendencia), no como diferencia en un ciclo logarítmico, y es incoherente con un abatimiento total de 0,32 m y una capacidad específica de 2,6 L/s/m. Usar con cautela."
+Arauca,ARA-PTAP,conductividad_hidraulica,2.96e-05,m/s,"K = L/t",2025-08-05,ECOLAVF 2025,16,"""K =0.0000296296 m/s""","Método no estándar (abatimiento / tiempo). Usar con cautela."
+Arauca,ARA-PTAP,profundidad_pozo,30.0,m,sonda,2025-08-05,ECOLAVF 2025,5,"""...una profundidad de 30,0 metros, la cual fue confirmada en campo""",
+Arauca,ARA-PTAP,caudal_recomendado,1.5,L/s,,2025-08-05,ECOLAVF 2025,18,"""...caudal de hasta 1,5 L/s, con periodos de bombeo de más de 12 horas diarias""",
+La Paz,LPZ-UNAL,caudal_constante,2.3148,L/s,aforo (promedio),2020-08-10,"HGM Consultores S.A.S. (2020). Prueba de bombeo pozo Universidad Nacional sede La Paz-Cesar, proyecto HGM-20-046. Drive appinaf: La Paz/POZOS/13InformePruebaBombeoPozo2020.pdf",13,"""CE = 2,3148 l/s / 2,215 m = 1,045""","El texto de la p. 7 dice 2.314 LPS"
+La Paz,LPZ-UNAL,duracion_bombeo,24,h,,2020-08-10,HGM 2020,7,"""...caudal constante de 2.314 LPS durante 24 horas, con un periodo de bombeo de 1440 minutos y 12 horas de recuperación""",
+La Paz,LPZ-UNAL,nivel_estatico,12.18,m (profundidad),Levelogger Solinst / sonda,2020-08-10,HGM 2020,12,"Tabla 3: POZO UNAL 12.18",
+La Paz,LPZ-UNAL,abatimiento,2.215,m,,2020-08-10,HGM 2020,13,"""CE = 2,3148 l/s / 2,215 m""",
+La Paz,LPZ-UNAL,capacidad_especifica,1.045,L/s/m,Q/s,2020-08-10,HGM 2020,13,"""= 1,045""",
+La Paz,LPZ-UNAL,transmisividad,40.1,m2/d,Theis (AquiferTest; pozo OBS-01),2020-08-10,HGM 2020,14,"""transmisividad de 40.10 m2/día""",
+La Paz,LPZ-UNAL,transmisividad,44.4,m2/d,Theis con corrección de Jacob (OBS-01),2020-08-10,HGM 2020,32,"Tabla AquiferTest: 4.44 × 10^1",
+La Paz,LPZ-UNAL,transmisividad,220,m2/d,Cooper-Jacob (OBS-01),2020-08-10,HGM 2020,16,"""...transmisividad del orden los 220 m2/día""",
+La Paz,LPZ-UNAL,transmisividad,294,m2/d,Recuperación de Theis (OBS-01),2020-08-10,HGM 2020,17,"""...transmisividad del orden los 294 m2/día""",
+La Paz,LPZ-UNAL,transmisividad,150,m2/d,promedio de los cuatro métodos,2020-08-10,HGM 2020,23,"""...una transmisividad del orden de 150 m2/día""","Promedio de métodos con dispersión de un orden de magnitud (40-294 m2/d)"
+La Paz,LPZ-UNAL,conductividad_hidraulica,7.12,m/d,promedio,2020-08-10,HGM 2020,23,"Tabla resumen: 7,12 m/d","Espesor del acuífero 21 m (AquiferTest)"
+La Paz,LPZ-UNAL,coeficiente_almacenamiento,1.39e-06,-,promedio,2020-08-10,HGM 2020,23,"Tabla resumen: 1,39 E-6",
+La Paz,LPZ-UNAL,profundidad_pozo,70.0,m,,2020-08-10,HGM 2020,6,"Tabla 1: POZO UNAL ... 70.00",

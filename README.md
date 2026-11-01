@@ -258,3 +258,8 @@ El código de la plataforma permanece en `siams/`. Los scripts de obtención, co
 Para verificar la migración de archivos, ejecutar `python scripts/verificar_a5.py`. Para rehacer las tablas exploratorias SWOT a partir de 80 exportaciones HydroWeb, ejecutar `python scripts/procesar_swot.py --out data/processed/swot_regenerado_revision`; no sustituir las tablas publicadas hasta comparar la versión regenerada. NASA POWER puede descargarse y transformarse con `python scripts/nasa_power.py --help`. Los ejemplos, las advertencias y los datos todavía no reproducibles se encuentran en [`data/README.md`](data/README.md) y [`docs/PLAN_VALIDACION_A5.md`](docs/PLAN_VALIDACION_A5.md).
 
 **Importante:** la migración conserva los datos procesados recibidos, pero no demuestra que los archivos históricos de IDEAM, GRACE/GLDAS, MapBiomas, Landsat o Sentinel puedan reconstruirse sin obtener las fuentes y scripts que faltan. Tampoco autoriza a publicar mediciones personales, pozos ni recursos con licencia no verificada.
+
+## Actualización de sedes 2026
+
+Niveles de agua subterránea, pruebas de bombeo, isótopos, fisicoquímica de Arauca/Tumaco, carga de datos de
+campo (XUE Hub) y actualización semanal automática: ver `docs/actualizacion_sedes_2026.md`.

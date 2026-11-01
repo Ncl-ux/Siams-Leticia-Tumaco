@@ -1,0 +1,38 @@
+{
+ "generado": "2026-11-01T09:32:24-05:00",
+ "fuente_dem": "Copernicus DEM GLO-30 (ESA/Airbus, © DLR e.V. 2010-2014 y © Airbus Defence and Space GmbH 2014-2018, licencia Copernicus)",
+ "sesgo_dem_m": 1.5,
+ "series": {
+  "Arauca": {
+   "archivo": "niveles_arauca.csv",
+   "registros": 3580,
+   "inicio": "2026-02-23 07:00",
+   "fin": "2026-07-22 10:00"
+  },
+  "La Paz": {
+   "archivo": "niveles_la_paz.csv",
+   "registros": 2979,
+   "inicio": "2026-02-23 07:00",
+   "fin": "2026-08-28 10:00"
+  },
+  "Leticia": {
+   "archivo": "niveles_leticia.csv",
+   "registros": 7041,
+   "inicio": "2026-01-28 18:00",
+   "fin": "2026-10-15 15:00"
+  },
+  "Tumaco": {
+   "archivo": "niveles_tumaco.csv",
+   "registros": 5525,
+   "inicio": "2026-02-06 06:00",
+   "fin": "2026-09-24 10:00"
+  },
+  "Bogotá": {
+   "archivo": "niveles_bogota.csv",
+   "registros": 22905,
+   "inicio": "2000-09-08 23:40:54",
+   "fin": "2026-05-11 00:00:00",
+   "fuente": "Paquete Bogotá 2026-11-01 (OGA UNAL + loggers)"
+  }
+ }
+}

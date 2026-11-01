@@ -1,0 +1,54 @@
+name: Actualización semanal de datos abiertos
+
+# Cada lunes 06:00 hora de Colombia (11:00 UTC). Fuentes activas: NASA POWER, CHIRPS v3.0 e
+# IDEAM (datos.gov.co: s54a-sgyg, sbwg-7ju4, bdmn-sqnh). GRACE/GLDAS y ERA5-Land quedan
+# desactivados porque requieren credenciales (Earthdata / Copernicus CDS); ver pasos comentados.
+on:
+  schedule:
+    - cron: "0 11 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: actualizacion-semanal
+  cancel-in-progress: false
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Dependencias
+        run: python -m pip install pandas rasterio
+
+      - name: NASA POWER, CHIRPS e IDEAM
+        run: python scripts/12_actualizacion_semanal.py --fuentes nasa_power,chirps,ideam
+
+      # - name: GRACE/GRACE-FO + GLDAS (DESACTIVADO: requiere EARTHDATA_USERNAME/EARTHDATA_PASSWORD)
+      #   env:
+      #     EARTHDATA_USERNAME: ${{ secrets.EARTHDATA_USERNAME }}
+      #     EARTHDATA_PASSWORD: ${{ secrets.EARTHDATA_PASSWORD }}
+      #   run: python scripts/06_gwsa_grace_gldas_extendido.py
+
+      # - name: ERA5-Land (DESACTIVADO: requiere CDSAPI_KEY de Copernicus CDS y un script de extracción)
+      #   env:
+      #     CDSAPI_URL: https://cds.climate.copernicus.eu/api
+      #     CDSAPI_KEY: ${{ secrets.CDSAPI_KEY }}
+      #   run: python scripts/13_era5_land.py   # pendiente
+
+      - name: Guardar cambios
+        run: |
+          git config user.name "siams-bot"
+          git config user.email "siams-bot@users.noreply.github.com"
+          git add data/processed/actualizacion
+          git diff --cached --quiet || git commit -m "Actualización semanal automática de datos abiertos"
+          git push

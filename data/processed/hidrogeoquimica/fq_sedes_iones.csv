@@ -1,0 +1,20 @@
+sede,pozo,tipo_agua,fecha,informe,ca_meq,mg_meq,nak_meq,hco3_meq,cl_meq,so4_meq,no3_meq,ce_us_cm,ph,nak_estimado_por_diferencia,pct_ca,pct_mg,pct_nak,pct_hco3,pct_cl,pct_so4
+Arauca,Pozo profundo,subterranea,2025-04-08,LabSAF-Arauca emitido 2025-04-10,0.1547,0.6912,,0.8436,,0.0416,0.0048,94.4,6.85,False,,,,,,
+Arauca,Pozo profundo,subterranea,2025-05-08,LabSAF-Arauca emitido 2025-05-13,0.1602,0.4962,,0.8527,,1.8322,0.0032,148.4,6.39,False,,,,,,
+Arauca,Pozo profundo,subterranea,2025-08-28,LabSAF-Arauca emitido 2025-09-01,0.1682,0.7677,,0.912,,0.0416,0.0016,110.3,6.06,False,,,,,,
+Arauca,Pozo profundo,subterranea,2025-10-28,LabSAF-Arauca emitido 2025-10-30,0.1697,0.4937,,0.0,0.0226,0.0625,0.0032,146.4,6.15,False,,,,,,
+Tumaco,Agua potable (N.E.),tratada,2018-02-15,I 24977-18,0.0998,0.2222,1.4358,0.3658,0.6431,0.737,0.0119,370.0,6.59,True,5.678,12.6397,81.6824,20.9501,36.8348,42.2151
+Tumaco,Aljibe,subterranea,2020-03-05,Itlab 3638,,0.734,,0.0,,,,,,False,,,,,,
+Tumaco,Llave baños,tratada,2020-03-05,Itlab 3639 7874,1.5969,1.0195,1.3941,2.7847,0.3263,0.7495,0.1499,389.0,7.582,True,39.8177,25.4219,34.7604,72.1316,8.4534,19.415
+Tumaco,Llave baños,tratada,2021-11-17,ITLAB 3911,1.307,1.3388,1.7527,2.7728,0.4829,0.9786,0.1642,,,True,29.7138,30.4383,39.8479,65.4852,11.4044,23.1104
+Tumaco,Llave baños,tratada,2025-05-06,ITLAB 0054-25,,,,2.9443,0.7813,0.1457,0.1492,477.0,8.27,False,,,,,,
+Tumaco,Pozo subterráneo,subterranea,2015-10-14,32946,1.5187,0.7194,2.0558,4.1764,0.1128,0.001,0.0036,385.0,6.65,True,35.3687,16.7536,47.8776,97.3459,2.6298,0.0243
+Tumaco,Pozo subterráneo,subterranea,2017-11-23,I 24260-18,,1.0944,,6.1052,0.2722,0.1562,0.0084,1110.0,7.22,False,,,,,,
+Tumaco,Pozo subterráneo,subterranea,2020-03-05,Itlab 3637 v02,,1.2919,,0.0,,,,,,False,,,,,,
+Tumaco,Pozo subterráneo,subterranea,2021-11-17,ITLAB 3909,1.307,1.3717,1.8135,3.7371,0.1769,0.4997,0.0785,463.0,6.898,True,29.0942,30.5363,40.3695,84.6715,4.007,11.3215
+Tumaco,Pozo subterráneo,subterranea,2023-11-27,ILAB 4467 v01,1.1777,1.4195,1.3333,3.524,0.1179,0.2707,0.0178,441.0,6.562,True,29.9638,36.1148,33.9214,90.0688,3.0134,6.9178
+Tumaco,Pozo subterráneo,subterranea,2025-05-06,ITLAB 0055-25,1.6967,0.3621,2.3628,3.8147,0.3808,0.2082,0.0178,,6.77,True,38.3731,8.1886,53.4383,86.6252,8.6469,4.7279
+Tumaco,Tanque auxiliar (llave sede),tratada,2015-10-14,32945,1.7185,0.7993,1.4557,3.1667,0.3949,0.3977,0.0143,418.0,7.54,True,43.249,20.1158,36.6352,79.9821,9.9739,10.0441
+Tumaco,Tanque de almacenamiento PTAP,tratada,2020-03-05,Itlab 3639 7873,1.4971,1.1422,1.3118,2.7679,0.339,0.6871,0.1571,389.0,7.448,True,37.8904,28.9073,33.2022,72.9545,8.9362,18.1093
+Tumaco,Tanque de almacenamiento PTAP,tratada,2021-11-17,ITLAB 3910,1.2416,1.3717,1.7826,2.7422,0.4758,0.9994,0.1785,476.0,8.539,True,28.2443,31.2051,40.5506,65.0206,11.2829,23.6966
+Tumaco,Tanque de almacenamiento PTAP,tratada,2025-05-06,ITLAB 0053-25,,,,2.9859,0.7757,0.1457,0.1471,411.0,8.5,False,,,,,,

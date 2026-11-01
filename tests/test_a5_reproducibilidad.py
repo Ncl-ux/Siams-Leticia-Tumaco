@@ -38,7 +38,8 @@ def test_clima_y_hidrogeoquimica_respetan_rutas():
     pytest.importorskip('streamlit')
     from siams import utilidades, grace, hidrogeoquimica_datos as hd, mapbiomas, landsat
     assert utilidades.CARPETA_DATOS_HIDRO.samefile(ROOT/'data/processed/clima')
-    assert grace.encontrar_archivo_gws().samefile(ROOT/'data/processed/grace/COL_GWS_estimations.nc')
+    gws = grace.encontrar_archivo_gws()
+    assert any(gws.samefile(ROOT/p) for p in ('data/processed/gwsa/COL_GWS_estimations_2002-2026.nc', 'data/processed/grace/COL_GWS_estimations.nc'))
     assert hd.BASE.samefile(ROOT/'data/processed/hidrogeoquimica/siams_fq_largo.csv')
     assert mapbiomas.encontrar_csv_coberturas('Leticia','L')['serie']
     assert landsat.inventario_landsat('Leticia')['areas'] is not None

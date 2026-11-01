@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 VERSION_APP = "PROTOTIPO-SIAMS-V42-GRACE-M10-2026-10-16"
 
-FECHA_ACTUALIZACION = "16 de octubre de 2026"
+FECHA_ACTUALIZACION_BASE = "16 de octubre de 2026"
 
 MODO_DESARROLLO = False
 
@@ -93,6 +93,8 @@ from siams.cartografia import MAPAS_QGIS_NOMBRES_NUEVOS, buscar_mapa, mostrar_pd
 from siams.mapbiomas import CARPETA_COBERTURAS, COBERTURAS_POR_TERRITORIO, COLORES_COBERTURAS, encontrar_csv_coberturas, MAPBIOMAS_GIFS_POR_TERRITORIO, MAPBIOMAS_GIFS_NOMBRES_ANTIGUOS, buscar_gif_mapbiomas, _mostrar_gif_mapbiomas, mostrar_presentacion_cobertura_mapbiomas, buscar_csv_natural_antropico, _tipo_natural_antropico, _numero_antnat, cargar_csv_natural_antropico, mostrar_analisis_natural_antropico, cargar_csv_cobertura, preparar_cobertura_nivel, comparar_coberturas, mostrar_resumen_coberturas, mostrar_analisis_coberturas_nivel, mostrar_coberturas_mapbiomas
 from siams.landsat import CARPETA_LANDSAT, COLORES_LANDSAT, carpeta_landsat_sede, inventario_landsat, anio_gif_landsat, leer_csv_landsat, _leer_landsat_si_existe, _tabla_areas_landsat, preparar_gif_landsat_lento, mostrar_landsat_territorio
 from siams.sentinel import CARPETA_SENTINEL, CARPETAS_SENTINEL_POR_TERRITORIO, SENTINEL_ARCHIVOS_POR_TERRITORIO, SENTINEL_DESCRIPCIONES, carpeta_sentinel_territorio, buscar_animaciones_sentinel, _mostrar_gif_sentinel, _panel_sentinel, mostrar_sentinel_territorio
+from siams.sedes_2026 import ultima_actualizacion, mostrar_niveles, mostrar_cargar_datos_campo, mostrar_pruebas_bombeo, mostrar_fq_sede, mostrar_fq_bogota, mostrar_isotopos
+FECHA_ACTUALIZACION = ultima_actualizacion(FECHA_ACTUALIZACION_BASE)
 from siams.estados import actualizar_estado_coberturas, actualizar_estado_landsat
 from siams.inicio import obtener_hallazgos_clave, mostrar_mapa_sedes_unal, tabla_disponibilidad, SIAMS_SEDES_PORTADA, CARPETA_FOTOS_SEDES, foto_sede_portada, foto_sede_data_uri, recursos_reales_sede_portada, _fecha_valida_portada, periodo_excel_sede_portada, periodo_csv_mapbiomas_portada, periodos_reales_sede_portada, ir_a_ficha_sede_siams, mostrar_sintesis_sedes_inicio
 from siams.fuentes_creditos import mostrar_fuentes_y_creditos, mostrar_creditos_institucionales
@@ -404,9 +406,13 @@ SUBMENUS = {
         "Hidrogeología",
         "Agua subterránea (GRACE)",
         "Hidrogeoquímica",
+        "Pruebas de bombeo",
+        "Isótopos",
         "Calidad del agua e IRCA",
     ],
     "Monitoreo": [
+        "Niveles de agua subterránea",
+        "Cargar datos de campo",
         "Monitoreo y curvas",
         "Comparar territorios",
     ],
@@ -2240,6 +2246,10 @@ elif seccion == "Hidrogeoquímica":
             st.caption("Verifica siams/hidrogeoquimica.py, hidrogeoquimica_datos.py e hidrogeoquimica_nucleo.py.")
         else:
             mostrar_hidrogeoquimica(territorio)
+    elif territorio in ("Arauca", "Tumaco"):
+        mostrar_fq_sede(territorio)
+    elif territorio == "Bogotá":
+        mostrar_fq_bogota()
     else:
         st.title(f"🧪 Hidrogeoquímica de {territorio}")
 
@@ -2289,6 +2299,18 @@ elif seccion == "Hidrogeoquímica":
 # =========================================================
 # CALIDAD DEL AGUA E IRCA
 # =========================================================
+
+elif seccion == "Pruebas de bombeo":
+    mostrar_pruebas_bombeo(territorio)
+
+elif seccion == "Isótopos":
+    mostrar_isotopos(territorio)
+
+elif seccion == "Niveles de agua subterránea":
+    mostrar_niveles(territorio)
+
+elif seccion == "Cargar datos de campo":
+    mostrar_cargar_datos_campo()
 
 elif seccion == "Calidad del agua e IRCA":
     st.title(f"🚰 Calidad del agua e IRCA – {territorio}")

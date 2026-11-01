@@ -1,0 +1,15 @@
+columna,tipo,obligatoria,unidad,reglas,descripcion
+fecha_hora,fecha_hora,si,,"ISO 8601 'AAAA-MM-DD HH:MM', hora de Colombia (UTC-5); no futura",Momento de la medición
+sede,texto,si,,"Arauca | La Paz | Leticia | Tumaco | Bogotá",Sede UNAL
+pozo_id,texto,si,,"Debe existir en config/pozos_monitoreo.csv o data/processed/niveles/pozos.csv",Identificador del pozo
+tipo_medicion,texto,si,,"nivel_manual | descarga_sensor | fq_campo",Tipo de registro
+profundidad_nivel_m,numero,condicional,m,"0 a 300; obligatoria si tipo_medicion = nivel_manual",Profundidad del agua medida desde la referencia
+referencia,texto,condicional,,"brocal | terreno; obligatoria si hay profundidad_nivel_m",Punto desde el que se mide
+altura_brocal_m,numero,no,m,"-1 a 3",Altura del brocal sobre el terreno (para pasar a profundidad bajo terreno)
+ph,numero,no,unidades de pH,"0 a 14",pH de campo
+ce_us_cm,numero,no,µS/cm,"0 a 100000",Conductividad eléctrica de campo
+temperatura_c,numero,no,°C,"0 a 50",Temperatura del agua
+od_mg_l,numero,no,mg/L,"0 a 20",Oxígeno disuelto
+equipo,texto,no,,,Sonda o equipo usado (serial si aplica)
+operador,texto,si,,,Persona que mide (iniciales)
+observaciones,texto,no,,,"Bombeo reciente, lluvia, limpieza, etc."

@@ -1,3 +1,6 @@
 # SIAMS M2: dependencias directas fijadas con el .venv del proyecto.
 # Python 3.12; no actualizar sin ejecutar pruebas.
 pytest==9.1.1
+# Scripts de actualización (no los necesita la app):
+rasterio==1.5.2
+pyproj==3.8.0

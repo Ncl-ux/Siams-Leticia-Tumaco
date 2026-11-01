@@ -217,3 +217,11 @@ Criterios en `config/landsat_criterios.toml` (los lee `siams/landsat.py`, la app
 
 - El mapa de GWSa usa una escala de color fija para todos los meses (percentil 98 de |GWSa| en toda la serie, simétrica en cero).
 - `VERSION_APP = "PROTOTIPO-SIAMS-V39-LANDSAT-CRITERIOS-GWSA-2VERSIONES"`.
+
+## Actualización de sedes 2026 (noviembre de 2026)
+
+Rama `actualizacion-sedes-2026`: integra la versión corregida sobre la rama del semillero y agrega niveles de
+agua subterránea con cota (DEM GLO-30 − 1,5 m), fisicoquímica de Arauca y Tumaco con Piper/Stiff, pruebas de
+bombeo citadas, isótopos (LMWL vs GMWL), esquema/validador de datos de campo para la app de XUE Hub y la
+actualización semanal automática (NASA POWER, CHIRPS, IDEAM). Detalle y supuestos en
+`docs/actualizacion_sedes_2026.md`.

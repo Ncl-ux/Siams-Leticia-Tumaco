@@ -1,0 +1,90 @@
+{
+  "fuentes": {
+    "ideam": {
+      "leticia": {
+        "filas": 500,
+        "estado": "ok",
+        "actualizado": "2026-11-01T15:52:44+00:00"
+      },
+      "tumaco": {
+        "filas": 494,
+        "estado": "ok",
+        "actualizado": "2026-11-01T15:52:46+00:00"
+      },
+      "arauca": {
+        "filas": 428,
+        "estado": "ok",
+        "actualizado": "2026-11-01T15:52:51+00:00"
+      },
+      "la_paz": {
+        "filas": 0,
+        "estado": "ok",
+        "actualizado": "2026-11-01T15:52:51+00:00"
+      },
+      "bogota": {
+        "filas": 0,
+        "estado": "ok",
+        "actualizado": "2026-11-01T15:52:51+00:00"
+      }
+    },
+    "nasa_power": {
+      "leticia": {
+        "filas": 16738,
+        "estado": "ok",
+        "actualizado": "2026-11-01T15:52:18+00:00"
+      },
+      "tumaco": {
+        "filas": 16738,
+        "estado": "ok",
+        "actualizado": "2026-11-01T15:52:19+00:00"
+      },
+      "arauca": {
+        "filas": 16738,
+        "estado": "ok",
+        "actualizado": "2026-11-01T15:52:20+00:00"
+      },
+      "la_paz": {
+        "filas": 16738,
+        "estado": "ok",
+        "actualizado": "2026-11-01T15:52:20+00:00"
+      },
+      "bogota": {
+        "filas": 16738,
+        "estado": "ok",
+        "actualizado": "2026-11-01T15:52:21+00:00"
+      }
+    },
+    "chirps": {
+      "leticia": {
+        "filas": 549,
+        "estado": "ok",
+        "actualizado": "2026-11-01T15:52:41+00:00"
+      },
+      "tumaco": {
+        "filas": 549,
+        "estado": "ok",
+        "actualizado": "2026-11-01T15:52:41+00:00"
+      },
+      "arauca": {
+        "filas": 549,
+        "estado": "ok",
+        "actualizado": "2026-11-01T15:52:41+00:00"
+      },
+      "la_paz": {
+        "filas": 549,
+        "estado": "ok",
+        "actualizado": "2026-11-01T15:52:41+00:00"
+      },
+      "bogota": {
+        "filas": 549,
+        "estado": "ok",
+        "actualizado": "2026-11-01T15:52:41+00:00"
+      }
+    }
+  },
+  "desactivadas": {
+    "grace_gldas": "Requiere Earthdata (scripts/06_*.py); se actualiza manualmente.",
+    "era5_land": "Requiere clave Copernicus CDS; no configurada."
+  },
+  "ultima_actualizacion": "2026-11-01T15:52:51+00:00"
+}
