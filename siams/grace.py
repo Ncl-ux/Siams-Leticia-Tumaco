@@ -30,6 +30,10 @@ from .catalogo import MESES
 def encontrar_archivo_gws():
     """Localiza el NetCDF de anomalías de almacenamiento subterráneo."""
     carpeta_codigo = Path(__file__).resolve().parent.parent
+    # Serie extendida 2002-2026 (GRACE + GRACE-FO, ver docs de la versión corregida).
+    extendido = carpeta_codigo / "data" / "processed" / "gwsa" / "COL_GWS_estimations_2002-2026.nc"
+    if extendido.is_file():
+        return extendido
     carpetas = [
         carpeta_codigo / "data" / "processed" / "grace",
         carpeta_codigo,

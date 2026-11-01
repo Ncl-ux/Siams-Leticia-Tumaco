@@ -1,0 +1,11 @@
+# Alternativa a requirements.txt para quienes usan conda/mamba:
+#   conda env create -f environment.yml && conda activate siams
+name: siams
+channels:
+  - conda-forge
+dependencies:
+  - python=3.13
+  - pip
+  - pip:
+      - -r requirements.txt
+      - pytest==9.1.1

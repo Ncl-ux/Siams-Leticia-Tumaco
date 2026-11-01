@@ -1,0 +1,107 @@
+# Archivo de citación (https://citation-file-format.github.io/).
+# PROPUESTA: los nombres salen de los metadatos de los PDF de QGIS y de la cuenta
+# de GitHub del repositorio. El semillero debe completar la lista de integrantes
+# (con autorización de cada persona), sus ORCID y el docente coordinador.
+cff-version: 1.2.0
+message: "Si usa SIAMS, cítelo así. Lista de autores por completar por el semillero."
+title: "SIAMS: plataforma hidroambiental del Semillero SIAMS (Universidad Nacional de Colombia)"
+type: software
+version: "0.38.1-revisado"
+date-released: "2026-10-11"
+license: MIT
+repository-code: "https://github.com/Ncl-ux/Siams-Leticia-Tumaco"
+abstract: >-
+  Prototipo académico en Streamlit que reúne, por sede de la Universidad Nacional
+  de Colombia (Bogotá, Leticia, Tumaco, Medellín, San Andrés, Arauca y La Paz),
+  información climática (IDEAM y NASA POWER), anomalías de agua subterránea
+  GRACE/GLDAS, coberturas MapBiomas y Landsat, observaciones Sentinel-2 y SWOT
+  y cartografía QGIS. No reemplaza información oficial.
+keywords:
+  - hidrología
+  - agua subterránea
+  - GRACE
+  - Amazonia
+  - Pacífico colombiano
+  - Streamlit
+authors:
+  - name: "Semillero SIAMS, Universidad Nacional de Colombia"
+  - family-names: "Hernández Hernández"
+    given-names: "Jean Carlot"
+    affiliation: "Semillero SIAMS (por confirmar)"
+  - family-names: "Ruiz"
+    given-names: "Diana"
+    affiliation: "Semillero SIAMS (por confirmar)"
+  - name: "Integrantes por completar (cuenta de GitHub Ncl-ux)"
+references:
+  - type: article
+    title: "GRACE-based analysis of groundwater sustainability in the tropics"
+    authors:
+      - family-names: "Romero"
+        given-names: "P."
+      - family-names: "Piña"
+        given-names: "A."
+    journal: "Journal of Hydrology: Regional Studies"
+    volume: 62
+    start: 102756
+    year: 2025
+    doi: "10.1016/j.ejrh.2025.102756"
+  - type: dataset
+    title: "JPL GRACE and GRACE-FO Mascon Ocean, Ice, and Hydrology Equivalent Water Height CRI Filtered RL06.3Mv04"
+    authors:
+      - name: "NASA Jet Propulsion Laboratory (JPL)"
+    publisher:
+      name: "NASA Physical Oceanography DAAC (PO.DAAC)"
+    version: "RL06.3Mv04"
+    doi: "10.5067/TEMSC-3JC634"
+    notes: "TWSA 2002-04 a 2026-06 para el GWSa extendido (scripts/06_gwsa_grace_gldas_extendido.py)."
+  - type: article
+    title: "Improved methods for observing Earth's time variable mass distribution with GRACE using spherical cap mascons"
+    authors:
+      - family-names: "Watkins"
+        given-names: "M. M."
+      - family-names: "Wiese"
+        given-names: "D. N."
+      - family-names: "Yuan"
+        given-names: "D.-N."
+      - family-names: "Boening"
+        given-names: "C."
+      - family-names: "Landerer"
+        given-names: "F. W."
+    journal: "Journal of Geophysical Research: Solid Earth"
+    volume: 120
+    year: 2015
+    doi: "10.1002/2014JB011547"
+  - type: dataset
+    title: "GLDAS Noah Land Surface Model L4 monthly 0.25 x 0.25 degree V2.1"
+    authors:
+      - family-names: "Beaudoing"
+        given-names: "H."
+      - family-names: "Rodell"
+        given-names: "M."
+    publisher:
+      name: "NASA Goddard Earth Sciences Data and Information Services Center (GES DISC)"
+    version: "2.1"
+    year: 2020
+    doi: "10.5067/SXAVCZFAQLNO"
+  - type: article
+    title: "The Global Land Data Assimilation System"
+    authors:
+      - family-names: "Rodell"
+        given-names: "M."
+      - name: "et al."
+    journal: "Bulletin of the American Meteorological Society"
+    volume: 85
+    year: 2004
+    doi: "10.1175/BAMS-85-3-381"
+  - type: dataset
+    title: "Landsat Collection 2 Level-2 Science Products (surface reflectance)"
+    authors:
+      - name: "U.S. Geological Survey"
+    notes: "Escenas y compuestos de temporada seca de Landsat/ (scripts/07 y 08); compuestos obtenidos vía Microsoft Planetary Computer."
+    url: "https://www.usgs.gov/landsat-missions/landsat-collection-2-level-2-science-products"
+  - type: dataset
+    title: "Colección 3.0 de la serie anual de mapas de cobertura y uso del suelo de Colombia (por confirmar)"
+    authors:
+      - name: "Proyecto MapBiomas Colombia"
+    year: 2025
+    url: "https://colombia.mapbiomas.org/"

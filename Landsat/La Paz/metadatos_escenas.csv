@@ -1,0 +1,31 @@
+fecha,id_escena,sensor,path_row,tier,nubosidad_catalogo_pct,nube_aoi_pct,estado_original,fotograma_gif,cumple,motivos
+2024-01-21,LC09_L2SP_008053_20240121_02_T1,Landsat 9 OLI-2/TIRS-2,008/053,T1,1.68,0.0,aceptada,0,True,
+2024-01-29,LC08_L2SP_008053_20240129_02_T1,Landsat 8 OLI/TIRS,008/053,T1,1.84,0.0,aceptada,1,True,
+2024-12-06,LC09_L2SP_008053_20241206_02_T1,Landsat 9 OLI-2/TIRS-2,008/053,T1,5.07,0.0,aceptada,2,True,
+2024-02-14,LC08_L2SP_008053_20240214_02_T1,Landsat 8 OLI/TIRS,008/053,T1,8.63,0.1,aceptada,3,True,
+2024-07-31,LC09_L2SP_008053_20240731_02_T1,Landsat 9 OLI-2/TIRS-2,008/053,T1,10.32,0.6,aceptada,4,False,"fuera de la ventana estacional (dic, ene, feb, mar)"
+2024-01-13,LC08_L2SP_008053_20240113_02_T1,Landsat 8 OLI/TIRS,008/053,T1,12.38,7.3,aceptada,5,True,
+2024-05-20,LC08_L2SP_008053_20240520_02_T1,Landsat 8 OLI/TIRS,008/053,T1,14.88,2.1,aceptada,6,False,"fuera de la ventana estacional (dic, ene, feb, mar)"
+2024-04-10,LC09_L2SP_008053_20240410_02_T1,Landsat 9 OLI-2/TIRS-2,008/053,T1,15.54,1.2,aceptada,7,False,"fuera de la ventana estacional (dic, ene, feb, mar)"
+2024-12-14,LC08_L2SP_008053_20241214_02_T1,Landsat 8 OLI/TIRS,008/053,T1,17.71,0.0,aceptada,8,True,
+2024-07-15,LC09_L2SP_008053_20240715_02_T1,Landsat 9 OLI-2/TIRS-2,008/053,T1,19.36,66.2,aceptada,9,False,"fuera de la ventana estacional (dic, ene, feb, mar); AOI sin dato útil 66 % > 20 %"
+2024-03-01,LC08_L2SP_008053_20240301_02_T1,Landsat 8 OLI/TIRS,008/053,T1,21.81,0.0,aceptada,10,True,
+2024-06-29,LC09_L2SP_008053_20240629_02_T1,Landsat 9 OLI-2/TIRS-2,008/053,T1,22.05,7.1,aceptada,11,False,"fuera de la ventana estacional (dic, ene, feb, mar)"
+2024-11-28,LC08_L2SP_008053_20241128_02_T1,Landsat 8 OLI/TIRS,008/053,T1,23.76,13.4,aceptada,12,False,"fuera de la ventana estacional (dic, ene, feb, mar)"
+2024-03-09,LC09_L2SP_008053_20240309_02_T1,Landsat 9 OLI-2/TIRS-2,008/053,T1,23.82,1.2,aceptada,13,True,
+2024-10-27,LC08_L2SP_008053_20241027_02_T1,Landsat 8 OLI/TIRS,008/053,T1,27.7,2.9,aceptada,14,False,"fuera de la ventana estacional (dic, ene, feb, mar)"
+2024-09-09,LC08_L2SP_008053_20240909_02_T1,Landsat 8 OLI/TIRS,008/053,T1,30.79,4.0,aceptada,15,False,"fuera de la ventana estacional (dic, ene, feb, mar)"
+2024-03-17,LC08_L2SP_008053_20240317_02_T1,Landsat 8 OLI/TIRS,008/053,T1,32.73,20.5,aceptada,16,False,AOI sin dato útil 20 % > 20 %
+2024-08-16,LC09_L2SP_008053_20240816_02_T1,Landsat 9 OLI-2/TIRS-2,008/053,T1,34.46,4.5,aceptada,17,False,"fuera de la ventana estacional (dic, ene, feb, mar)"
+2024-02-22,LC09_L2SP_008053_20240222_02_T1,Landsat 9 OLI-2/TIRS-2,008/053,T1,34.61,6.0,aceptada,18,True,
+2024-01-05,LC09_L2SP_008053_20240105_02_T1,Landsat 9 OLI-2/TIRS-2,008/053,T1,34.75,0.4,aceptada,19,True,
+2024-10-03,LC09_L2SP_008053_20241003_02_T1,Landsat 9 OLI-2/TIRS-2,008/053,T1,36.14,43.0,aceptada,20,False,"fuera de la ventana estacional (dic, ene, feb, mar); AOI sin dato útil 43 % > 20 %"
+2024-07-23,LC08_L2SP_008053_20240723_02_T1,Landsat 8 OLI/TIRS,008/053,T1,37.48,54.8,aceptada,21,False,"fuera de la ventana estacional (dic, ene, feb, mar); AOI sin dato útil 55 % > 20 %"
+2024-07-07,LC08_L2SP_008053_20240707_02_T1,Landsat 8 OLI/TIRS,008/053,T1,44.72,49.8,aceptada,22,False,"fuera de la ventana estacional (dic, ene, feb, mar); AOI sin dato útil 50 % > 20 %"
+2024-03-25,LC09_L2SP_008053_20240325_02_T1,Landsat 9 OLI-2/TIRS-2,008/053,T1,45.62,48.1,aceptada,23,False,AOI sin dato útil 48 % > 20 %
+2024-10-19,LC09_L2SP_008053_20241019_02_T1,Landsat 9 OLI-2/TIRS-2,008/053,T1,52.2,67.2,aceptada,24,False,"fuera de la ventana estacional (dic, ene, feb, mar); AOI sin dato útil 67 % > 20 %"
+2024-11-20,LC09_L2SP_008053_20241120_02_T1,Landsat 9 OLI-2/TIRS-2,008/053,T1,58.38,45.0,aceptada,25,False,"fuera de la ventana estacional (dic, ene, feb, mar); AOI sin dato útil 45 % > 20 %"
+2024-09-25,LC08_L2SP_008053_20240925_02_T1,Landsat 8 OLI/TIRS,008/053,T1,59.22,100.0,descartada,,False,"descartada en el procesamiento original; fuera de la ventana estacional (dic, ene, feb, mar); AOI sin dato útil 100 % > 20 %"
+2024-08-08,LC08_L2SP_008053_20240808_02_T1,Landsat 8 OLI/TIRS,008/053,T1,59.98,97.9,descartada,,False,"descartada en el procesamiento original; fuera de la ventana estacional (dic, ene, feb, mar); AOI sin dato útil 98 % > 20 %"
+2024-10-11,LC08_L2SP_008053_20241011_02_T1,Landsat 8 OLI/TIRS,008/053,T1,64.69,88.5,aceptada,26,False,"fuera de la ventana estacional (dic, ene, feb, mar); AOI sin dato útil 88 % > 20 %"
+2024-04-02,LC08_L2SP_008053_20240402_02_T1,Landsat 8 OLI/TIRS,008/053,T1,68.92,100.0,descartada,,False,"descartada en el procesamiento original; fuera de la ventana estacional (dic, ene, feb, mar); AOI sin dato útil 100 % > 20 %"

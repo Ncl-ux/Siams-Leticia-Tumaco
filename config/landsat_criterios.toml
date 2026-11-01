@@ -1,0 +1,55 @@
+# Criterios para mostrar escenas o compuestos Landsat en SIAMS.
+# Los leen la app (siams/landsat.py), scripts/07_landsat_filtrar_escenas.py y
+# scripts/08_landsat_compuestos_stac.py. Si cambian un umbral, vuelvan a correr el script 07
+# para regenerar Landsat/<Sede>/metadatos_escenas.csv y las imágenes que cumplen.
+
+[general]
+# Fracción máxima del área de interés (AOI, el círculo del buffer) sin dato útil en la escena:
+# nubes, sombras, cirros o relleno según la máscara QA_PIXEL. Se calcula como
+# 100 · (1 − fraccion_util) de Control_escenas.csv. NO es la nubosidad del catálogo (que es de
+# toda la escena de 185 km). Rango recomendado 10–20 %.
+nube_aoi_max_pct = 20.0
+# Producto: Landsat Collection 2, nivel 2 (reflectancia superficial), solo Tier 1.
+coleccion = "02"
+niveles_permitidos = ["L2SP"]
+tiers_permitidos = ["T1"]
+# Sensores. Landsat 7 (LE07) solo hasta el 2003-05-30: desde el 2003-05-31 el corrector de
+# líneas (SLC) falló y las escenas tienen franjas sin dato del ~22 %.
+sensores_permitidos = ["LT04", "LT05", "LE07", "LC08", "LC09"]
+le07_slc_off_desde = "2003-05-31"
+# Para comparar fechas, todas las escenas deben ser de la misma temporada (ventana seca).
+exigir_ventana_estacional = true
+
+# Ventana estacional (meses) por sede: los meses menos lluviosos según el régimen de
+# precipitación de los Excel del repositorio (hoja Regimen_P de IDEAM o NASA POWER).
+# Una sola temporada por sede, para que fenología, inundación y nivel de los ríos sean comparables.
+[ventana_estacional]
+Arauca = [12, 1, 2, 3]          # verano llanero; ene–feb < 25 mm/mes (IDEAM y NASA POWER)
+"La Paz" = [12, 1, 2, 3]        # época seca principal del Cesar; dic–mar < 30 mm/mes
+Leticia = [6, 7, 8, 9]          # meses menos lluviosos (jul–ago ~110–130 mm/mes); aguas bajas del Amazonas ago–oct
+"Medellín" = [12, 1, 2]           # primera temporada seca (ene–feb ~100–115 mm/mes)
+"San Andrés" = [1, 2, 3, 4]     # época seca insular; feb–mar < 15 mm/mes
+Tumaco = [7, 8, 9, 10]          # meses menos lluviosos en IDEAM y NASA POWER; nubosidad alta todo el año
+"Bogotá" = [12, 1, 2]
+
+# Buffer (km) del área de interés alrededor de la sede, el mismo que usaron los fotogramas originales.
+[buffer_km]
+Arauca = 20
+"La Paz" = 20
+Leticia = 25
+"Medellín" = 25
+"San Andrés" = 20
+Tumaco = 20
+
+[compuestos]
+# Compuestos de mediana con máscara de nubes por píxel (scripts/08_landsat_compuestos_stac.py).
+sensores = ["landsat-8", "landsat-9"]
+# Una escena entra al compuesto si al menos este % del AOI está despejado (las nubes de esa
+# escena se enmascaran píxel a píxel; el umbral solo evita leer escenas casi cubiertas).
+despejado_min_pct_para_compuesto = 20.0
+# Fracción máxima del AOI sin ninguna observación despejada para publicar el compuesto.
+sin_dato_max_pct = 5.0
+# Realce lineal FIJO (reflectancia superficial, adimensional), igual para todas las sedes y
+# períodos, para que los colores sean comparables. Nada de realces automáticos por imagen.
+realce_color_natural = { rojo = [0.0, 0.18], verde = [0.0, 0.15], azul = [0.0, 0.12] }   # B4-B3-B2
+realce_falso_color = { swir1 = [0.0, 0.40], nir = [0.0, 0.45], rojo = [0.0, 0.18] }       # B6-B5-B4
