@@ -16,7 +16,7 @@ SEDES = {"Arauca", "La Paz", "Leticia", "Tumaco", "Bogotá"}
 TIPOS = {"nivel_manual", "descarga_sensor", "fq_campo"}
 RANGOS = {"profundidad_nivel_m": (0, 300), "altura_brocal_m": (-1, 3), "ph": (0, 14),
           "ce_us_cm": (0, 100000), "temperatura_c": (0, 50), "od_mg_l": (0, 20)}
-URL_APP_XUE = ""  # Pendiente: enlace de la app offline de XUE Hub
+URL_APP_XUE = "https://observatorio-siams.vercel.app/campo/"  # App offline de XUE Hub (Observatorio SIAMS)
 
 
 def cargar_esquema() -> pd.DataFrame:
