@@ -1807,430 +1807,438 @@ elif seccion == "Hidrogeología":
 # =========================================================
 
 elif seccion == "Agua subterránea (GRACE)":
-    st.title(f"🌐 Agua subterránea satelital · {territorio}")
-    st.caption("GWSa + índice de sequía de agua subterránea (GGDI) · GRACE/GRACE-FO + GLDAS")
-    # SIAMS_A4_REFERENCIA_CF
-    st.caption(
-        "Referencia metodológica: Romero, P. y Piña, A. (2025), "
-        "GRACE-based analysis of groundwater sustainability in the tropics. "
-        "Journal of Hydrology: Regional Studies, 62, 102756. "
-        "https://doi.org/10.1016/j.ejrh.2025.102756"
-    )
-    st.caption(
-        "Producto regional: el archivo de SIAMS cubre 2002–2025. "
-        "La versión exacta de los insumos y el periodo base de la anomalía "
-        "no están documentados en el NetCDF original; se requiere confirmación de los autores. "
-        "Los resultados no representan niveles de pozos y pueden incluir efectos de agua superficial."
-    )
-    st.markdown(
-        "**¿Qué aprenderás aquí?** Los satélites ayudan a identificar si el agua "
-        "almacenada bajo la superficie está por encima o por debajo de una referencia "
-        "histórica. Puedes explorar cuándo ocurren cambios y compararlos entre fechas. "
-        "No es una medición de cuántos metros hay hasta el agua en un pozo."
-    )
-    with st.expander("Primera vez aquí: ¿cómo interpretar GRACE y GGDI?", expanded=False):
-        st.markdown(
-            "**1. GWSa (cm):** cambio de almacenamiento subterráneo respecto a una "
-            "referencia. Un valor positivo significa *más que en la referencia*; "
-            "un valor negativo, *menos*. Cero no significa ausencia de agua.\n\n"
-            "**2. GGDI:** compara cada mes con lo habitual para ese mismo mes. "
-            "Un GGDI negativo indica una condición más seca que la referencia mensual, "
-            "pero no demuestra por sí solo que un pozo vaya a secarse.\n\n"
-            "**3. Alcance:** GRACE observa regiones amplias, no un pozo individual. "
-            "Para decisiones locales hay que contrastarlo con mediciones de campo."
-        )
-
-    st.markdown(dedent("""
-        <div class="soft-box">
-            <strong>¿Qué representa?</strong> GWSa indica cambios del almacenamiento de agua
-            subterránea respecto a una condición de referencia. No representa profundidad del
-            nivel freático ni el volumen total del acuífero. El producto es regional y debe
-            interpretarse junto con información hidrogeológica y mediciones de campo.
-        </div>
-        """).strip(), unsafe_allow_html=True)
-
-    if xr is None or np is None:
-        st.error("Faltan dependencias para leer el NetCDF.")
-        st.code("pip install xarray netCDF4 numpy", language="bash")
-    elif ARCHIVO_GWS is None:
-        st.warning(
-            "No se encontró `COL_GWS_estimations.nc` en `data/processed/grace/`. "
-            "Comprueba el archivo y revisa el procedimiento A5 de GRACE."
+    # Leticia tiene una vista de síntesis independiente. El GRACE regional original
+    # permanece accesible, pero no se duplica a continuación del observatorio.
+    if territorio == "Leticia":
+        vista_grace = st.radio(
+            "Vista de agua subterránea",
+            ["Observatorio de Leticia", "GRACE regional · análisis avanzado"],
+            horizontal=True,
+            key="siams_grace_vista_leticia",
         )
     else:
-        try:
-            df_gws, meta_gws = extraer_gws_territorio(
-                str(ARCHIVO_GWS), info["lat"], info["lon"]
-            )
+        vista_grace = "GRACE regional · análisis avanzado"
 
-            if not meta_gws.get("disponible", False) or df_gws.empty:
-                st.warning(
-                    f"No se publica una serie GWSa para **{territorio}** con este NetCDF. "
-                    f"{meta_gws.get('motivo', 'No hay cobertura válida cercana.')}"
-                )
-                if territorio == "San Andrés":
-                    st.info(
-                        "Esto es esperable para la isla: el archivo entregado cubre principalmente "
-                        "la Colombia continental. La página evita usar un píxel continental lejano "
-                        "como si representara San Andrés."
-                    )
-            else:
-                ultimo = df_gws.iloc[-1]
-                promedio = df_gws["GWSa (cm)"].mean()
-                minimo = df_gws["GWSa (cm)"].min()
-                maximo = df_gws["GWSa (cm)"].max()
-                pendiente = meta_gws["pendiente_cm_anio"]
-
-                m1, m2, m3, m4 = st.columns(4)
-                m1.metric("Última GWSa", f"{ultimo['GWSa (cm)']:.2f} cm", f"{ultimo['Fecha']:%Y-%m}")
-                m2.metric("Promedio histórico", f"{promedio:.2f} cm")
-                m3.metric("Mínimo / máximo", f"{minimo:.1f} / {maximo:.1f} cm")
-                m4.metric("Pendiente lineal exploratoria", f"{pendiente:+.3f} cm/año")
-
-                st.caption(
-                    f"Píxel utilizado: {meta_gws['lat_pixel']:.4f}, {meta_gws['lon_pixel']:.4f} · "
-                    f"distancia aproximada a la sede: {meta_gws['distancia_km']:.1f} km · "
-                    f"periodo: {meta_gws['fecha_inicial']:%Y-%m} a {meta_gws['fecha_final']:%Y-%m}."
-                )
-
-                tab_serie, tab_clim, tab_ggdi, tab_mapa, tab_metodo = st.tabs([
-                    "Serie histórica",
-                    "Comportamiento mensual",
-                    "GGDI",
-                    "Mapa por fecha",
-                    "Cómo interpretarlo",
-                ])
-
-                with tab_serie:
-                    # M10: también en el GRACE ORIGINAL se conservan meses ausentes.
-                    serie_grace_viz = _siams_meses_grace_con_vacios(df_gws, ["GWSa (cm)"])
-                    fig = go.Figure()
-                    fig.add_trace(go.Scatter(
-                        x=serie_grace_viz["Fecha"],
-                        y=serie_grace_viz["GWSa (cm)"],
-                        mode="lines", name="GWSa · GRACE/GLDAS",
-                        connectgaps=False,
-                    ))
-                    fig.update_layout(
-                        title=f"Anomalía de almacenamiento de agua subterránea · {territorio}"
-                    )
-                    fig.add_hline(
-                        y=0, line_dash="dash",
-                        annotation_text="Referencia = 0 cm", annotation_position="top left",
-                    )
-                    fig.update_layout(
-                        xaxis_title="Fecha", yaxis_title="GWSa (cm)", hovermode="x unified"
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
-                    st.caption(
-                        "Los meses sin datos GRACE se muestran como cortes en la línea: no se interpolan "
-                        "ni se unen observaciones a través de vacíos. Los valores positivos y negativos "
-                        "son desviaciones frente a la referencia, no clasificaciones de sostenibilidad."
-                    )
-
-                    csv_gws = df_gws.to_csv(index=False).encode("utf-8-sig")
-                    st.download_button(
-                        "Descargar serie GWSa de esta sede",
-                        data=csv_gws,
-                        file_name=f"GWSa_{territorio.replace(' ', '_')}.csv",
-                        mime="text/csv",
-                        key=f"descargar_gwsa_{territorio}",
-                    )
-
-                with tab_clim:
-                    clim_gws = climatologia_gws(df_gws)
-                    fig = px.bar(
-                        clim_gws, x="Mes", y="GWSa (cm)",
-                        title=f"Climatología mensual de GWSa · {territorio}",
-                        text_auto=".2f",
-                    )
-                    fig.add_hline(y=0, line_dash="dash")
-                    fig.update_layout(yaxis_title="GWSa media (cm)", xaxis_title="Mes")
-                    st.plotly_chart(fig, use_container_width=True)
-
-                    fila_min = clim_gws.loc[clim_gws["GWSa (cm)"].idxmin()]
-                    fila_max = clim_gws.loc[clim_gws["GWSa (cm)"].idxmax()]
-                    st.info(
-                        f"En la climatología de este píxel, el promedio mensual más bajo ocurre en "
-                        f"**{fila_min['Mes']}** ({fila_min['GWSa (cm)']:.2f} cm) y el más alto en "
-                        f"**{fila_max['Mes']}** ({fila_max['GWSa (cm)']:.2f} cm)."
-                    )
-
-                with tab_ggdi:
-                    df_ggdi, meta_ggdi = calcular_ggdi(df_gws)
-
-                    if not meta_ggdi.get("disponible", False) or df_ggdi.empty:
-                        st.warning(
-                            "No fue posible calcular GGDI para esta sede. "
-                            + meta_ggdi.get("motivo", "")
-                        )
-                    else:
-                        st.markdown(dedent("""
-                            <div class="soft-box">
-                                <strong>GGDI · GRACE Groundwater Drought Index.</strong><br>
-                                Para cada registro mensual se compara la GWSa observada con la
-                                climatología de ese mismo mes. Primero se calcula
-                                <strong>GSD = GWSa observada − GWSa climatológica</strong> y después
-                                se normaliza como <strong>GGDI = GSD / σ(GSD)</strong>.<br><br>
-                                <strong>GGDI &gt; 0:</strong> almacenamiento por encima de lo habitual
-                                para ese mes. <strong>GGDI &lt; 0:</strong> déficit respecto a lo habitual.
-                                El índice es adimensional y no representa profundidad del nivel freático.
-                            </div>
-                        """).strip(), unsafe_allow_html=True)
-
-                        ultimo_ggdi = df_ggdi.iloc[-1]
-                        fila_min_ggdi = df_ggdi.loc[df_ggdi["GGDI"].idxmin()]
-
-                        g1, g2, g3, g4 = st.columns(4)
-                        g1.metric(
-                            "GGDI más reciente",
-                            f"{ultimo_ggdi['GGDI']:+.2f}",
-                            f"{ultimo_ggdi['Fecha']:%Y-%m}",
-                        )
-                        g2.metric(
-                            "Mínimo histórico",
-                            f"{meta_ggdi['ggdi_min']:+.2f}",
-                            f"{fila_min_ggdi['Fecha']:%Y-%m}",
-                        )
-                        g3.metric(
-                            "Meses con GGDI < 0",
-                            f"{meta_ggdi['porcentaje_deficit']:.1f} %",
-                        )
-                        g4.metric(
-                            "σ de GSD",
-                            f"{meta_ggdi['sigma_gsd_cm']:.2f} cm",
-                        )
-
-                        serie_ggdi_viz = _siams_meses_grace_con_vacios(df_ggdi, ["GGDI"])
-                        fig = go.Figure()
-                        fig.add_trace(go.Scatter(
-                            x=serie_ggdi_viz["Fecha"],
-                            y=serie_ggdi_viz["GGDI"],
-                            mode="lines",
-                            name="GGDI",
-                            connectgaps=False,
-                        ))
-                        fig.add_hline(
-                            y=0,
-                            line_dash="dash",
-                            annotation_text="Condición mensual de referencia",
-                            annotation_position="top left",
-                        )
-                        fig.update_layout(
-                            title=f"Serie temporal del GGDI · {territorio}",
-                            xaxis_title="Fecha",
-                            yaxis_title="GGDI (adimensional)",
-                            hovermode="x unified",
-                        )
-                        st.plotly_chart(
-                            fig,
-                            use_container_width=True,
-                            key=f"ggdi_serie_{territorio}",
-                        )
-                        st.caption("El GGDI no une meses sin dato. Los vacíos se conservan en la visualización.")
-
-                        st.subheader("Revisar un año observado contra su climatología")
-                        anios_ggdi = sorted(df_ggdi["Año"].unique().tolist())
-                        anio_default = anios_ggdi[-1]
-                        anio_sel = st.selectbox(
-                            "Año observado",
-                            anios_ggdi,
-                            index=len(anios_ggdi) - 1,
-                            key=f"anio_ggdi_{territorio}",
-                        )
-                        df_anio = df_ggdi[df_ggdi["Año"] == anio_sel].copy()
-                        # M10: cada mes del año se muestra, incluso si falta el producto.
-                        meses_eje = pd.DataFrame({
-                            "Mes_num": list(range(1, 13)), "Mes": list(MESES)
-                        })
-                        df_anio_viz = meses_eje.merge(
-                            df_anio.drop(columns=["Mes"], errors="ignore")
-                            .drop_duplicates(subset=["Mes_num"]),
-                            on="Mes_num", how="left",
-                        )
-
-                        fig_comp = go.Figure()
-                        fig_comp.add_trace(go.Scatter(
-                            x=df_anio_viz["Mes"],
-                            y=df_anio_viz["GWSa (cm)"],
-                            mode="lines+markers", connectgaps=False,
-                            name=f"GWSa observada {anio_sel}",
-                        ))
-                        fig_comp.add_trace(go.Scatter(
-                            x=df_anio_viz["Mes"],
-                            y=df_anio_viz["GWSa climatológica (cm)"],
-                            mode="lines+markers", connectgaps=False,
-                            name="Climatología mensual",
-                            line=dict(dash="dash"),
-                        ))
-                        fig_comp.update_layout(
-                            title=f"GWSa observada vs. referencia mensual · {anio_sel}",
-                            xaxis_title="Mes",
-                            yaxis_title="GWSa (cm)",
-                            hovermode="x unified",
-                            legend=dict(orientation="h", y=-0.2),
-                            margin=dict(b=80),
-                        )
-                        st.plotly_chart(
-                            fig_comp,
-                            use_container_width=True,
-                            key=f"ggdi_comparacion_{territorio}_{anio_sel}",
-                        )
-
-                        fig_anio = px.bar(
-                            df_anio,
-                            x="Mes",
-                            y="GGDI",
-                            title=f"GGDI mensual · {anio_sel} · {territorio}",
-                            text_auto=".2f",
-                        )
-                        fig_anio.add_hline(y=0, line_dash="dash")
-                        fig_anio.update_layout(
-                            xaxis_title="Mes",
-                            yaxis_title="GGDI (adimensional)",
-                        )
-                        st.plotly_chart(
-                            fig_anio,
-                            use_container_width=True,
-                            key=f"ggdi_barras_{territorio}_{anio_sel}",
-                        )
-
-                        st.subheader("Déficit histórico más fuerte por mes")
-                        min_mensual = (
-                            df_ggdi.groupby(["Mes_num", "Mes"], as_index=False)["GGDI"]
-                            .min()
-                            .sort_values("Mes_num")
-                        )
-                        fig_min = px.bar(
-                            min_mensual,
-                            x="Mes",
-                            y="GGDI",
-                            title=f"Mínimo histórico del GGDI para cada mes · {territorio}",
-                            text_auto=".2f",
-                        )
-                        fig_min.add_hline(y=0, line_dash="dash")
-                        fig_min.update_layout(
-                            xaxis_title="Mes",
-                            yaxis_title="GGDI mínimo",
-                        )
-                        st.plotly_chart(
-                            fig_min,
-                            use_container_width=True,
-                            key=f"ggdi_min_mensual_{territorio}",
-                        )
-
-                        st.caption(
-                            f"GGDI calculado con {meta_ggdi['registros']} registros mensuales "
-                            f"y {meta_ggdi['anios']} años disponibles, desde "
-                            f"{meta_ggdi['fecha_inicial']:%Y-%m} hasta "
-                            f"{meta_ggdi['fecha_final']:%Y-%m}. La climatología se calcula "
-                            "por separado para enero, febrero, marzo, etc., usando toda la serie disponible."
-                        )
-
-                        with st.expander("Ver cálculo mensual de GWSa → climatología → GSD → GGDI", expanded=False):
-                            tabla_ggdi = df_ggdi.copy()
-                            tabla_ggdi["Fecha"] = tabla_ggdi["Fecha"].dt.strftime("%Y-%m")
-                            st.dataframe(
-                                tabla_ggdi.round({
-                                    "GWSa (cm)": 3,
-                                    "GWSa climatológica (cm)": 3,
-                                    "GSD (cm)": 3,
-                                    "GGDI": 3,
-                                }),
-                                use_container_width=True,
-                                hide_index=True,
-                            )
-
-                        csv_ggdi = df_ggdi.to_csv(index=False).encode("utf-8-sig")
-                        st.download_button(
-                            "Descargar serie GGDI de esta sede",
-                            data=csv_ggdi,
-                            file_name=f"GGDI_{territorio.replace(' ', '_')}.csv",
-                            mime="text/csv",
-                            key=f"descargar_ggdi_{territorio}",
-                        )
-
-                        st.warning(
-                            "Interpretación del prototipo: se usa el signo del GGDI para distinguir "
-                            "condiciones por encima o por debajo de la referencia mensual. No se agregan "
-                            "categorías arbitrarias de severidad que no estén definidas en la metodología utilizada."
-                        )
-
-                with tab_mapa:
-                    ds_gws = cargar_dataset_gws(str(ARCHIVO_GWS))
-                    fechas = pd.to_datetime(ds_gws["time"].values)
-                    etiquetas = [f"{f:%Y-%m}" for f in fechas]
-                    etiqueta = st.select_slider(
-                        "Fecha del mapa", options=etiquetas, value=etiquetas[-1],
-                        key=f"fecha_mapa_gws_{territorio}",
-                    )
-                    indice_fecha = etiquetas.index(etiqueta)
-                    matriz = np.asarray(ds_gws["GWS_anom"].isel(time=indice_fecha).values, dtype=float)
-
-                    fig = go.Figure(data=go.Heatmap(
-                        z=matriz,
-                        x=np.asarray(ds_gws["lon"].values, dtype=float),
-                        y=np.asarray(ds_gws["lat"].values, dtype=float),
-                        colorscale="RdBu",
-                        zmid=0,
-                        colorbar=dict(title="GWSa (cm)"),
-                        hovertemplate="Lon %{x:.2f}<br>Lat %{y:.2f}<br>GWSa %{z:.2f} cm<extra></extra>",
-                    ))
-                    fig.add_trace(go.Scatter(
-                        x=[meta_gws["lon_pixel"]], y=[meta_gws["lat_pixel"]],
-                        mode="markers", name=f"Píxel de {territorio}",
-                        marker=dict(size=10, symbol="x", color="black"),
-                    ))
-                    fig.update_layout(
-                        title=f"Distribución espacial de GWSa · {etiqueta}",
-                        xaxis_title="Longitud", yaxis_title="Latitud",
-                        height=620, margin=dict(l=20, r=20, t=60, b=30),
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
-                    st.caption(
-                        "Visualización de la malla del NetCDF. Las celdas sin estimación aparecen vacías. "
-                        "No debe interpretarse como un mapa de profundidad del acuífero."
-                    )
-
-                with tab_metodo:
-                    st.markdown(
-                        """
-                        La metodología del artículo de Romero y Piña estima GWSa a partir de las
-                        variaciones de almacenamiento total observadas por GRACE/GRACE-FO y componentes
-                        terrestres de GLDAS. Para la plataforma se usa directamente el producto NetCDF
-                        entregado y se extrae el píxel válido más cercano a cada sede. A partir de esa
-                        serie se construye la climatología mensual, se calcula GSD y se normaliza para
-                        obtener GGDI.
-
-                        **Decisiones del prototipo:**
-                        - No se muestra GWSa como nivel freático.
-                        - No se convierte automáticamente a recarga usando un Sy genérico.
-                        - El análisis formal de tendencia se consulta en **Clima y datos → Análisis de tendencias**, con Mann-Kendall + Sen.
-                        - El GGDI se calcula a partir de la GWSa observada, la climatología mensual y la desviación estándar de GSD.
-                        - No se calcula aún el índice integrado de sostenibilidad, resiliencia o vulnerabilidad.
-                        - Si no existe un píxel válido razonablemente cercano, la plataforma lo informa y no extrapola.
-                        """
-                    )
-                    st.caption(
-                        "Referencia metodológica: Romero, P. & Piña, A. (2025), "
-                        "GRACE-based analysis of groundwater sustainability in the tropics, "
-                        "Journal of Hydrology: Regional Studies."
-                    )
-
-        except Exception as error:
-            st.error("Se encontró el NetCDF, pero ocurrió un error al procesar GWSa.")
-            st.code(str(error), language=None)
-
-    # Complemento: GRACE/GRACE-FO frente a niveles medidos en Leticia.
-    # Se mantiene independiente del NetCDF de Colombia para mostrarlo aunque
-    # el producto nacional no esté disponible temporalmente.
-    if territorio == "Leticia":
+    if vista_grace == "Observatorio de Leticia":
         if mostrar_grace_leticia is None:
-            st.warning("No se pudo cargar el módulo de niveles y GRACE de Leticia.")
+            st.warning("No se pudo cargar el observatorio de Leticia.")
             st.code(ERROR_MODULO_GRACE_LETICIA, language=None)
-            st.caption("Comprueba que exista siams/grace_leticia.py y sus dependencias.")
         else:
             mostrar_grace_leticia()
+    else:
+        st.title(f"🌐 Agua subterránea satelital · {territorio}")
+        st.caption("GWSa + índice de sequía de agua subterránea (GGDI) · GRACE/GRACE-FO + GLDAS")
+        # SIAMS_A4_REFERENCIA_CF
+        st.caption(
+            "Referencia metodológica: Romero, P. y Piña, A. (2025), "
+            "GRACE-based analysis of groundwater sustainability in the tropics. "
+            "Journal of Hydrology: Regional Studies, 62, 102756. "
+            "https://doi.org/10.1016/j.ejrh.2025.102756"
+        )
+        st.caption(
+            "Producto regional: el archivo de SIAMS cubre 2002–2025. "
+            "La versión exacta de los insumos y el periodo base de la anomalía "
+            "no están documentados en el NetCDF original; se requiere confirmación de los autores. "
+            "Los resultados no representan niveles de pozos y pueden incluir efectos de agua superficial."
+        )
+        st.markdown(
+            "**¿Qué aprenderás aquí?** Los satélites ayudan a identificar si el agua "
+            "almacenada bajo la superficie está por encima o por debajo de una referencia "
+            "histórica. Puedes explorar cuándo ocurren cambios y compararlos entre fechas. "
+            "No es una medición de cuántos metros hay hasta el agua en un pozo."
+        )
+        with st.expander("Primera vez aquí: ¿cómo interpretar GRACE y GGDI?", expanded=False):
+            st.markdown(
+                "**1. GWSa (cm):** cambio de almacenamiento subterráneo respecto a una "
+                "referencia. Un valor positivo significa *más que en la referencia*; "
+                "un valor negativo, *menos*. Cero no significa ausencia de agua.\n\n"
+                "**2. GGDI:** compara cada mes con lo habitual para ese mismo mes. "
+                "Un GGDI negativo indica una condición más seca que la referencia mensual, "
+                "pero no demuestra por sí solo que un pozo vaya a secarse.\n\n"
+                "**3. Alcance:** GRACE observa regiones amplias, no un pozo individual. "
+                "Para decisiones locales hay que contrastarlo con mediciones de campo."
+            )
+
+        st.markdown(dedent("""
+            <div class="soft-box">
+                <strong>¿Qué representa?</strong> GWSa indica cambios del almacenamiento de agua
+                subterránea respecto a una condición de referencia. No representa profundidad del
+                nivel freático ni el volumen total del acuífero. El producto es regional y debe
+                interpretarse junto con información hidrogeológica y mediciones de campo.
+            </div>
+            """).strip(), unsafe_allow_html=True)
+
+        if xr is None or np is None:
+            st.error("Faltan dependencias para leer el NetCDF.")
+            st.code("pip install xarray netCDF4 numpy", language="bash")
+        elif ARCHIVO_GWS is None:
+            st.warning(
+                "No se encontró `COL_GWS_estimations.nc` en `data/processed/grace/`. "
+                "Comprueba el archivo y revisa el procedimiento A5 de GRACE."
+            )
+        else:
+            try:
+                df_gws, meta_gws = extraer_gws_territorio(
+                    str(ARCHIVO_GWS), info["lat"], info["lon"]
+                )
+
+                if not meta_gws.get("disponible", False) or df_gws.empty:
+                    st.warning(
+                        f"No se publica una serie GWSa para **{territorio}** con este NetCDF. "
+                        f"{meta_gws.get('motivo', 'No hay cobertura válida cercana.')}"
+                    )
+                    if territorio == "San Andrés":
+                        st.info(
+                            "Esto es esperable para la isla: el archivo entregado cubre principalmente "
+                            "la Colombia continental. La página evita usar un píxel continental lejano "
+                            "como si representara San Andrés."
+                        )
+                else:
+                    ultimo = df_gws.iloc[-1]
+                    promedio = df_gws["GWSa (cm)"].mean()
+                    minimo = df_gws["GWSa (cm)"].min()
+                    maximo = df_gws["GWSa (cm)"].max()
+                    pendiente = meta_gws["pendiente_cm_anio"]
+
+                    m1, m2, m3, m4 = st.columns(4)
+                    m1.metric("Última GWSa", f"{ultimo['GWSa (cm)']:.2f} cm", f"{ultimo['Fecha']:%Y-%m}")
+                    m2.metric("Promedio histórico", f"{promedio:.2f} cm")
+                    m3.metric("Mínimo / máximo", f"{minimo:.1f} / {maximo:.1f} cm")
+                    m4.metric("Pendiente lineal exploratoria", f"{pendiente:+.3f} cm/año")
+
+                    st.caption(
+                        f"Píxel utilizado: {meta_gws['lat_pixel']:.4f}, {meta_gws['lon_pixel']:.4f} · "
+                        f"distancia aproximada a la sede: {meta_gws['distancia_km']:.1f} km · "
+                        f"periodo: {meta_gws['fecha_inicial']:%Y-%m} a {meta_gws['fecha_final']:%Y-%m}."
+                    )
+
+                    tab_serie, tab_clim, tab_ggdi, tab_mapa, tab_metodo = st.tabs([
+                        "Serie histórica",
+                        "Comportamiento mensual",
+                        "GGDI",
+                        "Mapa por fecha",
+                        "Cómo interpretarlo",
+                    ])
+
+                    with tab_serie:
+                        # M10: también en el GRACE ORIGINAL se conservan meses ausentes.
+                        serie_grace_viz = _siams_meses_grace_con_vacios(df_gws, ["GWSa (cm)"])
+                        fig = go.Figure()
+                        fig.add_trace(go.Scatter(
+                            x=serie_grace_viz["Fecha"],
+                            y=serie_grace_viz["GWSa (cm)"],
+                            mode="lines", name="GWSa · GRACE/GLDAS",
+                            connectgaps=False,
+                        ))
+                        fig.update_layout(
+                            title=f"Anomalía de almacenamiento de agua subterránea · {territorio}"
+                        )
+                        fig.add_hline(
+                            y=0, line_dash="dash",
+                            annotation_text="Referencia = 0 cm", annotation_position="top left",
+                        )
+                        fig.update_layout(
+                            xaxis_title="Fecha", yaxis_title="GWSa (cm)", hovermode="x unified"
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                        st.caption(
+                            "Los meses sin datos GRACE se muestran como cortes en la línea: no se interpolan "
+                            "ni se unen observaciones a través de vacíos. Los valores positivos y negativos "
+                            "son desviaciones frente a la referencia, no clasificaciones de sostenibilidad."
+                        )
+
+                        csv_gws = df_gws.to_csv(index=False).encode("utf-8-sig")
+                        st.download_button(
+                            "Descargar serie GWSa de esta sede",
+                            data=csv_gws,
+                            file_name=f"GWSa_{territorio.replace(' ', '_')}.csv",
+                            mime="text/csv",
+                            key=f"descargar_gwsa_{territorio}",
+                        )
+
+                    with tab_clim:
+                        clim_gws = climatologia_gws(df_gws)
+                        fig = px.bar(
+                            clim_gws, x="Mes", y="GWSa (cm)",
+                            title=f"Climatología mensual de GWSa · {territorio}",
+                            text_auto=".2f",
+                        )
+                        fig.add_hline(y=0, line_dash="dash")
+                        fig.update_layout(yaxis_title="GWSa media (cm)", xaxis_title="Mes")
+                        st.plotly_chart(fig, use_container_width=True)
+
+                        fila_min = clim_gws.loc[clim_gws["GWSa (cm)"].idxmin()]
+                        fila_max = clim_gws.loc[clim_gws["GWSa (cm)"].idxmax()]
+                        st.info(
+                            f"En la climatología de este píxel, el promedio mensual más bajo ocurre en "
+                            f"**{fila_min['Mes']}** ({fila_min['GWSa (cm)']:.2f} cm) y el más alto en "
+                            f"**{fila_max['Mes']}** ({fila_max['GWSa (cm)']:.2f} cm)."
+                        )
+
+                    with tab_ggdi:
+                        df_ggdi, meta_ggdi = calcular_ggdi(df_gws)
+
+                        if not meta_ggdi.get("disponible", False) or df_ggdi.empty:
+                            st.warning(
+                                "No fue posible calcular GGDI para esta sede. "
+                                + meta_ggdi.get("motivo", "")
+                            )
+                        else:
+                            st.markdown(dedent("""
+                                <div class="soft-box">
+                                    <strong>GGDI · GRACE Groundwater Drought Index.</strong><br>
+                                    Para cada registro mensual se compara la GWSa observada con la
+                                    climatología de ese mismo mes. Primero se calcula
+                                    <strong>GSD = GWSa observada − GWSa climatológica</strong> y después
+                                    se normaliza como <strong>GGDI = GSD / σ(GSD)</strong>.<br><br>
+                                    <strong>GGDI &gt; 0:</strong> almacenamiento por encima de lo habitual
+                                    para ese mes. <strong>GGDI &lt; 0:</strong> déficit respecto a lo habitual.
+                                    El índice es adimensional y no representa profundidad del nivel freático.
+                                </div>
+                            """).strip(), unsafe_allow_html=True)
+
+                            ultimo_ggdi = df_ggdi.iloc[-1]
+                            fila_min_ggdi = df_ggdi.loc[df_ggdi["GGDI"].idxmin()]
+
+                            g1, g2, g3, g4 = st.columns(4)
+                            g1.metric(
+                                "GGDI más reciente",
+                                f"{ultimo_ggdi['GGDI']:+.2f}",
+                                f"{ultimo_ggdi['Fecha']:%Y-%m}",
+                            )
+                            g2.metric(
+                                "Mínimo histórico",
+                                f"{meta_ggdi['ggdi_min']:+.2f}",
+                                f"{fila_min_ggdi['Fecha']:%Y-%m}",
+                            )
+                            g3.metric(
+                                "Meses con GGDI < 0",
+                                f"{meta_ggdi['porcentaje_deficit']:.1f} %",
+                            )
+                            g4.metric(
+                                "σ de GSD",
+                                f"{meta_ggdi['sigma_gsd_cm']:.2f} cm",
+                            )
+
+                            serie_ggdi_viz = _siams_meses_grace_con_vacios(df_ggdi, ["GGDI"])
+                            fig = go.Figure()
+                            fig.add_trace(go.Scatter(
+                                x=serie_ggdi_viz["Fecha"],
+                                y=serie_ggdi_viz["GGDI"],
+                                mode="lines",
+                                name="GGDI",
+                                connectgaps=False,
+                            ))
+                            fig.add_hline(
+                                y=0,
+                                line_dash="dash",
+                                annotation_text="Condición mensual de referencia",
+                                annotation_position="top left",
+                            )
+                            fig.update_layout(
+                                title=f"Serie temporal del GGDI · {territorio}",
+                                xaxis_title="Fecha",
+                                yaxis_title="GGDI (adimensional)",
+                                hovermode="x unified",
+                            )
+                            st.plotly_chart(
+                                fig,
+                                use_container_width=True,
+                                key=f"ggdi_serie_{territorio}",
+                            )
+                            st.caption("El GGDI no une meses sin dato. Los vacíos se conservan en la visualización.")
+
+                            st.subheader("Revisar un año observado contra su climatología")
+                            anios_ggdi = sorted(df_ggdi["Año"].unique().tolist())
+                            anio_default = anios_ggdi[-1]
+                            anio_sel = st.selectbox(
+                                "Año observado",
+                                anios_ggdi,
+                                index=len(anios_ggdi) - 1,
+                                key=f"anio_ggdi_{territorio}",
+                            )
+                            df_anio = df_ggdi[df_ggdi["Año"] == anio_sel].copy()
+                            # M10: cada mes del año se muestra, incluso si falta el producto.
+                            meses_eje = pd.DataFrame({
+                                "Mes_num": list(range(1, 13)), "Mes": list(MESES)
+                            })
+                            df_anio_viz = meses_eje.merge(
+                                df_anio.drop(columns=["Mes"], errors="ignore")
+                                .drop_duplicates(subset=["Mes_num"]),
+                                on="Mes_num", how="left",
+                            )
+
+                            fig_comp = go.Figure()
+                            fig_comp.add_trace(go.Scatter(
+                                x=df_anio_viz["Mes"],
+                                y=df_anio_viz["GWSa (cm)"],
+                                mode="lines+markers", connectgaps=False,
+                                name=f"GWSa observada {anio_sel}",
+                            ))
+                            fig_comp.add_trace(go.Scatter(
+                                x=df_anio_viz["Mes"],
+                                y=df_anio_viz["GWSa climatológica (cm)"],
+                                mode="lines+markers", connectgaps=False,
+                                name="Climatología mensual",
+                                line=dict(dash="dash"),
+                            ))
+                            fig_comp.update_layout(
+                                title=f"GWSa observada vs. referencia mensual · {anio_sel}",
+                                xaxis_title="Mes",
+                                yaxis_title="GWSa (cm)",
+                                hovermode="x unified",
+                                legend=dict(orientation="h", y=-0.2),
+                                margin=dict(b=80),
+                            )
+                            st.plotly_chart(
+                                fig_comp,
+                                use_container_width=True,
+                                key=f"ggdi_comparacion_{territorio}_{anio_sel}",
+                            )
+
+                            fig_anio = px.bar(
+                                df_anio,
+                                x="Mes",
+                                y="GGDI",
+                                title=f"GGDI mensual · {anio_sel} · {territorio}",
+                                text_auto=".2f",
+                            )
+                            fig_anio.add_hline(y=0, line_dash="dash")
+                            fig_anio.update_layout(
+                                xaxis_title="Mes",
+                                yaxis_title="GGDI (adimensional)",
+                            )
+                            st.plotly_chart(
+                                fig_anio,
+                                use_container_width=True,
+                                key=f"ggdi_barras_{territorio}_{anio_sel}",
+                            )
+
+                            st.subheader("Déficit histórico más fuerte por mes")
+                            min_mensual = (
+                                df_ggdi.groupby(["Mes_num", "Mes"], as_index=False)["GGDI"]
+                                .min()
+                                .sort_values("Mes_num")
+                            )
+                            fig_min = px.bar(
+                                min_mensual,
+                                x="Mes",
+                                y="GGDI",
+                                title=f"Mínimo histórico del GGDI para cada mes · {territorio}",
+                                text_auto=".2f",
+                            )
+                            fig_min.add_hline(y=0, line_dash="dash")
+                            fig_min.update_layout(
+                                xaxis_title="Mes",
+                                yaxis_title="GGDI mínimo",
+                            )
+                            st.plotly_chart(
+                                fig_min,
+                                use_container_width=True,
+                                key=f"ggdi_min_mensual_{territorio}",
+                            )
+
+                            st.caption(
+                                f"GGDI calculado con {meta_ggdi['registros']} registros mensuales "
+                                f"y {meta_ggdi['anios']} años disponibles, desde "
+                                f"{meta_ggdi['fecha_inicial']:%Y-%m} hasta "
+                                f"{meta_ggdi['fecha_final']:%Y-%m}. La climatología se calcula "
+                                "por separado para enero, febrero, marzo, etc., usando toda la serie disponible."
+                            )
+
+                            with st.expander("Ver cálculo mensual de GWSa → climatología → GSD → GGDI", expanded=False):
+                                tabla_ggdi = df_ggdi.copy()
+                                tabla_ggdi["Fecha"] = tabla_ggdi["Fecha"].dt.strftime("%Y-%m")
+                                st.dataframe(
+                                    tabla_ggdi.round({
+                                        "GWSa (cm)": 3,
+                                        "GWSa climatológica (cm)": 3,
+                                        "GSD (cm)": 3,
+                                        "GGDI": 3,
+                                    }),
+                                    use_container_width=True,
+                                    hide_index=True,
+                                )
+
+                            csv_ggdi = df_ggdi.to_csv(index=False).encode("utf-8-sig")
+                            st.download_button(
+                                "Descargar serie GGDI de esta sede",
+                                data=csv_ggdi,
+                                file_name=f"GGDI_{territorio.replace(' ', '_')}.csv",
+                                mime="text/csv",
+                                key=f"descargar_ggdi_{territorio}",
+                            )
+
+                            st.warning(
+                                "Interpretación del prototipo: se usa el signo del GGDI para distinguir "
+                                "condiciones por encima o por debajo de la referencia mensual. No se agregan "
+                                "categorías arbitrarias de severidad que no estén definidas en la metodología utilizada."
+                            )
+
+                    with tab_mapa:
+                        ds_gws = cargar_dataset_gws(str(ARCHIVO_GWS))
+                        fechas = pd.to_datetime(ds_gws["time"].values)
+                        etiquetas = [f"{f:%Y-%m}" for f in fechas]
+                        etiqueta = st.select_slider(
+                            "Fecha del mapa", options=etiquetas, value=etiquetas[-1],
+                            key=f"fecha_mapa_gws_{territorio}",
+                        )
+                        indice_fecha = etiquetas.index(etiqueta)
+                        matriz = np.asarray(ds_gws["GWS_anom"].isel(time=indice_fecha).values, dtype=float)
+
+                        fig = go.Figure(data=go.Heatmap(
+                            z=matriz,
+                            x=np.asarray(ds_gws["lon"].values, dtype=float),
+                            y=np.asarray(ds_gws["lat"].values, dtype=float),
+                            colorscale="RdBu",
+                            zmid=0,
+                            colorbar=dict(title="GWSa (cm)"),
+                            hovertemplate="Lon %{x:.2f}<br>Lat %{y:.2f}<br>GWSa %{z:.2f} cm<extra></extra>",
+                        ))
+                        fig.add_trace(go.Scatter(
+                            x=[meta_gws["lon_pixel"]], y=[meta_gws["lat_pixel"]],
+                            mode="markers", name=f"Píxel de {territorio}",
+                            marker=dict(size=10, symbol="x", color="black"),
+                        ))
+                        fig.update_layout(
+                            title=f"Distribución espacial de GWSa · {etiqueta}",
+                            xaxis_title="Longitud", yaxis_title="Latitud",
+                            height=620, margin=dict(l=20, r=20, t=60, b=30),
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                        st.caption(
+                            "Visualización de la malla del NetCDF. Las celdas sin estimación aparecen vacías. "
+                            "No debe interpretarse como un mapa de profundidad del acuífero."
+                        )
+
+                    with tab_metodo:
+                        st.markdown(
+                            """
+                            La metodología del artículo de Romero y Piña estima GWSa a partir de las
+                            variaciones de almacenamiento total observadas por GRACE/GRACE-FO y componentes
+                            terrestres de GLDAS. Para la plataforma se usa directamente el producto NetCDF
+                            entregado y se extrae el píxel válido más cercano a cada sede. A partir de esa
+                            serie se construye la climatología mensual, se calcula GSD y se normaliza para
+                            obtener GGDI.
+
+                            **Decisiones del prototipo:**
+                            - No se muestra GWSa como nivel freático.
+                            - No se convierte automáticamente a recarga usando un Sy genérico.
+                            - El análisis formal de tendencia se consulta en **Clima y datos → Análisis de tendencias**, con Mann-Kendall + Sen.
+                            - El GGDI se calcula a partir de la GWSa observada, la climatología mensual y la desviación estándar de GSD.
+                            - No se calcula aún el índice integrado de sostenibilidad, resiliencia o vulnerabilidad.
+                            - Si no existe un píxel válido razonablemente cercano, la plataforma lo informa y no extrapola.
+                            """
+                        )
+                        st.caption(
+                            "Referencia metodológica: Romero, P. & Piña, A. (2025), "
+                            "GRACE-based analysis of groundwater sustainability in the tropics, "
+                            "Journal of Hydrology: Regional Studies."
+                        )
+
+            except Exception as error:
+                st.error("Se encontró el NetCDF, pero ocurrió un error al procesar GWSa.")
+                st.code(str(error), language=None)
 
 # =========================================================
 # HIDROGEOQUÍMICA

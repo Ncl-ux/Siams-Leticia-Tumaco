@@ -1,14 +1,25 @@
-# Corre las pruebas en cada push y pull request (revisión 3.3.d / M4).
+# Pruebas automáticas de SIAMS en GitHub Actions.
 name: pruebas
+
 on: [push, pull_request]
+
 jobs:
   pytest:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Obtener código
+        uses: actions/checkout@v4
+      - name: Configurar Python
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: '3.12'
           cache: pip
-      - run: python -m pip install -r requirements-dev.txt
-      - run: python -m pytest -q
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+      - name: Instalar dependencias de la app y de pruebas
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -r requirements-dev.txt
+      - name: Ejecutar pruebas
+        run: python -m pytest -q
