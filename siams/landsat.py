@@ -203,280 +203,410 @@ def preparar_gif_landsat_lento(
     )
     return salida.getvalue(), len(fotogramas)
 
+# --- Interfaz Landsat con criterios documentados (2026) -----------------------
+# Los GIF/MP4 antiguos se conservan en el inventario por compatibilidad, pero
+# no se muestran: el panel usa compuestos y escenas que cumplen los criterios.
+
+import json
+import tomllib
+
+
+def _criterios_landsat() -> dict:
+    """Carga los umbrales del proyecto, sin alterarlos silenciosamente."""
+    ruta = CARPETA_PROYECTO / "config" / "landsat_criterios.toml"
+    if not ruta.is_file():
+        return {}
+    try:
+        with ruta.open("rb") as archivo:
+            return tomllib.load(archivo)
+    except (OSError, tomllib.TOMLDecodeError) as error:
+        st.warning(f"No se pudo cargar la configuración Landsat: {error}")
+        return {}
+
+
+def _metadatos_landsat(carpeta: Path) -> pd.DataFrame:
+    """Lee las decisiones del script 07, sin recalcular ni cambiar 'cumple'."""
+    ruta = carpeta / "metadatos_escenas.csv"
+    df = _leer_landsat_si_existe(ruta)
+    if df is None or df.empty:
+        return pd.DataFrame()
+    requeridas = {"fecha", "id_escena", "cumple", "nube_aoi_pct"}
+    if not requeridas.issubset(df.columns):
+        st.warning(
+            f"`{ruta.name}` no contiene las columnas necesarias: "
+            + ", ".join(sorted(requeridas - set(df.columns)))
+        )
+        return pd.DataFrame()
+    df = df.copy()
+    df["fecha"] = pd.to_datetime(df["fecha"], errors="coerce")
+    df["cumple"] = df["cumple"].astype(str).str.strip().str.casefold().isin(
+        ["true", "1", "si", "sí"]
+    )
+    df["nube_aoi_pct"] = pd.to_numeric(df["nube_aoi_pct"], errors="coerce")
+    df["nubosidad_catalogo_pct"] = pd.to_numeric(
+        df.get("nubosidad_catalogo_pct", pd.Series(index=df.index, dtype=float)),
+        errors="coerce",
+    )
+    return df.dropna(subset=["fecha"]).sort_values("fecha", ascending=False)
+
+
+def _escenas_landsat_validas(meta: pd.DataFrame, umbral_pct: float) -> pd.DataFrame:
+    """Solo permite estrechar el filtro precomputado (nunca relajar el original)."""
+    if meta.empty:
+        return meta.copy()
+    return meta.loc[
+        meta["cumple"]
+        & meta["nube_aoi_pct"].notna()
+        & meta["nube_aoi_pct"].le(umbral_pct)
+    ].copy()
+
+
+def _compuestos_landsat(carpeta: Path) -> list[dict]:
+    """Lee fichas JSON y empareja únicamente las imágenes de esa misma carpeta."""
+    origen = carpeta / "compuestos"
+    if not origen.is_dir():
+        return []
+    resultado = []
+    for ruta in sorted(origen.glob("*_compuesto.json"), reverse=True):
+        try:
+            datos = json.loads(ruta.read_text(encoding="utf-8-sig"))
+        except (OSError, ValueError) as error:
+            st.warning(f"No se pudo leer `{ruta.name}`: {error}")
+            continue
+        imagenes = datos.get("imagenes", {})
+        rutas_imagenes = {}
+        for nombre in ("color_natural", "falso_color"):
+            archivo = imagenes.get(nombre, "")
+            # Los nombres provienen del JSON local; impedir rutas fuera de compuestos/.
+            if not isinstance(archivo, str) or Path(archivo).name != archivo:
+                continue
+            posible = origen / archivo
+            if posible.is_file() and posible.suffix.casefold() in {".jpg", ".jpeg", ".png"}:
+                rutas_imagenes[nombre] = posible
+        resultado.append({"ficha": ruta, "datos": datos, "imagenes": rutas_imagenes})
+    return resultado
+
+
+def _imagen_escena_landsat(carpeta: Path, id_escena: str):
+    """Busca PNG validado por el script 07 para un ID Landsat bien formado."""
+    if not isinstance(id_escena, str) or not re.fullmatch(r"[A-Za-z0-9_\-]+", id_escena):
+        return None
+    ruta = carpeta / "escenas" / f"{id_escena}.png"
+    return ruta if ruta.is_file() else None
+
+
+def _descarga_landsat(ruta: Path, etiqueta: str, clave: str) -> None:
+    if not ruta.is_file():
+        return
+    tipos = {".csv": "text/csv", ".json": "application/json",
+             ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png"}
+    st.download_button(
+        etiqueta, data=ruta.read_bytes(), file_name=ruta.name,
+        mime=tipos.get(ruta.suffix.casefold(), "application/octet-stream"),
+        key=clave,
+    )
+
+
 def mostrar_landsat_territorio(nombre_territorio: str) -> None:
-    """Panel Landsat por territorio: MP4 preferido y GIF compatible."""
+    """Muestra compuestos, escenas verificadas, series y trazabilidad.
+
+    Los criterios científicos provienen de `config/landsat_criterios.toml` y
+    `metadatos_escenas.csv`; esta interfaz NO reclasifica imágenes.
+    """
     inv = inventario_landsat(nombre_territorio)
+    carpeta = inv["carpeta"]
     slug = normalizar_etiqueta(nombre_territorio)
-    animaciones = inv["animaciones"]
 
     st.markdown(
         """<div style="background:linear-gradient(110deg,#0b3d36,#146c5c);
         border-radius:16px;padding:18px 22px;margin:0 0 12px 0;">
-        <div style="font-size:0.74rem;letter-spacing:0.12em;font-weight:750;
+        <div style="font-size:0.74rem;letter-spacing:.12em;font-weight:750;
         color:#b9efe3!important;">SIAMS · OBSERVACIÓN SATELITAL</div>
         <div style="font-size:1.45rem;line-height:1.25;font-weight:800;
-        color:#ffffff!important;margin-top:5px;">Evolución de coberturas · Landsat</div>
-        <div style="font-size:0.92rem;line-height:1.55;color:#e5fbf5!important;
-        margin-top:5px;">Composiciones satelitales y clasificación preliminar
-        para explorar cambios visuales en el territorio.</div></div>""",
+        color:#ffffff!important;margin-top:5px;">Landsat · imágenes con criterios</div>
+        <div style="font-size:.92rem;line-height:1.55;color:#e5fbf5!important;
+        margin-top:5px;">Compuestos multitemporales, escenas de calidad y trazabilidad.
+        </div></div>""",
         unsafe_allow_html=True,
     )
-
-    if not animaciones:
-        st.info(
-            f"Todavía no hay animaciones Landsat de {nombre_territorio} en "
-            f"`Landsat/{nombre_territorio}/`. Puedes agregar MP4 o GIF. "
-            "Las tablas CSV de clasificación y control son opcionales."
-        )
-        return
-
-    if len(animaciones) > 1:
-        ruta_animacion = st.selectbox(
-            "Animación disponible",
-            animaciones,
-            format_func=lambda p: (
-                f"{anio_gif_landsat(p) or 'Sin año'} · "
-                f"{'Video MP4' if p.suffix.casefold() == '.mp4' else 'GIF'} · "
-                f"{p.stem.replace('_', ' ')}"
-            ),
-            key=f"landsat_animacion_{slug}",
-        )
-    else:
-        ruta_animacion = animaciones[0]
-
-    anio = anio_gif_landsat(ruta_animacion)
-    es_video = ruta_animacion.suffix.casefold() == ".mp4"
-    st.caption(
-        f"Territorio: {nombre_territorio} · Año: {anio if anio else 'no especificado'} "
-        f"· Formato: {'MP4' if es_video else 'GIF'} · "
-        "Fuente de referencia: Landsat Collection 2 Level 2 · Resolución nominal: 30 m."
+    st.info(
+        "Para análisis de cambios de cobertura, **MapBiomas es la referencia**. "
+        "Las imágenes Landsat de este apartado son productos de observación y la "
+        "clasificación propia es preliminar; no equivale a una validación de coberturas."
     )
 
-    df_areas_original = _leer_landsat_si_existe(inv["areas"])
-    df_control = _leer_landsat_si_existe(inv["control"])
-    df_areas, clases = _tabla_areas_landsat(df_areas_original)
+    if carpeta is None:
+        st.warning(f"No se encontró la carpeta Landsat para {nombre_territorio}.")
+        return
 
-    # Un CSV compartido no debe mostrarse como si perteneciera a otro GIF/año.
-    if anio is not None and not df_areas.empty:
-        presentes = df_areas["Fecha"].dt.year.dropna().unique().tolist()
-        if anio not in presentes:
-            st.warning(
-                f"El archivo de áreas no contiene fechas de {anio}. "
-                "Se ocultan las estadísticas para evitar mezclar años."
-            )
-            df_areas = pd.DataFrame()
-            clases = []
-        else:
-            df_areas = df_areas.loc[df_areas["Fecha"].dt.year.eq(anio)].copy()
+    criterios = _criterios_landsat()
+    general = criterios.get("general", {})
+    valores_compuesto = criterios.get("compuestos", {})
+    if not criterios:
+        st.warning(
+            "Falta `config/landsat_criterios.toml` o no se pudo leer. "
+            "Se utilizarán las decisiones ya calculadas en el CSV, "
+            "sin recalcular filtros; verifica la configuración antes de publicar."
+        )
+    umbral_base = float(general.get("nube_aoi_max_pct", 20.0))
+    max_sin_dato = float(valores_compuesto.get("sin_dato_max_pct", 5.0))
+    meses = criterios.get("ventana_estacional", {}).get(nombre_territorio)
+    if meses is None:
+        meses = next(
+            (valor for sede, valor in criterios.get("ventana_estacional", {}).items()
+             if normalizar_etiqueta(sede) == slug), None
+        )
 
-    if df_control is not None and not df_control.empty:
-        cols = {normalizar_etiqueta(c): c for c in df_control.columns}
-        col_fecha = cols.get("fecha")
-        if col_fecha is not None and anio is not None:
-            fechas_ctl = pd.to_datetime(df_control[col_fecha], errors="coerce")
-            df_control = df_control.loc[fechas_ctl.dt.year.eq(anio)].copy()
+    compuestos = _compuestos_landsat(carpeta)
+    meta = _metadatos_landsat(carpeta)
+    umbral = st.slider(
+        "Máximo de AOI sin dato útil para mostrar escenas ya aprobadas (%)",
+        min_value=0.0, max_value=max(umbral_base, 0.1), value=umbral_base,
+        step=0.5,
+        help="Solo filtra de forma más estricta las escenas que ya pasaron "
+             "el procesamiento; no permite aprobar escenas rechazadas.",
+        key=f"landsat_nube_aoi_{slug}",
+    )
+    validas = _escenas_landsat_validas(meta, float(umbral))
+    n_aprobadas_original = int(meta["cumple"].sum()) if not meta.empty else 0
+    vistas = st.tabs([
+        "Compuesto de temporada seca",
+        "Escenas que cumplen",
+        "Series de coberturas",
+        "Metadatos y descargas",
+    ])
 
-    vistas = st.tabs(["🎬 Animación satelital", "📈 Series de coberturas", "🔎 Calidad y descargas"])
     with vistas[0]:
-        st.markdown(
-            f"#### {nombre_territorio} · comparativo satelital "
-            f"{anio if anio else ''}"
-        )
-
-        if es_video:
-            st.markdown(
-                "Compara **composición en color natural** (izquierda) y "
-                "**coberturas espectrales preliminares** (derecha). "
-                "En cada fotograma se indican la fecha seleccionada y la "
-                "información disponible de nubosidad por sector."
-            )
-            _, columna_video, _ = st.columns([1, 9, 1])
-            with columna_video:
-                # Se dibuja una sola vez; no se duplica como GIF ni se re-encodea
-                # durante cada ejecución de Streamlit.
-                st.video(str(ruta_animacion), format="video/mp4")
-            st.caption(
-                "El porcentaje de área libre de nube/sombra del compuesto mensual "
-                "no equivale a la nubosidad de cada sector de la mejor escena individual. "
-                "Los porcentajes se consultan por separado en el propio video."
-            )
-            st.download_button(
-                "⬇️ Descargar animación Landsat (MP4)",
-                data=ruta_animacion.read_bytes(),
-                file_name=ruta_animacion.name,
-                mime="video/mp4",
-                key=f"landsat_mp4_descarga_{slug}_{ruta_animacion.name}",
-            )
+        st.markdown("#### Compuesto multitemporal de temporada seca")
+        if not compuestos:
+            st.info("No hay compuestos JPG/JSON disponibles para esta sede.")
         else:
-            # Los antiguos GIF siguen siendo compatibles sin alterar su fuente.
-            control_tamano, control_velocidad = st.columns(2)
-            with control_tamano:
-                ancho_gif = st.select_slider(
-                    "Tamaño de la animación",
-                    options=[280, 320, 360, 400, 440, 520, 640],
-                    value=440,
-                    format_func=lambda n: f"{n} px",
-                    key=f"landsat_tamano_{slug}",
+            nombres = [c["datos"].get("periodo", c["ficha"].stem) for c in compuestos]
+            indice = (st.selectbox(
+                "Período del compuesto", range(len(compuestos)),
+                format_func=lambda i: str(nombres[i]),
+                key=f"landsat_compuesto_{slug}",
+            ) if len(compuestos) > 1 else 0)
+            elegido = compuestos[indice]
+            datos = elegido["datos"]
+            faltantes = float(datos.get("aoi_sin_observacion_pct", 100.0))
+            publicable = datos.get("publicable") is True and faltantes <= max_sin_dato
+            a, b, c = st.columns(3)
+            a.metric("Escenas consultadas", datos.get("escenas_consultadas", "—"))
+            b.metric("Escenas utilizadas", datos.get("escenas_usadas", "—"))
+            c.metric("AOI sin observación", f"{faltantes:.2f} %")
+            if not publicable:
+                st.warning(
+                    "La ficha no autoriza publicar este compuesto o supera el máximo "
+                    f"de área sin observaciones ({max_sin_dato:g} %)."
                 )
-            with control_velocidad:
-                segundos_frame = st.slider(
-                    "Tiempo por fecha (segundos)",
-                    min_value=1.0, max_value=5.0, value=2.5, step=0.5,
-                    key=f"landsat_duracion_{slug}",
-                )
-            gif_ajustado = None
-            try:
-                with st.spinner("Preparando animación GIF…"):
-                    gif_ajustado, cantidad_frames = preparar_gif_landsat_lento(
-                        str(ruta_animacion),
-                        ruta_animacion.stat().st_mtime_ns,
-                        int(ancho_gif),
-                        int(segundos_frame * 1000),
-                    )
-            except Exception as error:
-                st.warning(f"No fue posible ajustar el GIF: {error}. Se muestra el original.")
-
-            _, columna_gif, _ = st.columns([1, 4, 1])
-            with columna_gif:
-                st.image(
-                    gif_ajustado if gif_ajustado is not None else str(ruta_animacion),
-                    width=int(ancho_gif),
-                )
-            if gif_ajustado is not None:
-                st.caption(
-                    f"Vista previa: {cantidad_frames} fotogramas · "
-                    f"{segundos_frame:g} s por fecha."
-                )
-            boton_lento, boton_original = st.columns(2)
-            with boton_lento:
-                if gif_ajustado is not None:
-                    st.download_button(
-                        "⬇️ Descargar GIF ajustado", data=gif_ajustado,
-                        file_name=f"{ruta_animacion.stem}_lento_{segundos_frame:g}s.gif",
-                        mime="image/gif", key=f"landsat_desc_lento_{slug}",
-                        use_container_width=True,
-                    )
-            with boton_original:
-                st.download_button(
-                    "⬇️ Descargar GIF original", data=ruta_animacion.read_bytes(),
-                    file_name=ruta_animacion.name, mime="image/gif",
-                    key=f"landsat_desc_gif_{slug}_{ruta_animacion.name}",
-                    use_container_width=True,
-                )
-
-        st.markdown("##### Cómo interpretar las coberturas")
-        st.caption(
-            "Las clases de cobertura representan una interpretación espectral "
-            "preliminar; no equivalen a una cartografía oficial validada. "
-            "Los píxeles sin datos, las sombras y la nubosidad no deben "
-            "interpretarse automáticamente como cambios reales de cobertura."
-        )
-        etiquetas = " ".join(
-            f'<span style="display:inline-block;margin:0.15rem 0.45rem 0.3rem 0;'
-            f'border:1px solid rgba(125,125,125,.25);border-radius:8px;padding:5px 8px;">'
-            f'<span style="display:inline-block;background:{color};width:11px;height:11px;'
-            f'border-radius:2px;margin-right:7px;"></span>{escape(nombre)}</span>'
-            for nombre, color in COLORES_LANDSAT.items()
-        )
-        st.markdown(etiquetas, unsafe_allow_html=True)
+            else:
+                natural, falso = st.columns(2)
+                with natural:
+                    st.markdown("**Color natural (B4–B3–B2)**")
+                    ruta = elegido["imagenes"].get("color_natural")
+                    if ruta:
+                        st.image(str(ruta), width="stretch")
+                    else:
+                        st.info("No está disponible la imagen de color natural.")
+                with falso:
+                    st.markdown("**Falso color (SWIR1–NIR–rojo)**")
+                    ruta = elegido["imagenes"].get("falso_color")
+                    if ruta:
+                        st.image(str(ruta), width="stretch")
+                    else:
+                        st.info("No está disponible la imagen de falso color.")
+            st.caption(
+                f"Fuente: {datos.get('producto', 'Landsat C2 L2')} · "
+                f"Observaciones: {datos.get('primera_fecha','—')} a "
+                f"{datos.get('ultima_fecha','—')} · "
+                f"Resolución: {datos.get('pixel_m', '—')} m."
+            )
+            st.warning(
+                "Este compuesto combina observaciones de distintas fechas mediante "
+                "mediana por píxel. **No es una escena única ni permite inferir por sí "
+                "solo cambios temporales de cobertura.**"
+            )
 
     with vistas[1]:
-        if df_areas.empty:
-            st.info("No hay un CSV de áreas compatible con el año seleccionado.")
+        st.markdown("#### Escenas individuales que cumplen los criterios")
+        if meta.empty:
+            st.info("No hay `metadatos_escenas.csv` utilizable para esta sede.")
         else:
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Fechas con áreas clasificadas", len(df_areas))
-            c2.metric("Categorías representadas", len(clases))
-            c3.metric("Área clasificada en última fecha", f"{df_areas['Área clasificada (ha)'].iloc[-1]:,.1f} ha")
-            modalidad = st.radio(
-                "Cómo representar las coberturas",
-                ["Superficie estimada (ha)", "Participación dentro del área clasificada (%)"],
-                horizontal=True,
-                key=f"landsat_modo_{normalizar_etiqueta(nombre_territorio)}",
-            )
-            largos = df_areas.melt(id_vars=["Fecha", "Área clasificada (ha)"],
-                                   value_vars=clases, var_name="Cobertura", value_name="Superficie (ha)")
-            if modalidad.startswith("Participación"):
-                largos["Valor"] = (
-                    100 * largos["Superficie (ha)"] /
-                    largos["Área clasificada (ha)"].where(largos["Área clasificada (ha)"].gt(0))
+            a, b, c = st.columns(3)
+            a.metric("Escenas registradas", len(meta))
+            b.metric("Aceptadas originalmente", n_aprobadas_original)
+            c.metric("Visibles con este umbral", len(validas))
+            if validas.empty:
+                st.info(
+                    "No hay escenas individuales que cumplan todos los criterios "
+                    "y el umbral seleccionado. El compuesto multitemporal puede "
+                    "estar disponible en la primera pestaña."
                 )
-                y, unidad = "Valor", "% del área clasificada"
             else:
-                y, unidad = "Superficie (ha)", "Superficie estimada (ha)"
-            fig = px.line(
-                largos, x="Fecha", y=y, color="Cobertura", markers=True,
-                color_discrete_map=COLORES_LANDSAT,
-                labels={"Fecha": "Fecha de observación", y: unidad},
-            )
-            fig.update_layout(
-                height=470, margin=dict(l=10, r=10, t=25, b=5),
-                legend_title_text="Cobertura", hovermode="x unified",
-                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-            )
-            st.plotly_chart(fig, use_container_width=True,
-                            key=f"landsat_serie_{normalizar_etiqueta(nombre_territorio)}")
+                posibles = []
+                for _, fila in validas.iterrows():
+                    imagen = _imagen_escena_landsat(carpeta, str(fila["id_escena"]))
+                    if imagen:
+                        posibles.append((fila, imagen))
+                if not posibles:
+                    st.warning(
+                        "Hay escenas aprobadas en el registro, pero faltan sus imágenes "
+                        "PNG. No se mostrarán imágenes sin trazabilidad."
+                    )
+                else:
+                    idx = st.selectbox(
+                        "Fecha / escena validada", range(len(posibles)),
+                        format_func=lambda i: (
+                            f"{posibles[i][0]['fecha']:%Y-%m-%d} · "
+                            f"{posibles[i][0]['id_escena']} · "
+                            f"AOI sin dato {posibles[i][0]['nube_aoi_pct']:.1f} %"
+                        ),
+                        key=f"landsat_escena_{slug}",
+                    )
+                    fila, imagen = posibles[idx]
+                    st.image(str(imagen), width="stretch")
+                    st.caption(
+                        f"Sensor: {fila.get('sensor', '—')} · "
+                        f"Path/row: {fila.get('path_row', '—')} · "
+                        f"Tier: {fila.get('tier', '—')} · "
+                        f"Nubosidad catálogo: {fila.get('nubosidad_catalogo_pct', float('nan')):.1f} % "
+                        f"(escena completa, distinta del AOI)."
+                    )
+                    _descarga_landsat(
+                        imagen, "Descargar escena PNG",
+                        f"landsat_png_{slug}_{imagen.stem}",
+                    )
             st.caption(
-                "Superficies estimadas según píxeles clasificados a 30 m (ha). "
-                "El área despejada puede variar entre fechas: una disminución observada "
-                "no equivale necesariamente a pérdida real de cobertura. "
-                "Los porcentajes se calculan respecto del área clasificada en cada fecha."
+                "El filtro `cumple` procede de `scripts/07_landsat_filtrar_escenas.py`. "
+                "Cambiar los criterios exige regenerar los metadatos; este selector "
+                "solo puede ser más estricto."
             )
-            with st.expander("Ver tabla de coberturas por fecha"):
-                st.dataframe(df_areas[["Fecha"] + clases + ["Área clasificada (ha)"]],
-                             hide_index=True, use_container_width=True)
-            if inv["areas"]:
-                st.download_button(
-                    "⬇️ Descargar áreas originales (CSV)", inv["areas"].read_bytes(),
-                    file_name=inv["areas"].name, mime="text/csv",
-                    key=f"landsat_areas_{normalizar_etiqueta(nombre_territorio)}",
-                )
 
     with vistas[2]:
-        st.markdown("#### Control de escenas y trazabilidad")
-        if df_control is None or df_control.empty:
-            st.info("No hay registros de control para el año seleccionado.")
+        st.markdown("#### Series de coberturas preliminares")
+        df_areas, clases = _tabla_areas_landsat(_leer_landsat_si_existe(inv["areas"]))
+        if meta.empty:
+            st.info(
+                "No se muestra la serie porque falta la tabla de calidad "
+                "con la cual identificar las fechas aceptadas."
+            )
+        elif validas.empty:
+            st.info(
+                "No existen fechas aprobadas bajo los criterios de calidad; "
+                "no se publican series de clasificación para esta sede."
+            )
+        elif df_areas.empty or not clases:
+            st.info("No hay una tabla de áreas de coberturas disponible o compatible.")
         else:
-            cols = {normalizar_etiqueta(c): c for c in df_control.columns}
-            estado_col = cols.get("estado")
-            if estado_col:
-                aceptadas = df_control[estado_col].astype(str).str.casefold().str.contains("aceptad", na=False).sum()
-                c1, c2, c3 = st.columns(3)
-                c1.metric("Escenas examinadas", len(df_control))
-                c2.metric("Escenas aceptadas", int(aceptadas))
-                c3.metric("Escenas descartadas", int(len(df_control)-aceptadas))
-            fraccion_col = cols.get("fraccion_util")
-            if fraccion_col:
-                fraccion = pd.to_numeric(df_control[fraccion_col], errors="coerce")
+            fechas_validas = set(validas["fecha"].dt.normalize())
+            filtrada = df_areas.loc[df_areas["Fecha"].dt.normalize().isin(fechas_validas)].copy()
+            filtrada = filtrada.loc[filtrada["Área clasificada (ha)"].gt(0)]
+            if filtrada.empty:
+                st.info(
+                    "Las fechas con clasificación disponible no coinciden con "
+                    "las escenas que cumplen los criterios. No se grafica una serie no validada."
+                )
+            else:
+                largos = filtrada.melt(
+                    id_vars=["Fecha", "Área clasificada (ha)"],
+                    value_vars=clases, var_name="Cobertura", value_name="Superficie (ha)",
+                )
+                largos["% del área clasificada"] = (
+                    100 * largos["Superficie (ha)"].clip(lower=0)
+                    / largos["Área clasificada (ha)"]
+                )
+                grafica = px.line(
+                    largos, x="Fecha", y="% del área clasificada",
+                    color="Cobertura", markers=True,
+                    color_discrete_map=COLORES_LANDSAT,
+                    labels={"Fecha": "Fecha de observación"},
+                )
+                grafica.update_layout(
+                    height=450, margin=dict(l=10, r=10, t=25, b=5),
+                    hovermode="x unified", legend_title_text="Cobertura",
+                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                )
+                st.plotly_chart(grafica, width="stretch", key=f"landsat_serie_{slug}")
                 st.caption(
-                    "Fracción útil: proporción aproximada del buffer con píxeles "
-                    "aprovechables en cada escena; no es el porcentaje de nubosidad del catálogo."
+                    "Porcentaje calculado sobre el área efectivamente clasificada "
+                    "en cada fecha. Las hectáreas NO son directamente comparables "
+                    "sin una máscara espacial común. Clasificación exploratoria, "
+                    "sin validación independiente de exactitud."
                 )
-                df_control = df_control.copy()
-                df_control["Cobertura útil (%)"] = (fraccion * 100).round(1)
-            st.dataframe(df_control, hide_index=True, use_container_width=True)
-            if inv["control"]:
-                st.download_button(
-                    "⬇️ Descargar control original (CSV)", inv["control"].read_bytes(),
-                    file_name=inv["control"].name, mime="text/csv",
-                    key=f"landsat_control_{normalizar_etiqueta(nombre_territorio)}",
-                )
-
-        with st.expander("Ficha técnica y consideraciones metodológicas"):
-            st.markdown(
-                "**Fuente:** imágenes Landsat Collection 2, Level 2 (reflectancia superficial).  "
-                "**Resolución espacial nominal:** 30 m.  "
-                "**Intervalo temporal:** escenas efectivamente disponibles del año indicado.  "
-                "**Procesamiento:** filtro de nubosidad, máscara QA_PIXEL e índices "
-                "espectrales (NDVI, NDWI, NDBI, BSI), con reglas heurísticas.  "
-                "**Área de estudio:** buffer definido al generar los fotogramas en Colab. "
-                "La animación no permite cambiar ese buffer desde Streamlit."
-            )
-            st.warning(
-                "Producto exploratorio sin validación independiente de exactitud. "
-                "Las clases agricultura, urbano y humedal pueden confundirse "
-                "espectralmente; no usar para cuantificar transformación real "
-                "del suelo sin verificación de campo o datos de referencia."
+                with st.expander("Tabla de coberturas filtradas"):
+                    st.dataframe(
+                        filtrada[["Fecha"] + clases + ["Área clasificada (ha)"]],
+                        hide_index=True, width="stretch",
+                    )
+        if inv["areas"] and inv["areas"].is_file():
+            _descarga_landsat(
+                inv["areas"], "Descargar CSV original de coberturas",
+                f"landsat_areas_{slug}",
             )
 
-__all__ = ['CARPETA_LANDSAT', 'COLORES_LANDSAT', 'carpeta_landsat_sede', 'inventario_landsat', 'anio_gif_landsat', 'leer_csv_landsat', '_leer_landsat_si_existe', '_tabla_areas_landsat', 'preparar_gif_landsat_lento', 'mostrar_landsat_territorio']
+    with vistas[3]:
+        st.markdown("#### Trazabilidad y control de calidad")
+        st.markdown(
+            f"**AOI sin dato útil permitido:** {umbral_base:g} %  "
+            f"**Máximo sin observación en el compuesto:** {max_sin_dato:g} %  "
+            f"**Meses de comparación:** {', '.join(map(str, meses)) if meses else 'no indicados'}"
+        )
+        st.caption(
+            "AOI sin dato útil = píxeles no aprovechables dentro del buffer de la sede. "
+            "No equivale a la nubosidad reportada para la escena Landsat completa."
+        )
+        if meta.empty:
+            st.info("No hay metadatos de escenas para mostrar.")
+        else:
+            st.dataframe(
+                meta[[c for c in (
+                    "fecha", "id_escena", "sensor", "tier", "nube_aoi_pct",
+                    "nubosidad_catalogo_pct", "cumple", "motivos"
+                ) if c in meta.columns]],
+                hide_index=True, width="stretch",
+            )
+            _descarga_landsat(
+                carpeta / "metadatos_escenas.csv", "Descargar metadatos de escenas",
+                f"landsat_meta_{slug}",
+            )
+        if inv["control"] and inv["control"].is_file():
+            with st.expander("Registro original de control de escenas"):
+                control = _leer_landsat_si_existe(inv["control"])
+                if control is not None:
+                    st.dataframe(control, hide_index=True, width="stretch")
+            _descarga_landsat(
+                inv["control"], "Descargar Control_escenas.csv",
+                f"landsat_control_{slug}",
+            )
+        for compuesto in compuestos:
+            ficha = compuesto["ficha"]
+            with st.expander(f"Ficha del compuesto · {compuesto['datos'].get('periodo', ficha.stem)}"):
+                st.json(compuesto["datos"])
+                _descarga_landsat(
+                    ficha, "Descargar ficha JSON",
+                    f"landsat_json_{slug}_{ficha.stem}",
+                )
+                escenas = ficha.with_name(ficha.name.replace("_compuesto.json", "_escenas.csv"))
+                if escenas.is_file():
+                    _descarga_landsat(
+                        escenas, "Descargar escenas del compuesto CSV",
+                        f"landsat_escenascomp_{slug}_{escenas.stem}",
+                    )
+                for tipo, imagen in compuesto["imagenes"].items():
+                    _descarga_landsat(
+                        imagen, f"Descargar imagen {tipo.replace('_', ' ')}",
+                        f"landsat_comp_img_{slug}_{imagen.stem}",
+                    )
+        st.warning(
+            "Los GIF/MP4 históricos no se usan en esta interfaz. "
+            "No se eliminan del disco ni de Git automáticamente."
+        )
+
+
+__all__ = [
+    "CARPETA_LANDSAT", "COLORES_LANDSAT", "carpeta_landsat_sede",
+    "inventario_landsat", "anio_gif_landsat", "leer_csv_landsat",
+    "_leer_landsat_si_existe", "_tabla_areas_landsat",
+    "preparar_gif_landsat_lento", "mostrar_landsat_territorio",
+]

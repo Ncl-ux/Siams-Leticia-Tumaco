@@ -1,0 +1,165 @@
+{
+  "fuente": "Explorador_Leticia_publico.html, material del taller compartido por la profesora Adriana Piña",
+  "fecha_version": "2026-10-20 20:18 (UTC−5)",
+  "variante": "publica",
+  "nota": "No se incluyen rutas, coordenadas internas ni números de informe. La versión pública ya redondeó ubicaciones sensibles a 0.01°. No tratar como precisión geodésica.",
+  "archivos": {
+    "rio_diario.csv": {
+      "filas": 911,
+      "columnas": [
+        "fecha",
+        "nivel_m",
+        "aprob"
+      ],
+      "descripcion": "Serie pública rio_diario"
+    },
+    "ana_diario.csv": {
+      "filas": 731,
+      "columnas": [
+        "fecha",
+        "cota_m"
+      ],
+      "descripcion": "Serie pública ana_diario"
+    },
+    "sat_mensual.csv": {
+      "filas": 346,
+      "columnas": [
+        "mes",
+        "chirps_v2_mm",
+        "chirps_v3_mm",
+        "imerg_final_mm",
+        "imerg_late_mm"
+      ],
+      "descripcion": "Serie pública sat_mensual"
+    },
+    "grace.csv": {
+      "filas": 259,
+      "columnas": [
+        "mes",
+        "twsa_cm",
+        "smsa_cm",
+        "gwsa_cm",
+        "gwsa_zenodo_romero_pina_2025_cm"
+      ],
+      "descripcion": "Serie pública grace"
+    },
+    "rio_mensual.csv": {
+      "filas": 467,
+      "columnas": [
+        "mes",
+        "nivel_m",
+        "dias",
+        "anom_cm"
+      ],
+      "descripcion": "Nivel mensual IDEAM y anomalías de referencia"
+    },
+    "lluvia_ideam_diaria.csv": {
+      "filas": 2330,
+      "columnas": [
+        "fecha",
+        "mm",
+        "pct",
+        "v75",
+        "v90",
+        "flag"
+      ],
+      "descripcion": "IDEAM 48015050, lluvia diaria con completitud y bandera QC"
+    },
+    "lluvia_satelital_diaria.csv": {
+      "filas": 3213,
+      "columnas": [
+        "fecha",
+        "imerg_final_mm",
+        "imerg_late_mm",
+        "chirps_v3_sat_mm",
+        "era5_precip_mm"
+      ],
+      "descripcion": "Productos diarios para píxel IDEAM 48015050"
+    },
+    "transductores_diarios_publicos.csv": {
+      "filas": 292,
+      "columnas": [
+        "fecha",
+        "pozo",
+        "codigo_publico",
+        "natural",
+        "max_diario",
+        "frac_bombeo",
+        "frac_seco"
+      ],
+      "descripcion": "Solo series diarias incluidas en HTML público: columna sobre sensor, máximo y fracciones exploratorias"
+    },
+    "pozo_unal_manual.csv": {
+      "filas": 42,
+      "columnas": [
+        "fechahora",
+        "prof",
+        "clase",
+        "natural"
+      ],
+      "descripcion": "Profundidad al agua observada manualmente en pozo UNAL; clasificación exploratoria"
+    },
+    "calidad_muestras_publicas.csv": {
+      "filas": 68,
+      "columnas": [
+        "sitio",
+        "punto",
+        "fecha",
+        "grupo",
+        "lab",
+        "irca_min",
+        "irca_max",
+        "nivel",
+        "cobertura",
+        "no_cumple",
+        "inconclusos",
+        "ce",
+        "ph",
+        "alc",
+        "cl",
+        "no3_mg",
+        "no3_mg_ld",
+        "fe",
+        "mn",
+        "turb",
+        "ct",
+        "ecoli",
+        "ecoli_ld",
+        "na",
+        "ca",
+        "so4",
+        "facies",
+        "ward",
+        "lado",
+        "cat_ca_pct",
+        "cat_mg_pct",
+        "cat_nak_pct",
+        "an_hco3_pct",
+        "an_so4_pct",
+        "an_cl_pct",
+        "fe_ld",
+        "ct_ld",
+        "so4_ld",
+        "alc_ld",
+        "cl_ld",
+        "na_ld",
+        "ca_ld",
+        "turb_ld",
+        "mn_ld"
+      ],
+      "descripcion": "Muestras de calidad de agua tal como aparecen en HTML público, sin números de informe"
+    },
+    "sitios_publicos.csv": {
+      "filas": 73,
+      "columnas": [
+        "id_publico",
+        "tipo",
+        "nombre",
+        "lat_publica",
+        "lon_publica",
+        "coordenada_redondeada"
+      ],
+      "descripcion": "Solo las coordenadas publicadas: puntos sensibles redondeados en fuente"
+    }
+  }
+}

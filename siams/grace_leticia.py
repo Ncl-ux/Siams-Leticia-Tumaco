@@ -23,14 +23,16 @@ AZUL = "#4679a3"
 NARANJA = "#c48a3d"
 GRIS = "#687784"
 
-# Datos de campo comunicados el 20-10-2026. La profundidad de instalación
-# está medida desde el TERRENO hasta el sensor (no desde el brocal).
-# No son calibraciones del transductor ni validan el campo h_natural_m.
+# Configuración actualizada con la ficha del semillero (noviembre de 2026).
+# Numae usa 17 m como dato de instalación del semillero, no como nueva medición
+# directa verificada. Su cota proviene de DEM GLO-30 con sesgo estimado de 1,5 m.
+# Las cotas de los otros puntos son referencias recibidas antes (oct-2026).
+# No son calibraciones ni convierten presiones en niveles definitivos.
 SONDAS_LETICIA = {
     "Numae": {
         "punto": "Numae · indicador de columna",
-        "cota_terreno_msnm": 77.0,
-        "profundidad_instalacion_m": 7.0,  # excepción: NO son 17 m
+        "cota_terreno_msnm": 76.70,  # estimación DEM, NO levantamiento
+        "profundidad_instalacion_m": 17.0,  # semillero, noviembre de 2026
     },
     "SONDA01_CasaProfeArturo": {
         "punto": "Casa del profesor Arturo · indicador de columna",
@@ -47,8 +49,9 @@ PACHOVELA = {"punto": "Colegio Pachovela", "cota_terreno_msnm": 78.0,
 def _tabla_referencias_sondas() -> pd.DataFrame:
     """Ficha de terreno e instalación (no depende de los CSV)."""
     filas = [
-        {"Punto": "Numae", "Cota terreno (m s. n. m.)": 77.0,
-         "Instalación bajo terreno (m)": 7.0, "Estado": "Referencia informada"},
+        {"Punto": "Numae", "Cota terreno (m s. n. m.)": 76.70,
+         "Instalación bajo terreno (m)": 17.0,
+         "Estado": "17 m según semillero (nov-2026); cota DEM estimada, no verificada"},
         {"Punto": "Casa del profesor Arturo", "Cota terreno (m s. n. m.)": 80.0,
          "Instalación bajo terreno (m)": 17.0, "Estado": "Referencia informada"},
         {"Punto": "Colegio Pachovela", "Cota terreno (m s. n. m.)": 78.0,
@@ -262,7 +265,7 @@ def _descargar(df: pd.DataFrame, archivo: str, etiqueta: str, clave: str) -> Non
     )
 
 
-def mostrar_grace_leticia() -> None:
+def _mostrar_grace_leticia_legacy() -> None:
     """Inserta panel SIAMS sin alterar la lógica GRACE/GGDI existente."""
     st.divider()
     st.subheader("💧 Niveles de agua y GRACE · Leticia")
@@ -399,7 +402,7 @@ def mostrar_grace_leticia() -> None:
     with tab_pozos:
         st.markdown(
             "**¿Qué vas a ver?** Las sondas cuentan ahora con cotas del terreno y "
-            "profundidades de instalación informadas el 20/10/2026. El nivel "
+            "referencias de instalación de octubre y la actualización del semillero de noviembre de 2026. El nivel "
             "calculado es **provisional**, pues el campo `h_natural_m` se infiere de "
             "presión y aún falta verificar su interpretación y compensación. "
             "Las mediciones UNAL siguen referidas al brocal, cuya elevación falta."
@@ -409,8 +412,9 @@ def mostrar_grace_leticia() -> None:
         st.dataframe(referencias, use_container_width=True, hide_index=True)
         st.caption(
             "La cota del sensor se obtiene restando la profundidad de instalación "
-            "a la del terreno: Numae 70 m; Casa del profesor Arturo 63 m; "
-            "Colegio Pachovela 61 m. Comprobar datum vertical y precisión de cotas."
+            "a la del terreno: Numae 59,70 m (solo con DEM 76,70 m y profundidad "
+            "asumida de 17 m), Casa del profesor Arturo 63 m y Colegio Pachovela 61 m. "
+            "Son cotas provisionales; comprobar instalación y datum vertical."
         )
         _descargar(referencias, "SIAMS_Leticia_referencias_sondas.csv",
                    "⬇️ Descargar referencias de instalación", "siams_grace_leticia_descargar_referencias")
@@ -612,8 +616,9 @@ def mostrar_grace_leticia() -> None:
             "(no interpolados); GWSA B disponible hasta junio de 2026; "
             "las mediciones de Casa del profesor Arturo son de agosto–septiembre de 2026 "
             "y por ahora no se superponen con GWSA B. "
-            "Las cotas y profundidades de instalación fueron informadas el 20/10/2026, "
-            "pero falta verificar el datum vertical y la interpretación/compensación "
+            "Numae utiliza una profundidad de 17 m de la ficha del semillero de nov-2026 "
+            "y cota estimada con DEM; falta verificar en campo la referencia, el datum vertical "
+            "y la interpretación/compensación "
             "de la presión de las sondas, especialmente Numae."
         )
         with st.expander("Fuentes, trazabilidad y notas para la revisión", expanded=False):
@@ -622,10 +627,14 @@ def mostrar_grace_leticia() -> None:
                 "- **GRACE/GRACE-FO:** JPL Mascon RL06.3Mv04; estimación GWSA B con GLDAS Noah 0,25° v2.1.\n"
                 "- **Referencia comparativa:** Romero–Piña, Zenodo DOI 10.5281/zenodo.14707819.\n"
                 "- **Pozos:** registro manual UNAL y transductores Keller; valores depurados según reportes del proyecto.\n"
-                "- **Referencias informadas (20/10/2026):** Numae terreno 77 m s. n. m., "
-                "instalación 7 m; Casa del profesor Arturo 80 m, instalación 17 m; "
-                "Colegio Pachovela 78 m, instalación 17 m (sin serie histórica). "
-                "Cotas pendientes de confirmar datum vertical.\n"
+                "- **Actualización semillero (nov-2026):** Numae instalación asumida 17 m "
+                "y terreno estimado 76,70 m s. n. m. con DEM GLO-30 − 1,5 m. "
+                "El valor anterior de 7 m era inconsistente con las columnas de agua "
+                "del explorador (máximo ~8,10 m); 17 m sigue pendiente de confirmar "
+                "con referencia/cable y lectura manual simultánea.\n"
+                "- **Referencias iniciales (oct-2026):** Casa del profesor Arturo "
+                "80 m e instalación 17 m; Colegio Pachovela 78 m e instalación 17 m "
+                "(sin serie histórica). Verificar datum vertical.\n"
                 "- **Corrección provisional:** elevación = cota del terreno - profundidad "
                 "de instalación + h_natural_m, solo si h_natural_m es altura de columna "
                 "de agua sobre el sensor correctamente compensada.\n"
@@ -636,5 +645,16 @@ def mostrar_grace_leticia() -> None:
                    "⬇️ Descargar GWSA y componentes", "siams_descargar_grace_metodo")
 
 
+
 __all__ = ["mostrar_grace_leticia", "_serie_grace", "_niveles_campo",
            "_meses_comunes_normalizados", "_tabla_referencias_sondas"]
+
+
+def mostrar_grace_leticia() -> None:
+    """Panel unificado, sin repetir las cuatro pestañas históricas en la portada.
+
+    Para revisar la interfaz antigua internamente existe
+    _mostrar_grace_leticia_legacy(), pero nunca se muestra por defecto.
+    """
+    from .grace_interfaz import mostrar_panel_integrado_leticia
+    mostrar_panel_integrado_leticia()
