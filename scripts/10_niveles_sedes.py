@@ -164,6 +164,16 @@ def tabla_pozos(crudos: Path, usar_dem: bool) -> pd.DataFrame:
                                           pozos.get("cota_levantada_msnm"), pozos.dem_glo30_m - SESGO_DEM_M).round(2)
     pozos["metodo_cota_terreno"] = np.where(pozos.cota_levantada_msnm.notna(), "cota levantada",
                                             f"GLO-30 − {SESGO_DEM_M} m (sesgo estimado en Leticia)")
+    # SIAMS_LA_PAZ_COTA_ESTIMADA: valor estimado de Google Earth, NO levantado.
+    if "cota_estimada_msnm" in pozos.columns:
+        estimada = pd.to_numeric(pozos["cota_estimada_msnm"], errors="coerce")
+        sin_levantamiento = pozos["cota_levantada_msnm"].isna()
+        m_estimada = estimada.notna() & sin_levantamiento
+        pozos.loc[m_estimada, "cota_terreno_msnm"] = estimada[m_estimada].round(2)
+        if "fuente_cota_estimada" in pozos.columns:
+            pozos.loc[m_estimada, "metodo_cota_terreno"] = pozos.loc[m_estimada, "fuente_cota_estimada"].fillna("Cota estimada")
+        else:
+            pozos.loc[m_estimada, "metodo_cota_terreno"] = "Cota estimada (sin levantamiento)"
     return pozos
 
 
@@ -186,7 +196,7 @@ def procesar(crudos: Path, pozos: pd.DataFrame) -> dict[str, pd.DataFrame]:
     if f:
         d = pd.concat([leer_keller_csv(x) for x in f]).rename(columns={"valor_m": "carga_sobre_sensor_m"})
         S["La Paz"] = serie_transductor(d, "LPZ-UNAL", P.loc["LPZ-UNAL", "prof_sensor_m"], cota("LPZ-UNAL"),
-                                        "Keller con compensación barométrica interna (sensor relativo). Profundidad del sensor DESCONOCIDA: sin cota; se publica la columna de agua.")
+                                        "Keller con compensación barométrica interna (sensor relativo). Sensor instalado a 42,81 m (dato profesora Pina, nov-2026). Cota del terreno estimada, pendiente verificacion topografica.")
     # Leticia
     partes = []
     for patron, pid, sup in [
