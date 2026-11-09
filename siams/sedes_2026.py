@@ -109,11 +109,8 @@ def mostrar_niveles(territorio: str) -> None:
     c2.metric("Cota del terreno", f"{info.cota_terreno_msnm:.2f} m" if info is not None and pd.notna(info.cota_terreno_msnm) else "—")
     c3.metric("Prof. del sensor", f"{info.prof_sensor_m:g} m" if info is not None and pd.notna(info.prof_sensor_m) else "desconocida")
     c4.metric("Último dato", s.fecha.max().strftime("%Y-%m-%d"))
-    
-    if territorio != "La Paz" and s.supuesto.notna().any():
-    st.info("Supuestos: " + " | ".join(s.supuesto.dropna().unique()[:3]))
-    
-    
+    if s.supuesto.notna().any():
+        st.info("Supuestos: " + " | ".join(s.supuesto.dropna().unique()[:3]))
     if info is not None:
         with st.expander("Ficha del pozo"):
             st.dataframe(info.dropna().to_frame("valor"), use_container_width=True)
