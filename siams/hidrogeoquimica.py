@@ -70,7 +70,7 @@ def _ingreso_manual(territorio):
         manual=pd.DataFrame({"parametro":codigos, "nombre": [NOMBRES[x] for x in codigos],
                              "unidad":[UNIDADES[x] for x in codigos],
                              "signo":[""]*len(codigos), "valor":[float("nan")]*len(codigos)})
-        editado=st.data_editor(manual, use_container_width=True, hide_index=True,
+        editado=st.data_editor(manual, width="stretch", hide_index=True,
                                key="siams_fq_tabla_manual", num_rows="fixed",
                                disabled=["parametro", "nombre", "unidad"],
                                column_config={
@@ -240,7 +240,7 @@ def _series(df):
                                  customdata=m[["informe","signo"]].to_numpy(),
                                  hovertemplate="%{x|%Y-%m-%d}<br>Informe %{customdata[0]}<br>Valor %{y:g} (%{customdata[1]} LD si aplica)<extra></extra>"))
     _leyenda(fig,NOMBRES.get(elegir,elegir),xaxis,UNIDADES.get(elegir,"Unidad del informe"))
-    st.plotly_chart(fig,use_container_width=True)
+    st.plotly_chart(fig,width="stretch")
     if not dato.empty:
         validas = dato.loc[dato["signo"].ne("<") & dato["valor"].notna()].copy()
         puntos_validos = int(validas["grupo_punto"].nunique())
@@ -377,7 +377,7 @@ def mostrar_hidrogeoquimica(territorio: str = "Leticia") -> None:
             "No es una medición oficial de potabilidad del agua cruda."
         )
         if resultado.irca.notna().any():
-            st.plotly_chart(_irca_figura(resultado),use_container_width=True)
+            st.plotly_chart(_irca_figura(resultado),width="stretch")
         else: st.info("No hay parámetros suficientes para calcular IRCA.")
         con_irca = resultado.dropna(subset=["irca"])
         if not con_irca.empty:
@@ -391,7 +391,7 @@ def mostrar_hidrogeoquimica(territorio: str = "Leticia") -> None:
                 "una red de abastecimiento. Si los rombos están lejos de sus barras, "
                 "la incertidumbre por resultados no concluyentes es mayor."
             )
-        st.dataframe(resultado[["informe","sede","grupo_punto","fecha_uso","irca","irca_max","nivel","error_balance_pct"]],hide_index=True,use_container_width=True)
+        st.dataframe(resultado[["informe","sede","grupo_punto","fecha_uso","irca","irca_max","nivel","error_balance_pct"]],hide_index=True,width="stretch")
         ce=resultado.dropna(subset=["CE_medida","CE_estimada"])
         if not ce.empty:
             st.markdown(
@@ -407,7 +407,7 @@ def mostrar_hidrogeoquimica(territorio: str = "Leticia") -> None:
             vmax=max(float(ce.CE_medida.max()),float(ce.CE_estimada.max()),1)
             fig.add_trace(go.Scatter(x=[0,vmax],y=[0,vmax],mode="lines",line=dict(color=GRIS,dash="dash"),name="Referencia 1:1"))
             _leyenda(fig,"Control exploratorio: conductividad estimada y medida","CE medida (µS/cm)","CE estimada (µS/cm)")
-            st.plotly_chart(fig,use_container_width=True)
+            st.plotly_chart(fig,width="stretch")
             st.caption("La CE estimada por conductividades iónicas límite es una comprobación aproximada, no un sustituto de la medición; Na⁺+K⁺ se infieren cuando faltan.")
     with tabs[1]:
         st.markdown(
@@ -445,7 +445,7 @@ def mostrar_hidrogeoquimica(territorio: str = "Leticia") -> None:
             "el resultado no permite decidir; 'no analizado' = no hay medición "
             "de ese parámetro en el informe."
         )
-        st.dataframe(tabla,use_container_width=True,hide_index=True)
+        st.dataframe(tabla,width="stretch",hide_index=True)
         st.markdown("**Alcalinidad y balance iónico**")
         st.markdown(
             "Los **bicarbonatos y carbonatos** influyen en el equilibrio químico "
@@ -465,7 +465,7 @@ def mostrar_hidrogeoquimica(territorio: str = "Leticia") -> None:
                 st.warning("Desequilibrio iónico elevado; no interpretes Na⁺+K⁺ inferidos como un análisis de laboratorio.")
         else: st.info("El balance requiere pH, alcalinidad, durezas cálcica y magnésica, Cl⁻, SO₄²⁻, nitratos y fluoruros.")
         st.caption("Na⁺ y K⁺ no se midieron en estos informes; el balance con Na⁺+K⁺ inferidos por diferencia no sirve como validación independiente.")
-        st.dataframe(muestra[["parametro","valor","signo","unidad","metodo","bandera"]],hide_index=True,use_container_width=True)
+        st.dataframe(muestra[["parametro","valor","signo","unidad","metodo","bandera"]],hide_index=True,width="stretch")
     with tabs[2]:
         st.subheader("Diagramas hidrogeoquímicos")
         st.markdown(
@@ -489,7 +489,7 @@ def mostrar_hidrogeoquimica(territorio: str = "Leticia") -> None:
                 "composiciones iónicas parecidas. **Aquí falta Na⁺/K⁺ medido**, "
                 "por lo que la comparación es orientativa."
             )
-            st.plotly_chart(_piper(iones),use_container_width=True)
+            st.plotly_chart(_piper(iones),width="stretch")
             st.markdown(
                 "**Stiff · cómo leerlo:** la mitad izquierda resume los iones "
                 "positivos y la derecha los negativos, expresados en meq/L. "
@@ -497,7 +497,7 @@ def mostrar_hidrogeoquimica(territorio: str = "Leticia") -> None:
                 "del grupo representado. Su contorno ayuda a comparar muestras."
             )
             inf=st.selectbox("Muestra para el diagrama Stiff",iones.id_muestra.tolist(),key="siams_fq_stiff")
-            st.plotly_chart(_stiff(iones.loc[iones.id_muestra==inf].iloc[0]),use_container_width=True)
+            st.plotly_chart(_stiff(iones.loc[iones.id_muestra==inf].iloc[0]),width="stretch")
             st.markdown(
                 "**Gibbs · cómo leerlo:** compara proporciones de algunos iones "
                 "con una estimación de sólidos disueltos. Se usa para explorar "
@@ -506,7 +506,7 @@ def mostrar_hidrogeoquimica(territorio: str = "Leticia") -> None:
                 "disuelto es aproximado (sólidos totales menos suspendidos)."
             )
             g,cuenta=_gibbs(df,iones,alternativo)
-            if cuenta: st.plotly_chart(g,use_container_width=True)
+            if cuenta: st.plotly_chart(g,width="stretch")
             else: st.info("No hay sólidos totales y suspendidos suficientes para Gibbs.")
     with tabs[3]:
         st.markdown(
@@ -529,7 +529,7 @@ def mostrar_hidrogeoquimica(territorio: str = "Leticia") -> None:
         a,b=st.columns(2)
         with a: _descarga(df,"SIAMS_fisicoquimica_datos_largos.csv","⬇️ Descargar datos filtrados","siams_fq_descarga_datos")
         with b: _descarga(resultado,"SIAMS_fisicoquimica_resumen.csv","⬇️ Descargar resumen calculado","siams_fq_descarga_resumen")
-        st.dataframe(df,use_container_width=True,hide_index=True)
+        st.dataframe(df,width="stretch",hide_index=True)
         if (RECURSOS/"Guia_taller_informes_fisicoquimicos_SIAMS.pdf").is_file():
             st.download_button("📘 Descargar guía del taller",data=(RECURSOS/"Guia_taller_informes_fisicoquimicos_SIAMS.pdf").read_bytes(),
                                file_name="Guia_taller_informes_fisicoquimicos_SIAMS.pdf",mime="application/pdf",key="siams_fq_guia_pdf")
@@ -546,4 +546,4 @@ def mostrar_hidrogeoquimica(territorio: str = "Leticia") -> None:
                     "- Los CSV cargados se procesan durante la sesión; no se escriben automáticamente en GitHub.")
         if resultado.banderas.astype(str).str.strip().ne("").any():
             with st.expander("Observaciones de los datos"):
-                st.dataframe(resultado[["informe","grupo_punto","banderas"]],hide_index=True,use_container_width=True)
+                st.dataframe(resultado[["informe","grupo_punto","banderas"]],hide_index=True,width="stretch")

@@ -40,6 +40,7 @@ Leticia = 25
 "Medellín" = 25
 "San Andrés" = 20
 Tumaco = 20
+"Bogotá" = 20  # piloto: radio de 20 km alrededor del campus, sujeto a validación
 
 [compuestos]
 # Compuestos de mediana con máscara de nubes por píxel (scripts/08_landsat_compuestos_stac.py).

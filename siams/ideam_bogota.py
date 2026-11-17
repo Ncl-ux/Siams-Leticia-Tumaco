@@ -45,7 +45,7 @@ def mostrar_ideam_bogota():
         with st.container(border=True):
             st.markdown('<div class="siams-ideam-head">▥ &nbsp;Precipitación mensual</div>',unsafe_allow_html=True)
             st.caption(f'{_nombre(codigo)} · Comparación con {anio}')
-            st.plotly_chart(_grafica_mensual(clim,actual,anio,f'{lo}–{hi}'),use_container_width=True)
+            st.plotly_chart(_grafica_mensual(clim,actual,anio,f'{lo}–{hi}'),width="stretch")
             st.caption(f'Promedio de {len(valid)} años completos. Meses incompletos excluidos, sin interpolar. No equivale a normal climática oficial.')
     with right:
         with st.container(border=True):
@@ -61,7 +61,7 @@ def mostrar_ideam_bogota():
         with st.container(border=True):
             st.markdown('<div class="siams-ideam-head">▥ &nbsp;Historia de la lluvia</div>',unsafe_allow_html=True)
             st.caption('Suma de meses completos · tonos claros = años parciales; no es un total anual si faltan meses')
-            st.plotly_chart(_grafica_anual(tabla,anio),use_container_width=True)
+            st.plotly_chart(_grafica_anual(tabla,anio),width="stretch")
     with right:
         with st.container(border=True):
             st.markdown('<div class="siams-ideam-head">▦ &nbsp;Calendario histórico de precipitaciones</div>',unsafe_allow_html=True)
@@ -69,10 +69,10 @@ def mostrar_ideam_bogota():
             matrix=e.pivot(index='Anio',columns='Mes',values='Valor').reindex(index=range(min(years),max(years)+1),columns=range(1,13))
             if matrix.notna().any().any():
                 f=_grafica_calendario(matrix);f.update_traces(zmax=max(1,float(np.nanmax(matrix.to_numpy(dtype=float)))))
-                st.plotly_chart(f,use_container_width=True)
+                st.plotly_chart(f,width="stretch")
     with st.expander('Metodología, control de calidad y descargas'):
         st.write('Fuente: ZIP DHIME del semillero, día pluviométrico convencional (mm). Los meses parciales se conservan en la tabla de auditoría, no se anualizan ni se imputan. Las estaciones no se mezclan.')
-        st.dataframe(raw,hide_index=True,use_container_width=True)
+        st.dataframe(raw,hide_index=True,width="stretch")
         _descarga('Descargar serie mensual y cobertura',raw,f'SIAMS_IDEAM_Bogota_{codigo}_mensual.csv','bog_mensual')
         _descarga('Descargar resumen anual',tabla,f'SIAMS_IDEAM_Bogota_{codigo}_anual.csv','bog_anual')
         st.download_button('Descargar registros diarios consolidados de Bogotá',(BASE/'diario.csv').read_bytes(),'SIAMS_IDEAM_Bogota_diario.csv','text/csv',key='bog_diario')
@@ -91,13 +91,13 @@ def mostrar_homogeneidad_bogota():
     col='Valor' if crit=='100%' else 'Valor90'
     st.caption('El criterio de sensibilidad reproduce el umbral A1 de Tumaco. Los totales de lluvia de meses con días faltantes son parciales, no estimaciones del total mensual.')
     qq=q[q.Variable.eq(var)].copy();qq['Estación']=qq.CodigoEstacion.map(_nombre)
-    st.subheader('Disponibilidad y calidad');st.dataframe(qq[['Estación','Inicio','Fin','Dias','CoberturaPct','AniosCompletos','Definitivos','Inferidos']].round(2),hide_index=True,use_container_width=True)
+    st.subheader('Disponibilidad y calidad');st.dataframe(qq[['Estación','Inicio','Fin','Dias','CoberturaPct','AniosCompletos','Definitivos','Inferidos']].round(2),hide_index=True,width="stretch")
     sub=r[r.variable.eq(var)&r.criterio.eq(crit)].copy()
     sub['Estación']=sub.estacion.map(_nombre);sub['Referencia']=sub.referencia.map(lambda c:'Absoluto' if c=='—' else _nombre(c))
     sub['Lectura']=np.where(sub.estado.ne('calculado'),'Insuficiente',np.where((sub.p_bloques<.05)&(sub.pettitt_p<.05),'Alerta en ambas pruebas',np.where((sub.p_bloques<.05)|(sub.pettitt_p<.05),'Alerta en una prueba','Sin evidencia de cambio')))
     st.subheader('Pettitt y SNHT absoluto / relativo')
     fields=['Estación','Referencia','estado','n','desde','hasta','T_SNHT','p_bloques','corte','pettitt_K','pettitt_p','pettitt_corte','Lectura']
-    st.dataframe(sub[fields].round(5),hide_index=True,use_container_width=True)
+    st.dataframe(sub[fields].round(5),hide_index=True,width="stretch")
     st.caption('Los cortes indican la última observación antes del cambio candidato, no necesariamente el mes calendario inmediatamente anterior. Para tendencia climática de largo plazo, el objetivo sigue siendo al menos 25 años con cobertura suficiente.')
     st.subheader('Contraste entre estaciones')
     codes=sorted(m[m.Variable.eq(var)].CodigoEstacion.unique());a,b=st.columns(2)
@@ -108,13 +108,13 @@ def mostrar_homogeneidad_bogota():
     fig=go.Figure(); idx=pd.date_range(x.index.min(),x.index.max(),freq='MS');fig.add_scatter(x=idx,y=x.reindex(idx),name=_nombre(code),connectgaps=False)
     if ref:
         y=mm[mm.CodigoEstacion.eq(ref)].set_index('MesFecha')[col];idx2=pd.date_range(y.index.min(),y.index.max(),freq='MS');fig.add_scatter(x=idx2,y=y.reindex(idx2),name=_nombre(ref),connectgaps=False)
-    fig.update_layout(yaxis_title='mm/mes' if var=='Precipitación' else '%' if var=='Humedad relativa' else '°C',height=320);st.plotly_chart(fig,use_container_width=True)
+    fig.update_layout(yaxis_title='mm/mes' if var=='Precipitación' else '%' if var=='Humedad relativa' else '°C',height=320);st.plotly_chart(fig,width="stretch")
     if ref:
         xy=pd.concat([x.rename('x'),y.rename('y')],axis=1,join='inner').dropna().sort_index()
         if len(xy)>=3:
             an=xy-xy.groupby(xy.index.month).transform('mean');st.caption(f'{len(xy)} meses coincidentes · Pearson: {xy.x.corr(xy.y):.3f} · Pearson de anomalías: {an.x.corr(an.y):.3f}')
             if var=='Precipitación':
-                f=go.Figure(go.Scatter(x=xy.y.cumsum(),y=xy.x.cumsum(),mode='lines+markers',text=xy.index.strftime('%Y-%m'),hovertemplate='%{text}<br>Referencia %{x:.1f} mm<br>Objetivo %{y:.1f} mm<extra></extra>'));f.update_layout(title='Curva de doble masa · meses comunes',xaxis_title=_nombre(ref)+' (mm acumulados)',yaxis_title=_nombre(code)+' (mm acumulados)',height=390);st.plotly_chart(f,use_container_width=True)
+                f=go.Figure(go.Scatter(x=xy.y.cumsum(),y=xy.x.cumsum(),mode='lines+markers',text=xy.index.strftime('%Y-%m'),hovertemplate='%{text}<br>Referencia %{x:.1f} mm<br>Objetivo %{y:.1f} mm<extra></extra>'));f.update_layout(title='Curva de doble masa · meses comunes',xaxis_title=_nombre(ref)+' (mm acumulados)',yaxis_title=_nombre(code)+' (mm acumulados)',height=390);st.plotly_chart(f,width="stretch")
             else:st.caption('Para temperatura el contraste relativo usa diferencias mensuales, no cocientes acumulados.')
         else:st.info('Cruce temporal insuficiente para una comparación útil.')
     _descarga('Descargar resultados de homogeneidad',r,'SIAMS_A1_Bogota.csv','bog_a1_down')

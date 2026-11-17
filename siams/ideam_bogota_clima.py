@@ -52,7 +52,7 @@ def mostrar_contraste_clima_bogota():
     for col, nombre, color in [('IDEAM','IDEAM','#0b5147'), ('NASA','NASA POWER','#3789bf')]:
         fig.add_trace(go.Scatter(x=MESES,y=r[col],name=nombre,mode='lines+markers',line=dict(color=color),connectgaps=False,customdata=r.Pares,hovertemplate='%{x}: %{y:.2f} · %{customdata} pares<extra>'+nombre+'</extra>'))
     fig.update_layout(title='Promedios mensuales sobre fechas comunes',yaxis_title=unidad,legend=dict(orientation='h'))
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
     st.caption('Cada mes del calendario puede tener un número de años diferente. No sumar estas medias como una normal anual oficial.')
     if variable == 'Precipitación':
         st.caption('Precipitación: acumulados mensuales observados completos. No se comparan acumulados parciales con totales completos.')
@@ -62,8 +62,8 @@ def mostrar_contraste_clima_bogota():
         for col, color in [('IDEAM','#0b5147'),('NASA POWER','#3789bf')]:
             fig2.add_trace(go.Scatter(x=completo.index,y=completo[col],name=col,mode='lines+markers',connectgaps=False,line=dict(color=color)))
         fig2.update_layout(yaxis_title=unidad)
-        st.plotly_chart(fig2,use_container_width=True)
-        st.dataframe(p,hide_index=True,use_container_width=True)
+        st.plotly_chart(fig2,width="stretch")
+        st.dataframe(p,hide_index=True,width="stretch")
         st.download_button('Descargar meses comparados',p.to_csv(index=False).encode('utf-8-sig'),f'contraste_bogota_{codigo}.csv','text/csv',key='bog_clima_pares_csv')
 
 
@@ -80,7 +80,7 @@ def agregar_tendencias_ideam_bogota(paquetes):
         inventario['Uso'] = np.select([inventario['Años completos'].ge(25),inventario['Años completos'].ge(5)],['Evaluable; revisar A1','Exploratorio (<25 años)'],default='Insuficiente para MK')
         with st.expander('IDEAM Bogotá · cobertura y criterios de tendencias',expanded=True):
             st.caption('Solo años calendario completos (12 meses completos). No se combinan estaciones. El mínimo computacional de MK existente es 5 años; 25 años es el objetivo de selección científica. Hamed–Rao no se calcula con años discontinuos o menos de 10 años. Consultar A1 antes de interpretar tendencias.')
-            st.dataframe(inventario[['Estación','CodigoEstacion','Variable','Años completos','Uso']],use_container_width=True,hide_index=True)
+            st.dataframe(inventario[['Estación','CodigoEstacion','Variable','Años completos','Uso']],width="stretch",hide_index=True)
             st.caption('Los resultados IDEAM son exploratorios; las observaciones preliminares no equivalen a validación oficial. NASA POWER conserva su serie y sus criterios existentes.')
         nuevos = paquetes_ideam(m,NOMBRES)
         # Do not overwrite a source even if another package uses the same key.

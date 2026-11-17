@@ -58,3 +58,11 @@ data/raw/sedes/
 
 # Datos crudos de sedes (no se versionan)
 data/raw/
+
+# SIAMS: configuracion local y cache (no publicar)
+.dodsrc
+_netrc
+.urs_cookies
+.urs_cookies_*
+.earthdata
+.env.local

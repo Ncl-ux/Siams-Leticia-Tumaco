@@ -65,6 +65,12 @@ jobs:
         run: |
           git config user.name "siams-bot"
           git config user.email "siams-bot@users.noreply.github.com"
-          git add data/processed/actualizacion
+          # Publicar solo productos de datos abiertos y metadatos de actualización.
+          # No incorporar configuraciones locales ni JSON de consulta sin revisar.
+          find data/processed/actualizacion -maxdepth 1 -type f \
+            \( -name 'nasa_power_*.csv' -o -name 'nasa_power_*_actualizado.xlsx' \
+               -o -name 'chirps_*.csv' -o -name 'chirps_*.nodata.json' \
+               -o -name 'imerg_final_*.csv' -o -name 'ideam_*.csv' \
+               -o -name 'metadatos.json' \) -print0 | xargs -0 -r git add --
           git diff --cached --quiet || git commit -m "Actualización semanal automática de datos abiertos"
           git push

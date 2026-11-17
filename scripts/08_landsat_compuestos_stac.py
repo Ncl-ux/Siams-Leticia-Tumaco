@@ -48,10 +48,11 @@ import pandas as pd
 
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
-from siams.landsat import cargar_criterios, normalizar  # noqa: E402
+from siams.landsat_calidad import cargar_criterios, normalizar  # noqa: E402
 
 # Coordenadas de TERRITORIOS (app.py) y carpeta de cada sede dentro de Landsat/.
 SEDES = {
+    "Bogotá": ((4.6386, -74.0841), "Bogota"),
     "Arauca": ((7.012222763876252, -70.74338825990411), "Arauca"),
     "La Paz": ((10.390218033322455, -73.20038917337925), "La Paz"),
     "Leticia": ((-4.193717, -69.941001), "Leticia"),
@@ -284,10 +285,17 @@ def main(argv=None):
     ap.add_argument("--temporadas", nargs="+", type=int, default=[2023, 2024, 2025],
                     help="años en que termina cada temporada (dic–mar 2024 → 2024)")
     ap.add_argument("--max-escenas", type=int, default=24, help="tope de escenas por compuesto (las menos nubladas)")
+    ap.add_argument("--por-temporada", action="store_true",
+                    help="genera un compuesto independiente por año de cierre de la temporada")
     a = ap.parse_args(argv)
     criterios = cargar_criterios()
+    temporadas = sorted(set(a.temporadas))
+    if a.max_escenas < 1:
+        ap.error("--max-escenas debe ser positivo")
     for sede in a.sede or list(SEDES):
-        compuesto_sede(sede, sorted(a.temporadas), criterios, a.max_escenas, RAIZ / "Landsat")
+        grupos = [[t] for t in temporadas] if a.por_temporada else [temporadas]
+        for grupo in grupos:
+            compuesto_sede(sede, grupo, criterios, a.max_escenas, RAIZ / "Landsat")
 
 
 if __name__ == "__main__":

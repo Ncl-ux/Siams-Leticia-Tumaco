@@ -34,7 +34,7 @@ def mostrar_precipitacion_satelital(territorio):
         return
     tabla=tabla.reindex(pd.date_range(tabla.index.min(),tabla.index.max(),freq='MS'))
     tabla.index.name='fecha'
-    st.dataframe(inventario(tabla),hide_index=True,use_container_width=True)
+    st.dataframe(inventario(tabla),hide_index=True,width="stretch")
     sel=st.multiselect('Fuentes a comparar',list(tabla),default=list(tabla),key=f'sat_fuentes_{sede}')
     if not sel: return
     a,b=int(tabla.index.min().year),int(tabla.index.max().year)
@@ -44,10 +44,10 @@ def mostrar_precipitacion_satelital(territorio):
     fig=go.Figure()
     for c in t: fig.add_trace(go.Scatter(x=t.index,y=t[c],name=c,mode='lines',connectgaps=False))
     fig.update_layout(yaxis_title='Precipitación (mm/mes)',legend=dict(orientation='h'))
-    st.plotly_chart(fig,use_container_width=True)
+    st.plotly_chart(fig,width="stretch")
     if len(sel)>1:
         ref=st.selectbox('Referencia para diferencias estadísticas',sel,key=f'sat_ref_{sede}')
-        st.dataframe(pares(t,ref).round(3),hide_index=True,use_container_width=True)
+        st.dataframe(pares(t,ref).round(3),hide_index=True,width="stretch")
         st.caption('Cada fila usa únicamente fechas comunes con la referencia elegida. El sesgo es fuente menos referencia. Sin imputación.')
         comunes=t.dropna()
         if not comunes.empty:
@@ -56,7 +56,7 @@ def mostrar_precipitacion_satelital(territorio):
             fig=go.Figure()
             for c in r: fig.add_trace(go.Scatter(x=MESES,y=r[c],name=c,mode='lines+markers',connectgaps=False,customdata=n,hovertemplate='%{y:.2f} mm · %{customdata} meses<extra>%{fullData.name}</extra>'))
             fig.update_layout(title='Régimen mensual sobre fechas comunes a todas las fuentes',yaxis_title='mm/mes')
-            st.plotly_chart(fig,use_container_width=True)
+            st.plotly_chart(fig,width="stretch")
         else: st.info('No existen meses comunes a todas las fuentes seleccionadas. Selecciona menos fuentes para comparar el régimen.')
     st.download_button('Descargar series mensuales comparadas',t.to_csv().encode('utf-8-sig'),f'precipitacion_fuentes_{sede}.csv','text/csv',key=f'sat_descarga_{sede}')
     st.caption('Sin mes calendario en curso; NASA POWER e IDEAM Bogotá requieren cobertura diaria completa. CHIRPS Final puede faltar en celdas costeras o marinas. IMERG Final tiene latencia de varios meses. No se reemplazan ni combinan versiones.')

@@ -328,7 +328,7 @@ def mostrar_mapa_imagen(
     st.image(
         str(ruta),
         caption=f"{titulo}. Fuente: {fuente}",
-        use_container_width=False,
+        width="content",
     )
 
     with open(ruta, "rb") as archivo_imagen:
@@ -440,6 +440,9 @@ if grupo == 'Clima y datos' and territorio in ('Leticia', 'Bogotá'):
     opciones_submenu = list(opciones_submenu)
     opciones_submenu.insert(opciones_submenu.index('Clima') + 1, 'Precipitación IDEAM')
 # SIAMS_IDEAM_CLIMA_V2
+if grupo == 'Territorio' and territorio == 'Leticia':
+    opciones_submenu = list(opciones_submenu)
+    opciones_submenu.insert(opciones_submenu.index('Hidrología') + 1, 'Río Amazonas (ANA / IDEAM)')
 
 if len(opciones_submenu) == 1:
     seccion = opciones_submenu[0]
@@ -626,7 +629,7 @@ if seccion == "Inicio":
 
         st.dataframe(
             cobertura,
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
 
@@ -893,7 +896,7 @@ elif seccion == "Clima":
                         yaxis_title="Precipitación mensual (mm)",
                         legend_title_text="Fuente",
                     )
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width="stretch")
 
                     mes_max = df.loc[df["Precipitación IDEAM (mm)"].idxmax()]
                     mes_min = df.loc[df["Precipitación IDEAM (mm)"].idxmin()]
@@ -941,7 +944,7 @@ elif seccion == "Clima":
                         legend=dict(orientation="h", y=-0.2),
                         margin=dict(b=80),
                     )
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width="stretch")
 
                     diferencia_media = (df[col_n] - df[col_i]).mean()
                     nota_t = (
@@ -973,7 +976,7 @@ elif seccion == "Clima":
                         legend=dict(orientation="h", y=-0.2),
                         margin=dict(b=80),
                     )
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width="stretch")
 
                     fila_hr = control_ideam.loc[
                         control_ideam["Variable"].astype(str).eq("humedad_relativa")
@@ -1018,7 +1021,7 @@ elif seccion == "Clima":
                         markers=True,
                         title=f"Régimen mensual de {seleccion.lower()} · {territorio}",
                     )
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width="stretch")
                     st.caption(
                         f"Estas variables se presentan con NASA POWER porque el archivo IDEAM procesado "
                         f"de {territorio} no contiene series equivalentes."
@@ -1028,7 +1031,7 @@ elif seccion == "Clima":
                     st.subheader("Decisión de uso por variable")
                     st.dataframe(
                         decisiones_climaticas_ideam(control_ideam, territorio),
-                        use_container_width=True,
+                        width="stretch",
                         hide_index=True,
                     )
 
@@ -1039,7 +1042,7 @@ elif seccion == "Clima":
                             control_mostrar[columna] = control_mostrar[columna].apply(
                                 lambda x: x.strftime("%Y-%m-%d") if hasattr(x, "strftime") else "—"
                             )
-                    st.dataframe(control_mostrar, use_container_width=True, hide_index=True)
+                    st.dataframe(control_mostrar, width="stretch", hide_index=True)
 
                     st.subheader("Estaciones y archivos de origen")
                     fuentes_mostrar = fuentes_ideam.copy()
@@ -1054,12 +1057,12 @@ elif seccion == "Clima":
                     ]
                     st.dataframe(
                         fuentes_mostrar[[c for c in columnas_fuente if c in fuentes_mostrar.columns]],
-                        use_container_width=True,
+                        width="stretch",
                         hide_index=True,
                     )
 
                 with tab_tabla:
-                    st.dataframe(df.round(2), use_container_width=True, hide_index=True)
+                    st.dataframe(df.round(2), width="stretch", hide_index=True)
 
                     c1, c2 = st.columns(2)
                     with c1:
@@ -1186,7 +1189,7 @@ elif seccion == "Clima":
                     xaxis_title="Mes",
                     yaxis_title="Precipitación mensual (mm)",
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
                 p_anual = df["Precipitación mensual (mm)"].sum()
                 mes_max = df.loc[df["Precipitación mensual (mm)"].idxmax()]
@@ -1241,7 +1244,7 @@ elif seccion == "Clima":
                     legend=dict(orientation="h", y=-0.2),
                     margin=dict(b=80),
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
             with tab3:
                 columnas_otras = [
@@ -1263,12 +1266,12 @@ elif seccion == "Clima":
                         markers=True,
                         title=f"{variable} · {territorio}",
                     )
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width="stretch")
                 else:
                     st.info("Estas variables no están disponibles en el archivo procesado.")
 
             with tab4:
-                st.dataframe(df.round(2), use_container_width=True, hide_index=True)
+                st.dataframe(df.round(2), width="stretch", hide_index=True)
                 if datos_reales and archivo_nasa is not None:
                     with open(archivo_nasa, "rb") as archivo_excel:
                         st.download_button(
@@ -1411,7 +1414,7 @@ elif seccion == "Análisis de tendencias":
                     legend=dict(orientation="h", y=1.15, x=0),
                     hovermode="closest",
                 )
-                st.plotly_chart(fig_hr, use_container_width=True,
+                st.plotly_chart(fig_hr, width="stretch",
                                 key=f"siams_m5_comparacion_{territorio}")
                 st.caption(
                     "A la izquierda de la línea roja (p < 0,05): resultado significativo. "
@@ -1434,7 +1437,7 @@ elif seccion == "Análisis de tendencias":
                     lambda x: f"{x:.4f}" if pd.notna(x) else "—"
                 )
                 tabla_tend["Pendiente Sen"] = tabla_tend["Pendiente Sen"].map(lambda x: f"{x:+.4f}")
-                st.dataframe(tabla_tend, use_container_width=True, hide_index=True)
+                st.dataframe(tabla_tend, width="stretch", hide_index=True)
                 st.caption(
                     "p-value: Mann–Kendall original. p Hamed–Rao: varianza corregida "
                     "por autocorrelación de los rangos sin tendencia (hasta 3 rezagos). "
@@ -1522,7 +1525,7 @@ elif seccion == "Análisis de tendencias":
                         legend=dict(orientation="h", y=-0.2),
                         margin=dict(b=80),
                     )
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width="stretch")
 
                     if res["significativa"]:
                         direccion = "aumenta" if res["tau"] > 0 else "disminuye"
@@ -1548,7 +1551,7 @@ elif seccion == "Análisis de tendencias":
                     )
 
                     with st.expander("Ver datos anuales utilizados", expanded=False):
-                        st.dataframe(anual.round(4), use_container_width=True, hide_index=True)
+                        st.dataframe(anual.round(4), width="stretch", hide_index=True)
 
                 with st.expander("Cómo leer Mann–Kendall, Hamed–Rao y Sen", expanded=False):
                     st.markdown(
@@ -1590,13 +1593,17 @@ elif seccion == "Homogeneidad (A1)":
         st.caption("Pettitt y SNHT absolutos sobre agregados anuales, con las funciones existentes de SIAMS. No reemplaza A1 IDEAM ni certifica homogeneidad. Un cambio significativo requiere contraste independiente.")
         try:
             resultados_nasa = pd.read_excel(ruta_nasa, sheet_name="Homogeneidad_NASA")
-            st.dataframe(resultados_nasa, hide_index=True, use_container_width=True)
+            st.dataframe(resultados_nasa, hide_index=True, width="stretch")
         except (ValueError, OSError) as error:
             st.info(f"Diagnóstico NASA no disponible: {error}")
 
 # =========================================================
 # HIDROLOGÍA
 # =========================================================
+
+elif seccion == "Río Amazonas (ANA / IDEAM)":
+    from siams.ana_leticia import mostrar_ana_leticia
+    mostrar_ana_leticia()
 
 elif seccion == "Hidrología":
     st.title(f"💦 Hidrología de {territorio}")
@@ -1983,7 +1990,7 @@ elif seccion == "Agua subterránea (GRACE)":
                         fig.update_layout(
                             xaxis_title="Fecha", yaxis_title="GWSa (cm)", hovermode="x unified"
                         )
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(fig, width="stretch")
                         st.caption(
                             "Los meses sin datos GRACE se muestran como cortes en la línea: no se interpolan "
                             "ni se unen observaciones a través de vacíos. Los valores positivos y negativos "
@@ -2008,7 +2015,7 @@ elif seccion == "Agua subterránea (GRACE)":
                         )
                         fig.add_hline(y=0, line_dash="dash")
                         fig.update_layout(yaxis_title="GWSa media (cm)", xaxis_title="Mes")
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(fig, width="stretch")
 
                         fila_min = clim_gws.loc[clim_gws["GWSa (cm)"].idxmin()]
                         fila_max = clim_gws.loc[clim_gws["GWSa (cm)"].idxmax()]
@@ -2086,7 +2093,7 @@ elif seccion == "Agua subterránea (GRACE)":
                             )
                             st.plotly_chart(
                                 fig,
-                                use_container_width=True,
+                                width="stretch",
                                 key=f"ggdi_serie_{territorio}",
                             )
                             st.caption("El GGDI no une meses sin dato. Los vacíos se conservan en la visualización.")
@@ -2135,7 +2142,7 @@ elif seccion == "Agua subterránea (GRACE)":
                             )
                             st.plotly_chart(
                                 fig_comp,
-                                use_container_width=True,
+                                width="stretch",
                                 key=f"ggdi_comparacion_{territorio}_{anio_sel}",
                             )
 
@@ -2153,7 +2160,7 @@ elif seccion == "Agua subterránea (GRACE)":
                             )
                             st.plotly_chart(
                                 fig_anio,
-                                use_container_width=True,
+                                width="stretch",
                                 key=f"ggdi_barras_{territorio}_{anio_sel}",
                             )
 
@@ -2177,7 +2184,7 @@ elif seccion == "Agua subterránea (GRACE)":
                             )
                             st.plotly_chart(
                                 fig_min,
-                                use_container_width=True,
+                                width="stretch",
                                 key=f"ggdi_min_mensual_{territorio}",
                             )
 
@@ -2199,7 +2206,7 @@ elif seccion == "Agua subterránea (GRACE)":
                                         "GSD (cm)": 3,
                                         "GGDI": 3,
                                     }),
-                                    use_container_width=True,
+                                    width="stretch",
                                     hide_index=True,
                                 )
 
@@ -2248,7 +2255,7 @@ elif seccion == "Agua subterránea (GRACE)":
                             xaxis_title="Longitud", yaxis_title="Latitud",
                             height=620, margin=dict(l=20, r=20, t=60, b=30),
                         )
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(fig, width="stretch")
                         st.caption(
                             "Visualización de la malla del NetCDF. Las celdas sin estimación aparecen vacías. "
                             "No debe interpretarse como un mapa de profundidad del acuífero."
@@ -2336,7 +2343,7 @@ elif seccion == "Hidrogeoquímica":
 
             st.dataframe(
                 parametros,
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
 
@@ -2403,7 +2410,7 @@ elif seccion == "Calidad del agua e IRCA":
 
     st.dataframe(
         irca,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -2475,7 +2482,7 @@ elif seccion == "Estaciones y datos":
             st.subheader("Resumen de decisión por variable")
             st.dataframe(
                 decisiones_climaticas_ideam(control_ideam, territorio),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
 
@@ -2492,7 +2499,7 @@ elif seccion == "Estaciones y datos":
             ]
             st.dataframe(
                 fuentes_mostrar[[c for c in columnas if c in fuentes_mostrar.columns]],
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
 
@@ -2507,7 +2514,7 @@ elif seccion == "Estaciones y datos":
     else:
         st.dataframe(
             tabla_disponibilidad(territorio),
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
 
@@ -2725,7 +2732,7 @@ elif seccion == "Comparar territorios":
                 yaxis_title="Precipitación mensual (mm)",
                 legend_title_text="Territorio",
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
             st.caption(
                 "Tumaco y Arauca usan precipitación IDEAM; Bogotá, Leticia, Medellín, San Andrés y La Paz usan NASA POWER."
             )
@@ -2744,7 +2751,7 @@ elif seccion == "Comparar territorios":
                 yaxis_title="Temperatura media (°C)",
                 legend_title_text="Territorio",
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
             resumen_temp = (
                 comparar.groupby("Territorio")
@@ -2758,7 +2765,7 @@ elif seccion == "Comparar territorios":
             resumen_temp["Amplitud_media_mensual_C"] = (
                 resumen_temp["Temperatura_max_media_C"] - resumen_temp["Temperatura_min_media_C"]
             )
-            st.dataframe(resumen_temp.round(2), use_container_width=True, hide_index=True)
+            st.dataframe(resumen_temp.round(2), width="stretch", hide_index=True)
 
         with tab_hr:
             datos_hr = comparar.dropna(subset=["Humedad relativa (%)"])
@@ -2777,7 +2784,7 @@ elif seccion == "Comparar territorios":
                     yaxis=dict(range=[0, 100]),
                     legend_title_text="Territorio",
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
                 st.caption(
                     "Arauca usa IDEAM con advertencia metodológica; Tumaco prioriza NASA POWER para humedad continua."
                 )
@@ -2808,7 +2815,7 @@ elif seccion == "Comparar territorios":
                     title=f"{seleccion} · comparación entre territorios",
                 )
                 fig.update_layout(xaxis_title="Mes", legend_title_text="Territorio")
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
                 st.caption(
                     "Viento, presión y radiación se comparan con NASA POWER para mantener una fuente homogénea."
                 )
@@ -2828,7 +2835,7 @@ elif seccion == "Comparar territorios":
                 )
                 .reset_index()
             )
-            st.dataframe(resumen.round(2), use_container_width=True, hide_index=True)
+            st.dataframe(resumen.round(2), width="stretch", hide_index=True)
 
             if not resumen.empty:
                 mas_lluvioso = resumen.loc[resumen["Precipitacion_anual_mm"].idxmax()]
@@ -2858,7 +2865,7 @@ elif seccion == "Comparar territorios":
             st.subheader("Fuente principal por variable")
             st.dataframe(
                 pd.DataFrame(fuentes_resumen),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
             st.warning(
@@ -2977,7 +2984,7 @@ elif seccion == "Fuentes y descargas":
                         mime=mime,
                         key=clave_boton,
                     )
-        st.dataframe(pd.DataFrame(estado), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(estado), width="stretch", hide_index=True)
 
     with tab_mapas:
         st.write(f"**Ubicación detectada:** `{CARPETA_MAPAS}`")
@@ -3000,7 +3007,7 @@ elif seccion == "Fuentes y descargas":
                     "Archivo esperado": nivel["archivo"],
                     "Estado": "Encontrado" if ruta else "No encontrado",
                 })
-        st.dataframe(pd.DataFrame(estado_mapas), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(estado_mapas), width="stretch", hide_index=True)
 
     with tab_fuentes:
         fuentes = pd.DataFrame({
@@ -3033,7 +3040,7 @@ elif seccion == "Fuentes y descargas":
                 "Referencia cartográfica oficial", "Referencia cartográfica y ficha técnica oficial", "Producto académico",
             ],
         })
-        st.dataframe(fuentes, use_container_width=True, hide_index=True)
+        st.dataframe(fuentes, width="stretch", hide_index=True)
         st.warning(
             "Antes de redistribuir mapas o documentos completos debe verificarse la licencia y la forma de citación de cada entidad."
         )

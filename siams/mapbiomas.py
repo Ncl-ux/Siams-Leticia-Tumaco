@@ -528,7 +528,7 @@ def mostrar_analisis_natural_antropico(nombre_territorio: str, codigo: str) -> N
     completos = pivot.dropna(subset=["Natural", "Antrópica"]).copy()
     if completos.empty:
         st.info("No hay años que tengan simultáneamente superficies naturales y antrópicas.")
-        st.dataframe(datos, hide_index=True, use_container_width=True)
+        st.dataframe(datos, hide_index=True, width="stretch")
         return
 
     completos["Total"] = completos["Natural"] + completos["Antrópica"]
@@ -576,12 +576,12 @@ def mostrar_analisis_natural_antropico(nombre_territorio: str, codigo: str) -> N
                 hovertemplate="%{label}<br>Superficie: %{value:,.2f}<br>%{percent}<extra></extra>",
             )
             fig.update_layout(height=480, margin=dict(l=10, r=10, t=60, b=20))
-            st.plotly_chart(fig, use_container_width=True, key=f"{clave}_distribucion")
+            st.plotly_chart(fig, width="stretch", key=f"{clave}_distribucion")
         else:
             st.info("No se reportan superficies naturales ni antrópicas para el año elegido.")
         st.dataframe(
             actual.rename(columns={"Valor": etiqueta_superficie}).round(2),
-            hide_index=True, use_container_width=True,
+            hide_index=True, width="stretch",
         )
 
     with t_evol:
@@ -612,7 +612,7 @@ def mostrar_analisis_natural_antropico(nombre_territorio: str, codigo: str) -> N
             fig.update_yaxes(range=[0, 100])
         fig.update_xaxes(range=[anios[0], anios[-1]], rangeslider_visible=True)
         fig.update_layout(height=490, hovermode="x unified", margin=dict(l=15, r=15, t=60, b=15))
-        st.plotly_chart(fig, use_container_width=True, key=f"{clave}_evolucion")
+        st.plotly_chart(fig, width="stretch", key=f"{clave}_evolucion")
 
     with t_comp:
         c_ini, c_fin = st.columns(2)
@@ -640,13 +640,13 @@ def mostrar_analisis_natural_antropico(nombre_territorio: str, codigo: str) -> N
                 comparacion[f"Variación ({unidad})"] /
                 comparacion[col_ini].replace(0, float("nan"))
             )
-            st.dataframe(comparacion.round(2), hide_index=True, use_container_width=True)
+            st.dataframe(comparacion.round(2), hide_index=True, width="stretch")
             fig = px.bar(
                 comparacion, x="Clase", y=f"Variación ({unidad})", color="Clase",
                 color_discrete_map=colores, title=f"Cambio de superficie · {inicio}–{fin}",
             )
             fig.update_layout(height=420, showlegend=False)
-            st.plotly_chart(fig, use_container_width=True, key=f"{clave}_comparacion")
+            st.plotly_chart(fig, width="stretch", key=f"{clave}_comparacion")
             st.caption(
                 "La variación neta entre años no identifica directamente qué clases "
                 "se transformaron: para eso se requiere una matriz de transiciones."
@@ -662,7 +662,7 @@ def mostrar_analisis_natural_antropico(nombre_territorio: str, codigo: str) -> N
         st.write(f"**Archivo fuente:** `{ruta.name}`")
         st.dataframe(
             datos.rename(columns={"Valor": etiqueta_superficie}),
-            hide_index=True, use_container_width=True,
+            hide_index=True, width="stretch",
         )
         st.download_button(
             "Descargar serie Natural/Antrópica",
@@ -883,8 +883,8 @@ def mostrar_analisis_coberturas_nivel(nombre_territorio: str, codigo: str, nivel
             fig = px.pie(visibles, names="Clase", values="Área (ha)", hole=0.55, color="Clase", color_discrete_map=colores, hover_data=["Participación (%)"], title=f"Distribución de coberturas · {zona} · {anio}")
             fig.update_traces(textinfo="percent", hovertemplate="%{label}<br>Área: %{value:,.2f} ha<br>Participación: %{percent}<extra></extra>")
             fig.update_layout(height=520, margin=dict(l=20, r=20, t=60, b=30))
-            st.plotly_chart(fig, use_container_width=True, key=f"{clave}_dona")
-        st.dataframe(distribucion.sort_values("Área (ha)", ascending=False).round(2), hide_index=True, use_container_width=True)
+            st.plotly_chart(fig, width="stretch", key=f"{clave}_dona")
+        st.dataframe(distribucion.sort_values("Área (ha)", ascending=False).round(2), hide_index=True, width="stretch")
     with t_serie:
         activas = datos.loc[datos[[str(a) for a in anios]].sum(axis=1) > 0, "Clase"].tolist()
         seleccion = st.multiselect("Clases que se muestran", activas, default=activas, key=f"{clave}_clases")
@@ -902,7 +902,7 @@ def mostrar_analisis_coberturas_nivel(nombre_territorio: str, codigo: str, nivel
             fig = px.area(largo, x="Año", y=eje, color="Clase", color_discrete_map=colores, title=f"Evolución de coberturas · {zona}")
             fig.update_layout(height=520, hovermode="x unified", margin=dict(l=20, r=20, t=60, b=30))
             fig.update_xaxes(range=[anios[0], anios[-1]], dtick=5 if len(anios) > 15 else 1, rangeslider_visible=True)
-            st.plotly_chart(fig, use_container_width=True, key=f"{clave}_serie")
+            st.plotly_chart(fig, width="stretch", key=f"{clave}_serie")
             if modo == "Participación (%)":
                 st.caption("El porcentaje se calcula respecto a todas las clases del año. Ocultar una clase no recalcula el denominador.")
     with t_cambio:
@@ -916,13 +916,13 @@ def mostrar_analisis_coberturas_nivel(nombre_territorio: str, codigo: str, nivel
         else:
             cambio = comparar_coberturas(datos, inicial, final)
             cambio["Periodo"] = f"{inicial}–{final}"
-            st.dataframe(cambio.round(2), hide_index=True, use_container_width=True)
+            st.dataframe(cambio.round(2), hide_index=True, width="stretch")
             barras = cambio[(cambio["Área inicial (ha)"] > 0) | (cambio["Área final (ha)"] > 0)].sort_values("Cambio (ha)")
             if not barras.empty:
                 fig = px.bar(barras, x="Cambio (ha)", y="Clase", orientation="h", color="Clase", color_discrete_map=colores, title=f"Cambio neto de superficie · {inicial}–{final}")
                 fig.update_layout(height=max(360, 32 * len(barras)), showlegend=False, margin=dict(l=20, r=20, t=60, b=30))
                 fig.add_vline(x=0, line_color="#78909c", line_width=1)
-                st.plotly_chart(fig, use_container_width=True, key=f"{clave}_cambio")
+                st.plotly_chart(fig, width="stretch", key=f"{clave}_cambio")
             if (cambio["Cambio (ha)"].abs() > 1e-6).any():
                 aumento = cambio.loc[cambio["Cambio (ha)"].idxmax()]
                 perdida = cambio.loc[cambio["Cambio (ha)"].idxmin()]
@@ -942,7 +942,7 @@ def mostrar_analisis_coberturas_nivel(nombre_territorio: str, codigo: str, nivel
             st.write(f"**Distribución anual:** {ruta_anual.name}")
         else:
             st.caption("No se encontró el CSV anual; la distribución se calcula con la serie histórica.")
-        st.dataframe(datos, hide_index=True, use_container_width=True)
+        st.dataframe(datos, hide_index=True, width="stretch")
         for etiqueta, ruta in (("serie histórica original", ruta_serie), ("distribución anual original", ruta_anual)):
             if ruta:
                 st.download_button(f"Descargar {etiqueta}", data=ruta.read_bytes(), file_name=ruta.name, mime="text/csv", key=f"{clave}_original_{etiqueta}")

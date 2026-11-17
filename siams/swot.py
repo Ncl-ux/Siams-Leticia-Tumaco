@@ -121,7 +121,7 @@ def mostrar_gifs_swot(nombre_territorio: str) -> None:
                 st.image(
                     str(ruta),
                     caption=f"{item['descripcion']} · Fuente: HydroWeb / SWOT",
-                    use_container_width=True,
+                    width="stretch",
                 )
             st.caption(f"Archivo: {CARPETA_GIFS.name}/{ruta.name}")
 
@@ -230,7 +230,7 @@ def _mostrar_tarjetas_rio_swot(nombre_territorio: str, cfg_rio: dict) -> None:
                     f"{cfg_rio['rio']} · {descripciones.get(variable, variable)} "
                     "Fuente: HydroWeb / SWOT"
                 ),
-                use_container_width=True,
+                width="stretch",
             )
             st.caption(f"Archivo: {CARPETA_TARJETAS_SWOT.name}/{ruta.name}")
 
@@ -437,7 +437,7 @@ def mostrar_control_calidad_swot(nombre_territorio: str) -> None:
         "Las incertidumbres y los saltos detectados no sustituyen esas banderas; "
         "no se descarta automáticamente ninguna observación."
     )
-    st.dataframe(resumen_df, hide_index=True, use_container_width=True)
+    st.dataframe(resumen_df, hide_index=True, width="stretch")
     seleccion = st.selectbox(
         "Tramo para revisar (reach_id)",
         sorted(grupos),
@@ -481,7 +481,7 @@ def mostrar_control_calidad_swot(nombre_territorio: str) -> None:
             hovermode="x unified", legend={"orientation": "h", "y": -0.2},
             margin={"b": 85},
         )
-        st.plotly_chart(figura, use_container_width=True, key=f"swot_m7_wse_{nombre_territorio}")
+        st.plotly_chart(figura, width="stretch", key=f"swot_m7_wse_{nombre_territorio}")
         st.caption(
             f"Se marcaron {len(alertas)} de {len(tabla)} observaciones para revisar. "
             "El marcador naranja señala cambios bruscos entre fechas consecutivas; "
@@ -495,7 +495,7 @@ def mostrar_control_calidad_swot(nombre_territorio: str) -> None:
             ]
             st.dataframe(
                 alertas[[c for c in columnas_alerta if c in alertas.columns]],
-                hide_index=True, use_container_width=True,
+                hide_index=True, width="stretch",
             )
 
     with p2:
@@ -518,7 +518,7 @@ def mostrar_control_calidad_swot(nombre_territorio: str) -> None:
             title=f"{nombre} · reach {seleccion}", xaxis_title="Fecha (UTC)",
             yaxis_title=nombre, hovermode="x unified",
         )
-        st.plotly_chart(f2, use_container_width=True, key=f"swot_m7_otra_{nombre_territorio}")
+        st.plotly_chart(f2, width="stretch", key=f"swot_m7_otra_{nombre_territorio}")
         st.caption("Los valores e incertidumbres proceden de los CSV originales, sin filtros automáticos; los vacíos se conservan.")
 
     with p3:
@@ -535,7 +535,7 @@ def mostrar_control_calidad_swot(nombre_territorio: str) -> None:
             "banderas oficiales del producto RiverSP y cotejar los resultados y tarjetas "
             "contra los CSV o productos que las generaron."
         )
-        st.dataframe(tabla, hide_index=True, use_container_width=True)
+        st.dataframe(tabla, hide_index=True, width="stretch")
         st.download_button(
             "Descargar datos del reach (CSV)",
             data=tabla.to_csv(index=False).encode("utf-8-sig"),

@@ -365,7 +365,7 @@ def _mostrar_grace_leticia_legacy() -> None:
                     name=nombre, connectgaps=False, line=dict(color=color, width=2.4),
                 ))
         fig.add_hline(y=0, line_dash="dash", line_color="rgba(125,125,125,0.5)")
-        st.plotly_chart(fig, use_container_width=True, key="siams_grace_leticia_serie")
+        st.plotly_chart(fig, width="stretch", key="siams_grace_leticia_serie")
         st.caption("Las brechas de misión o meses sin producto se dejan vacíos: no se interpolan. "
                    "La serie principal corresponde a GWSA B (2004–2009 como periodo base).")
         principal = df_g.dropna(subset=["GWSA_B_standard_cm"]).sort_values("Fecha")
@@ -409,7 +409,7 @@ def _mostrar_grace_leticia_legacy() -> None:
         )
         st.markdown("**Referencias de instalación informadas por sede**")
         referencias = _tabla_referencias_sondas()
-        st.dataframe(referencias, use_container_width=True, hide_index=True)
+        st.dataframe(referencias, width="stretch", hide_index=True)
         st.caption(
             "La cota del sensor se obtiene restando la profundidad de instalación "
             "a la del terreno: Numae 59,70 m (solo con DEM 76,70 m y profundidad "
@@ -471,7 +471,7 @@ def _mostrar_grace_leticia_legacy() -> None:
             ))
             if es_unal or (not es_unal and columna_grafica == "Profundidad_agua_m"):
                 fig.update_yaxes(autorange="reversed")
-            st.plotly_chart(fig, use_container_width=True, key="siams_grace_leticia_pozos_fig")
+            st.plotly_chart(fig, width="stretch", key="siams_grace_leticia_pozos_fig")
             st.caption("Los días sin registro se dejan en blanco: sin interpolación ni líneas a través de huecos.")
             st.caption(f"{len(seleccion)} observaciones válidas · {seleccion['Fecha'].min():%Y-%m-%d} a "
                        f"{seleccion['Fecha'].max():%Y-%m-%d} · {seleccion['Referencia'].iloc[0]}.")
@@ -542,7 +542,7 @@ def _mostrar_grace_leticia_legacy() -> None:
                         line=dict(color=paleta[i], width=2.6), marker=dict(size=7),
                     ))
                 fig.add_hline(y=0, line_dash="dash", line_color="rgba(120,120,120,.5)")
-                st.plotly_chart(fig, use_container_width=True, key="siams_grace_leticia_comparacion")
+                st.plotly_chart(fig, width="stretch", key="siams_grace_leticia_comparacion")
                 st.caption(f"Meses comunes de todas las señales: {len(normalizadas)}. "
                            "Profundidad UNAL invertida solo para comparar el sentido de subida/bajada. "
                            "Agrupación mensual local, sin rellenar vacíos ni inferir desfases.")
@@ -571,7 +571,7 @@ def _mostrar_grace_leticia_legacy() -> None:
             rio_viz = _mensual_con_huecos(rio, "Valor")
             fig.add_trace(go.Scatter(x=rio_viz["Fecha"], y=rio_viz["Valor"], mode="lines",
                                      connectgaps=False, line=dict(color=AZUL, width=2), name="IDEAM · río"))
-            st.plotly_chart(fig, use_container_width=True, key="siams_grace_leticia_rio")
+            st.plotly_chart(fig, width="stretch", key="siams_grace_leticia_rio")
             st.caption("Se conserva el sistema de referencia original IDEAM. No se convierte esta serie "
                        "en un nivel del acuífero ni se confunde con los datos de los pozos.")
 
