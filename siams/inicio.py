@@ -141,7 +141,7 @@ def mostrar_mapa_sedes_unal() -> None:
 
     st.plotly_chart(
         fig,
-        use_container_width=True,
+        width="stretch",
         config={
             "displayModeBar": False,
             "scrollZoom": True,
@@ -605,7 +605,7 @@ def mostrar_sintesis_sedes_inicio() -> None:
                     st.button(
                         "Explorar esta sede  →",
                         key=f"siams_portada_abrir_{normalizar_etiqueta(nombre)}",
-                        use_container_width=True,
+                        width="stretch",
                         on_click=ir_a_ficha_sede_siams,
                         args=(nombre,),
                     )

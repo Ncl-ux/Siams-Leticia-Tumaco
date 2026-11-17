@@ -4,3 +4,5 @@ pytest==9.1.1
 # Scripts de actualización (no los necesita la app):
 rasterio==1.5.2
 pyproj==3.8.0
+# Pruebas de lectura IMERG (HDF5)
+h5py==3.16.0

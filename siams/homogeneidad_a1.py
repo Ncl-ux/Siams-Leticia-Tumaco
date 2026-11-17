@@ -168,13 +168,13 @@ def renderizar_a1_homogeneidad():
         "Lluvia comparada", "Cambios y SNHT", "Calidad y cobertura", "Resultados y descargas"
     ])
     with tab1:
-        st.plotly_chart(_lineas_mensuales(vista), use_container_width=True)
-        st.plotly_chart(_promedios_anuales(vista), use_container_width=True)
+        st.plotly_chart(_lineas_mensuales(vista), width="stretch")
+        st.plotly_chart(_promedios_anuales(vista), width="stretch")
         st.caption("Se muestran datos IDEAM-IDEAM con cobertura diaria ≥90 % en cada estación. "
                    "Los promedios anuales solo incluyen años con al menos 9 meses válidos.")
 
     with tab2:
-        st.plotly_chart(_relacion_estaciones(vista), use_container_width=True)
+        st.plotly_chart(_relacion_estaciones(vista), width="stretch")
         a, b, c = st.columns(3)
         a.metric("COCO EL · SNHT absoluto", _numero(abs_coco.get("T_SNHT")))
         b.metric("Granja · SNHT absoluto", _numero(abs_granja.get("T_SNHT")))
@@ -194,7 +194,7 @@ def renderizar_a1_homogeneidad():
         v1.metric("Meses aceptados", str(cc.get("meses_validos", "—")))
         v2.metric("Meses descartados", str(cc.get("meses_rechazados", "—")))
         v3.metric("Duplicados con discrepancias", str(cc.get("filas_duplicadas_discordantes", "—")))
-        st.dataframe(cobertura, use_container_width=True, hide_index=True)
+        st.dataframe(cobertura, width="stretch", hide_index=True)
         st.caption("La cobertura corresponde a Granja El Mira, incluida su etapa anterior a COCO EL. "
                    "Hay observaciones catalogadas en DHIME como preliminares o en revisión.")
         st.markdown("**Archivos utilizados para el análisis**")
@@ -202,7 +202,7 @@ def renderizar_a1_homogeneidad():
         if not fuentes.empty:
             fuentes["nivel_aprobacion"] = fuentes["nivel_aprobacion"].apply(
                 lambda v: ", ".join(f"{k}: {n}" for k, n in v.items()) if isinstance(v, dict) else str(v))
-            st.dataframe(fuentes, use_container_width=True, hide_index=True)
+            st.dataframe(fuentes, width="stretch", hide_index=True)
 
     with tab4:
         st.markdown("**Conclusión metodológica**")
@@ -212,7 +212,7 @@ def renderizar_a1_homogeneidad():
         st.caption("El informe inicial del A1 también conserva Pettitt y Mann-Kendall; los paneles anteriores muestran la ampliación SNHT con referencia IDEAM.")
         st.markdown("**Serie mensual comparada**")
         st.dataframe(vista.drop(columns=["anio", "fecha"], errors="ignore"),
-                     use_container_width=True, hide_index=True)
+                     width="stretch", hide_index=True)
         col_a, col_b, col_c = st.columns(3)
         with col_a:
             st.download_button("Descargar meses filtrados (.csv)",

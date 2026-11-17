@@ -29,11 +29,11 @@ import pandas as pd
 
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
-from siams.landsat import cargar_criterios, evaluar_control_escenas, nombre_imagen_escena  # noqa: E402
+from siams.landsat_calidad import cargar_criterios, evaluar_control_escenas, nombre_imagen_escena  # noqa: E402
 
 CARPETA = RAIZ / "Landsat"
 # Carpeta del repositorio → nombre de la sede en la app (TERRITORIOS).
-SEDES = {"Arauca": "Arauca", "La Paz": "La Paz", "Leticia": "Leticia", "Medellin": "Medellín",
+SEDES = {"Bogota": "Bogotá", "Arauca": "Arauca", "La Paz": "La Paz", "Leticia": "Leticia", "Medellin": "Medellín",
          "San Andres": "San Andrés", "Tumaco": "Tumaco"}
 
 

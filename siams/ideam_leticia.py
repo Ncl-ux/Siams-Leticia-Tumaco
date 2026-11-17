@@ -445,7 +445,7 @@ def mostrar_ideam_leticia() -> None:
             st.markdown(f'<div class="siams-ideam-sub">{escape(etiqueta_estacion)} · Comparación con {anio}</div>', unsafe_allow_html=True)
             if periodos_completos:
                 fig = _grafica_mensual(clim, serie_anio, anio, f"{referencia_inicio}–{referencia_fin}")
-                st.plotly_chart(fig, use_container_width=True, config={"displaylogo": False}, theme="streamlit")
+                st.plotly_chart(fig, width="stretch", config={"displaylogo": False}, theme="streamlit")
                 st.caption(f"Climatología calculada con {len(periodos_completos)} años completos del periodo {referencia_inicio}–{referencia_fin}; no se completan los meses faltantes.")
             else:
                 st.info("No hay años completos suficientes para construir una climatología mensual.")
@@ -469,7 +469,7 @@ def mostrar_ideam_leticia() -> None:
         with st.container(border=True):
             st.markdown('<div class="siams-ideam-head">▥ &nbsp;Historia de la lluvia</div>', unsafe_allow_html=True)
             st.markdown('<div class="siams-ideam-sub">Acumulados observados por año · tonos claros = años parciales</div>', unsafe_allow_html=True)
-            st.plotly_chart(_grafica_anual(tabla_anios, anio), use_container_width=True, config={"displaylogo": False}, theme="streamlit")
+            st.plotly_chart(_grafica_anual(tabla_anios, anio), width="stretch", config={"displaylogo": False}, theme="streamlit")
             if not bool(fila_anio["Completo"]):
                 st.warning(f"{anio}: solo {int(fila_anio['Meses'])}/12 meses registrados; el acumulado no representa el total anual.")
             else:
@@ -479,7 +479,7 @@ def mostrar_ideam_leticia() -> None:
             st.markdown('<div class="siams-ideam-head">▦ &nbsp;Calendario histórico de precipitaciones</div>', unsafe_allow_html=True)
             st.markdown('<div class="siams-ideam-sub">Cada celda es un mes · celdas grises = datos no disponibles</div>', unsafe_allow_html=True)
             matriz = matriz_calendario(estacion)
-            st.plotly_chart(_grafica_calendario(matriz), use_container_width=True, config={"displaylogo": False}, theme="streamlit")
+            st.plotly_chart(_grafica_calendario(matriz), width="stretch", config={"displaylogo": False}, theme="streamlit")
 
     with st.expander("📋 Metodología, control de calidad y descargas", expanded=False):
         st.markdown(
@@ -493,7 +493,7 @@ def mostrar_ideam_leticia() -> None:
         )
         st.dataframe(
             estacion[["CodigoEstacion", "NombreEstacion", "Fecha", "Valor", "Unidad", "NivelAprobacion"]]
-            .sort_values("Fecha", ascending=False), use_container_width=True, hide_index=True,
+            .sort_values("Fecha", ascending=False), width="stretch", hide_index=True,
         )
         d1, d2 = st.columns(2)
         with d1:

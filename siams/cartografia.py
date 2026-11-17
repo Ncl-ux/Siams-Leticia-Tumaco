@@ -153,7 +153,7 @@ def mostrar_pdf_mapa(ruta_pdf: Path, altura: int = 900) -> None:
         st.image(
             imagen_png,
             caption=f"{ruta_pdf.name} · vista generada directamente desde el PDF original",
-            use_container_width=True,
+            width="stretch",
         )
         st.caption(
             "El archivo fuente sigue siendo PDF. La página se convierte temporalmente solo para "
@@ -295,7 +295,7 @@ def mostrar_mapa_interactivo_bogota() -> None:
 
     st.plotly_chart(
         fig,
-        use_container_width=True,
+        width="stretch",
         config={
             "displayModeBar": True,
             "scrollZoom": True,
@@ -464,7 +464,7 @@ def mostrar_mapa_interactivo_territorio(nombre_territorio: str, info_territorio:
 
     st.plotly_chart(
         fig,
-        use_container_width=True,
+        width="stretch",
         config={
             "displayModeBar": True,
             "scrollZoom": True,
@@ -566,7 +566,7 @@ def mostrar_navegador_ubicacion_bogota() -> None:
         with columna:
             if st.button(
                 etiqueta,
-                use_container_width=True,
+                width="stretch",
                 key=f"btn_ubicacion_bogota_{valor}",
             ):
                 st.session_state["nivel_ubicacion_bogota"] = valor
@@ -636,7 +636,7 @@ def mostrar_navegador_ubicacion_bogota() -> None:
                 st.image(
                     str(ruta),
                     caption=f"{cfg['titulo']} · {cfg['escala']}",
-                    use_container_width=True,
+                    width="stretch",
                 )
             st.caption(f"Archivo: {ruta.name} · {cfg['escala']}")
             mostrar_ficha_tecnica_qgis("Bogotá", cfg)
@@ -704,7 +704,7 @@ def mostrar_navegador_ubicacion_qgis(nombre_territorio: str, info_territorio: di
         with columna:
             if st.button(
                 etiqueta,
-                use_container_width=True,
+                width="stretch",
                 key=f"btn_qgis_{normalizar_etiqueta(nombre_territorio)}_{normalizar_etiqueta(valor)}",
             ):
                 st.session_state[clave_estado] = valor
@@ -747,7 +747,7 @@ def mostrar_navegador_ubicacion_qgis(nombre_territorio: str, info_territorio: di
             st.image(
                 str(ruta),
                 caption=f"{cfg['titulo']} · Escala {cfg['escala']}",
-                use_container_width=True,
+                width="stretch",
             )
             mostrar_ficha_tecnica_qgis(nombre_territorio, cfg)
 

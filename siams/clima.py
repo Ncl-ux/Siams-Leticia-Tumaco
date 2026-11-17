@@ -41,7 +41,7 @@ def series_tendencia_territorio(nombre_territorio: str, info_territorio: dict):
     archivo_clima = archivo_nasa_territorio(nombre_territorio)
     if archivo_clima is not None and Path(archivo_clima).exists():
         try:
-            clima = extraer_series_historicas_excel(str(archivo_clima))
+            clima = extraer_series_historicas_excel(str(archivo_clima), Path(archivo_clima).stat().st_mtime_ns)
             for variable, paquete in clima.items():
                 disponibles[variable] = {
                     **paquete,
@@ -159,10 +159,33 @@ def convertir_fecha_excel(valor):
         return pd.Timestamp(fecha)
     return None
 
-@st.cache_data(show_spinner=False)
 def cargar_clima_leticia(ruta_texto: str):
     """Lee los regímenes mensuales y los indicadores del Excel procesado."""
     ruta = Path(ruta_texto)
+    if ruta.name.endswith('_actualizado.xlsx'):
+        p = pd.read_excel(ruta, sheet_name='Regimen_P')
+        t = pd.read_excel(ruta, sheet_name='Regimen_T')
+        hr = pd.read_excel(ruta, sheet_name='Regimen_HR')
+        clim = pd.read_excel(ruta, sheet_name='Climatologia_mensual')
+        otras = clim[['mes', 'viento_2m_m_s', 'presion_superficie_kPa', 'radiacion_solar_MJ_m2_dia']]
+        df = p.merge(t, on='mes').merge(hr, on='mes').merge(otras, on='mes').sort_values('mes')
+        df.insert(0, 'Mes', df['mes'].map(dict(enumerate(MESES, start=1))))
+        df = df.drop(columns='mes').rename(columns={
+            'precipitacion_mm_mes': 'Precipitación mensual (mm)',
+            'temperatura_media_C': 'Temperatura media (°C)',
+            'temperatura_maxima_C': 'Temperatura máxima (°C)',
+            'temperatura_minima_C': 'Temperatura mínima (°C)',
+            'humedad_relativa_pct': 'Humedad relativa (%)',
+            'viento_2m_m_s': 'Viento a 2 m (m/s)',
+            'presion_superficie_kPa': 'Presión superficial (kPa)',
+            'radiacion_solar_MJ_m2_dia': 'Radiación solar (MJ/m²/día)',
+        })
+        ind = pd.read_excel(ruta, sheet_name='Indicadores')
+        indicadores = dict(zip(ind['Indicador'], ind['Valor']))
+        for clave in ('Fecha inicial', 'Fecha final'):
+            if clave in indicadores:
+                indicadores[clave] = convertir_fecha_excel(indicadores[clave])
+        return df.reset_index(drop=True), indicadores
 
     p = pd.read_excel(ruta, sheet_name="Regimen_P")
     t = pd.read_excel(ruta, sheet_name="Regimen_T")
@@ -366,7 +389,21 @@ ARCHIVO_CLIMA_ARAUCA = buscar_excel_climatico('Arauca', 'nasa')
 
 ARCHIVO_CLIMA_LA_PAZ = buscar_excel_climatico('La Paz', 'nasa')
 
+# Preferir productos derivados semanales sin modificar los libros originales.
+def _nasa_actualizado(territorio, original):
+    slug = normalizar_etiqueta(territorio)
+    ruta = CARPETA_PROYECTO / 'data' / 'processed' / 'actualizacion' / f'nasa_power_{slug}_actualizado.xlsx'
+    return ruta if ruta.is_file() else original
+
+ARCHIVO_CLIMA_LETICIA = _nasa_actualizado('Leticia', ARCHIVO_CLIMA_LETICIA)
+ARCHIVO_NASA_TUMACO = _nasa_actualizado('Tumaco', ARCHIVO_NASA_TUMACO)
+ARCHIVO_CLIMA_MEDELLIN = _nasa_actualizado('Medellín', ARCHIVO_CLIMA_MEDELLIN)
+ARCHIVO_CLIMA_SAN_ANDRES = _nasa_actualizado('San Andrés', ARCHIVO_CLIMA_SAN_ANDRES)
+ARCHIVO_CLIMA_ARAUCA = _nasa_actualizado('Arauca', ARCHIVO_CLIMA_ARAUCA)
+ARCHIVO_CLIMA_LA_PAZ = _nasa_actualizado('La Paz', ARCHIVO_CLIMA_LA_PAZ)
+
 ARCHIVOS_CLIMA_NASA.update({
+    'Bogotá': _nasa_actualizado('Bogotá', None),
     'Leticia': ARCHIVO_CLIMA_LETICIA,
     'Medellín': ARCHIVO_CLIMA_MEDELLIN,
     'San Andrés': ARCHIVO_CLIMA_SAN_ANDRES,

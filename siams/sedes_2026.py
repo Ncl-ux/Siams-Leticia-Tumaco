@@ -85,7 +85,7 @@ def mostrar_niveles(territorio: str) -> None:
                               zoom=13 if territorio != "Bogotá" else 11, height=330)
         mapa.update_traces(marker={"size": 12, "color": "#1f77b4"})
         mapa.update_layout(margin={"l": 0, "r": 0, "t": 0, "b": 0}, map_style="open-street-map")
-        st.plotly_chart(mapa, use_container_width=True)
+        st.plotly_chart(mapa, width="stretch")
     ids = sorted(d.pozo_id.unique())
     pozo = st.selectbox("Pozo", ids, index=0)
     s = d[d.pozo_id == pozo].sort_values("fecha")
@@ -103,7 +103,7 @@ def mostrar_niveles(territorio: str) -> None:
         fig.update_yaxes(autorange="reversed")
     fig.update_traces(marker={"size": 4}, selector={"mode": "markers"})
     fig.update_layout(yaxis_title=var, xaxis_title="", margin={"t": 10})
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Registros", f"{len(s):,}".replace(",", "."))
     c2.metric("Cota del terreno", f"{info.cota_terreno_msnm:.2f} m" if info is not None and pd.notna(info.cota_terreno_msnm) else "—")
@@ -113,7 +113,7 @@ def mostrar_niveles(territorio: str) -> None:
         st.info("Supuestos: " + " | ".join(s.supuesto.dropna().unique()[:3]))
     if info is not None:
         with st.expander("Ficha del pozo"):
-            st.dataframe(info.dropna().to_frame("valor"), use_container_width=True)
+            st.dataframe(info.dropna().to_frame("valor"), width="stretch")
     st.caption(f"Fuente: sondas Keller/Diver y mediciones manuales del proyecto; Bogotá incluye la serie de la "
                f"Oficina de Gestión Ambiental (OGA) UNAL. {meta.get('fuente_dem', '')}.")
     st.download_button("Descargar serie (CSV)", s.to_csv(index=False).encode("utf-8"), f"niveles_{pozo}.csv", "text/csv")
@@ -128,7 +128,7 @@ def mostrar_cargar_datos_campo() -> None:
     else:
         st.button("Abrir app de campo (XUE Hub) – enlace pendiente", disabled=True)
     st.subheader("Esquema del archivo CSV")
-    st.dataframe(cargar_esquema(), use_container_width=True, hide_index=True)
+    st.dataframe(cargar_esquema(), width="stretch", hide_index=True)
     st.caption("Validación local: python scripts/validar_datos_campo.py archivo.csv")
 
 
@@ -153,9 +153,9 @@ def mostrar_pruebas_bombeo(territorio: str) -> None:
             c.metric(et, f"{f.valor.iloc[0]:g} {f.unidad.iloc[0]}")
     if len(t) > 1:
         fig = px.bar(t, x="metodo", y="valor", labels={"valor": "T (m²/d)", "metodo": ""}, height=320)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     st.dataframe(d[["parametro", "valor", "unidad", "metodo", "fecha_prueba", "pagina_pdf", "cita", "observacion"]],
-                 use_container_width=True, hide_index=True)
+                 width="stretch", hide_index=True)
     for f in d.fuente.unique():
         if len(f) > 20:
             st.caption("Fuente: " + f)
@@ -218,12 +218,12 @@ def mostrar_fq_sede(territorio: str) -> None:
                    "no es posible construir Piper ni Stiff. Se muestran los parámetros medidos.")
     else:
         c1, c2 = st.columns(2)
-        c1.plotly_chart(_piper(piper), use_container_width=True)
+        c1.plotly_chart(_piper(piper), width="stretch")
         orden = sorted(piper.index, key=lambda i: ("subterr" not in piper.pozo[i].lower() and "profundo" not in piper.pozo[i].lower(), piper.fecha[i]))
         fila = c2.selectbox("Muestra para Stiff", orden, format_func=lambda i: f"{piper.pozo[i]} · {piper.fecha[i]}")
-        c2.plotly_chart(_stiff(piper.loc[fila]), use_container_width=True)
+        c2.plotly_chart(_stiff(piper.loc[fila]), width="stretch")
     ancha = largo.pivot_table(index=["parametro", "unidad"], columns=["pozo", "fecha"], values="valor", aggfunc="first")
-    st.dataframe(ancha, use_container_width=True)
+    st.dataframe(ancha, width="stretch")
     dud = largo[largo.bandera.fillna("") == "dudoso_excluido_de_calculos"]
     if not dud.empty:
         st.caption("Valores dudosos excluidos de los cálculos: "
@@ -299,12 +299,12 @@ def mostrar_isotopos(territorio: str) -> None:
                                      name=f"LMWL combinada IDEAM + campus: δ²H = {a:.2f}·δ¹⁸O + {b:.2f}"))
         st.caption("Campus: 94 muestras 2022-11 a 2024-09 (Campus.xlsx). Tres muestras con exceso de deuterio < 0 "
                    "(PR 2, PA01 U-001, M2-PA25 U-003) están marcadas: posible evaporación o error analítico.")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
     if territorio == "Bogotá" and (PROC / "isotopos" / "lmwl_bogota.csv").exists():
-        st.dataframe(pd.read_csv(PROC / "isotopos" / "lmwl_bogota.csv"), use_container_width=True, hide_index=True)
+        st.dataframe(pd.read_csv(PROC / "isotopos" / "lmwl_bogota.csv"), width="stretch", hide_index=True)
     if filas:
-        st.dataframe(pd.DataFrame(filas), use_container_width=True, hide_index=True)
-    st.dataframe(est[est.station.isin(sel)], use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(filas), width="stretch", hide_index=True)
+    st.dataframe(est[est.station.isin(sel)], width="stretch", hide_index=True)
     st.caption("Fuente: base nacional de isótopos en precipitación, IDEAM – Subdirección de Hidrología "
                "(IsotoposIDEAM.xlsx). Estación Bogotá: Red Mundial de Isótopos en Precipitación IAEA/WMO (GNIP). "
                "Laboratorios según la base: OIEA, SGC, AGH, Univ. de Copenhague y otros. "
@@ -326,9 +326,9 @@ def mostrar_fq_bogota() -> None:
     st.warning("PA05 y PA25: turbiedad y sólidos suspendidos extremos (SST 1 156 y 31 720 mg/L; muestras sin purga). "
                "No representan el acuífero y se muestran solo como referencia.")
     t = sub.pivot_table(index=["parametro", "unidad"], columns="id_pozo", values="valor", aggfunc="first")
-    st.dataframe(t, use_container_width=True)
+    st.dataframe(t, width="stretch")
     with st.expander("Agua potable del campus (cafeterías y bebederos)"):
         pot = d[d.matriz == "POTABLE"]
         st.dataframe(pot.pivot_table(index=["parametro", "unidad"], columns=["muestra", "punto"], values="valor", aggfunc="first"),
-                     use_container_width=True)
+                     width="stretch")
     st.download_button("Descargar resultados (CSV)", d.to_csv(index=False).encode("utf-8"), "fq_bogota_campus.csv", "text/csv")
