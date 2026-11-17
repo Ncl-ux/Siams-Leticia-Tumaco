@@ -31,6 +31,7 @@ CARPETA_COBERTURAS = resolver_carpeta_preferida("Coberturas_MapBiomas", "Cobertu
 CARPETA_CSV_MAPBIOMAS = resolver_carpeta_preferida("data/processed/mapbiomas", "Coberturas_MapBiomas")
 
 COBERTURAS_POR_TERRITORIO = {
+    "Bogotá": {"carpeta": "Bogota", "zonas": {"B": "Bogotá"}},
     "Arauca": {"carpeta": "Arauca", "zonas": {"A": "Arauca"}},
     "La Paz": {"carpeta": "La_Paz", "zonas": {"LP": "La Paz"}},
     "Leticia": {"carpeta": "Leticia", "zonas": {"L": "Leticia"}},
@@ -72,6 +73,11 @@ def encontrar_csv_coberturas(nombre_territorio: str, codigo: str) -> dict:
     return resultado
 
 MAPBIOMAS_GIFS_POR_TERRITORIO = {
+    "Bogotá": {
+        "Nivel 1": "mapbiomas_bogota_nivel_1.gif",
+        "Nivel 2": "mapbiomas_bogota_nivel_2.gif",
+        "Natural / antrópico": "mapbiomas_bogota_ant_nat.gif",
+    },
     "Arauca": {
         "Nivel 1": "mapbiomas_arauca_nivel_1.gif",
         "Nivel 2": "mapbiomas_arauca_nivel_2.gif",
@@ -964,6 +970,8 @@ def mostrar_coberturas_mapbiomas(nombre_territorio: str) -> None:
         "Explora las coberturas generales en dos niveles de detalle y la "
         "síntesis Natural/Antrópico, cada una con su animación y sus estadísticas."
     )
+    if nombre_territorio == "Bogotá":
+        st.caption("Unidad de superficie (ha) según la convención de las exportaciones MapBiomas de SIAMS; confirmar colección, unidad y delimitación del recorte original de Bogotá.")
     codigos = list(config["zonas"])
     if len(codigos) > 1:
         codigo = st.selectbox(

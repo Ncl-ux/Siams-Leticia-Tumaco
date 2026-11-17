@@ -31,6 +31,10 @@ from .mapas_datos import CARPETA_MAPAS, CARPETA_MAPAS_QGIS
 CARPETA_GIFS = resolver_carpeta_preferida("Animaciones_SWOT", "Gif")
 
 GIFS_SWOT_POR_TERRITORIO = {
+    "Bogotá": [
+        {"titulo": "Embalse Chuza · evolución temporal", "archivo": "swot_bogota_chuza.mp4", "descripcion": "Animación reconstruida de las series de elevación y área exportadas de HydroWeb"},
+        {"titulo": "Embalse San Rafael · evolución temporal", "archivo": "swot_bogota_san_rafael.mp4", "descripcion": "Animación original de las observaciones SWOT, convertida a MP4"},
+    ],
     "Leticia": [
         {
             "titulo": "Río Amazonas · variación temporal del ancho",
@@ -84,10 +88,13 @@ def mostrar_gifs_swot(nombre_territorio: str) -> None:
         return
 
     st.markdown(
-        '<div class="section-title">Dinámica fluvial observada por SWOT</div>',
+        '<div class="section-title">Dinámica de embalses observada por SWOT</div>' if nombre_territorio == "Bogotá" else '<div class="section-title">Dinámica fluvial observada por SWOT</div>',
         unsafe_allow_html=True,
     )
     st.write(
+        "Estas animaciones muestran observaciones temporales de los embalses Chuza y San Rafael. "
+        "Son recursos exploratorios; no sustituyen las series originales ni la validación de campo."
+        if nombre_territorio == "Bogotá" else
         "Estas animaciones resumen la variación temporal del ancho del cauce en los "
         "reaches seleccionados. La geometría del río es esquemática; los valores numéricos "
         "mostrados en cada fecha corresponden a las observaciones procesadas."
@@ -125,6 +132,10 @@ def mostrar_gifs_swot(nombre_territorio: str) -> None:
                 )
             st.caption(f"Archivo: {CARPETA_GIFS.name}/{ruta.name}")
 
+    if nombre_territorio == "Bogotá":
+        st.caption("Consulta las fichas y las series originales de elevación y área en el bloque siguiente.")
+        return
+
     st.markdown(
         dedent("""
         <div class="soft-box">
@@ -139,6 +150,10 @@ def mostrar_gifs_swot(nombre_territorio: str) -> None:
 CARPETA_TARJETAS_SWOT = resolver_carpeta_preferida("Tarjetas_SWOT", "Tarjeta Tecnica Swot")
 
 TARJETAS_SWOT_POR_TERRITORIO = {
+    "Bogotá": [
+        {"rio": "Embalse Chuza", "archivos": {"WSE": "swot_bogota_chuza_wse.png", "Área": "swot_bogota_chuza_area.png"}},
+        {"rio": "Embalse San Rafael", "archivos": {"WSE": "swot_bogota_san_rafael_wse.png", "Área": "swot_bogota_san_rafael_area.png"}},
+    ],
     "Leticia": [
         {
             "rio": "Río Amazonas",
@@ -201,6 +216,50 @@ def buscar_tarjeta_swot(nombre_archivo: str):
     return buscar_archivo_exacto(CARPETA_TARJETAS_SWOT, nombre_archivo,
                                 TARJETAS_SWOT_NOMBRES_NUEVOS.get(nombre_archivo, ''))
 
+def _leer_serie_embalse_bogota(ruta: Path, identificador: str, variable: str) -> pd.DataFrame:
+    """Lee la exportación HydroWeb sin eliminar observaciones ni alterar valores."""
+    magnitud, unidad = ("Water Surface Elevation", "m") if variable == "WSE" else ("Total Estimated Water Surface Area", "km^2")
+    columnas = ["Date - UTC", f"{identificador} - {magnitud} - values({unidad})", f"{identificador} - {magnitud} - uncertainty({unidad})"]
+    tabla = pd.read_csv(ruta, encoding="utf-8-sig")
+    if list(tabla.columns) != columnas:
+        raise ValueError("Encabezados, identificador o unidades no coinciden con la exportación esperada.")
+    tabla = tabla.rename(columns=dict(zip(columnas, ["Fecha UTC", "Valor", "Incertidumbre"])))
+    tabla["Fecha UTC"] = pd.to_datetime(tabla["Fecha UTC"], errors="raise", utc=True)
+    for c in ("Valor", "Incertidumbre"):
+        tabla[c] = pd.to_numeric(tabla[c], errors="raise")
+        if not tabla[c].map(math.isfinite).all():
+            raise ValueError(f"Valores faltantes o no finitos en {c}.")
+    if (tabla["Incertidumbre"] < 0).any() or tabla["Fecha UTC"].duplicated().any() or tabla["Fecha UTC"].isna().any():
+        raise ValueError("Revisar fechas, duplicados o incertidumbres negativas.")
+    return tabla.sort_values("Fecha UTC").reset_index(drop=True)
+
+
+def _mostrar_series_embalse_bogota(cfg_rio: dict, variable: str) -> None:
+    slug, identificador = {"Embalse Chuza": ("chuza", "6150035523"), "Embalse San Rafael": ("san_rafael", "6120004832")}[cfg_rio["rio"]]
+    sufijo = "wse" if variable == "WSE" else "area"
+    unidad = "m" if variable == "WSE" else "km²"
+    ruta = CARPETA_PROYECTO / "data/processed/swot" / f"swot_bogota_{slug}_{sufijo}.csv"
+    if not ruta.is_file():
+        st.info(f"Serie original no encontrada: {ruta.name}")
+        return
+    try:
+        datos = _leer_serie_embalse_bogota(ruta, identificador, variable)
+    except (OSError, ValueError, pd.errors.ParserError) as error:
+        st.warning(f"No se pudo leer la serie: {error}")
+        return
+    st.caption(f"HydroWeb / SWOT · ID {identificador} · {len(datos)} observaciones · {unidad} · fechas UTC")
+    st.caption("Incertidumbre reportada en la exportación, sin banderas oficiales de calidad. No equivale a una validación instrumental.")
+    if slug == "san_rafael":
+        st.caption("San Rafael: las observaciones muestran una dispersión importante; revisar calidad y referencias independientes antes de modelar.")
+    fig = go.Figure(go.Scatter(x=datos["Fecha UTC"], y=datos["Valor"], mode="markers", name=variable,
+                              error_y=dict(type="data", array=datos["Incertidumbre"], visible=True)))
+    fig.update_layout(xaxis_title="Fecha UTC", yaxis_title=f"{variable} ({unidad})", template="plotly_white")
+    st.plotly_chart(fig, width="stretch", key=f"swot_bogota_{slug}_{sufijo}_serie")
+    with st.expander("Ver datos originales e incertidumbres", expanded=False):
+        st.dataframe(datos, hide_index=True, width="stretch")
+        st.download_button("Descargar CSV original", ruta.read_bytes(), ruta.name, "text/csv", key=f"swot_bogota_{slug}_{sufijo}_csv")
+
+
 def _mostrar_tarjetas_rio_swot(nombre_territorio: str, cfg_rio: dict) -> None:
     """Muestra las cuatro tarjetas de un río sin alargar verticalmente la página."""
     nombres_variables = list(cfg_rio["archivos"].keys())
@@ -212,6 +271,9 @@ def _mostrar_tarjetas_rio_swot(nombre_territorio: str, cfg_rio: dict) -> None:
         "Área": "Área superficial del agua asociada a los reaches seleccionados.",
         "Pendiente": "Pendiente longitudinal de la superficie del agua reportada por SWOT.",
     }
+
+    if nombre_territorio == "Bogotá":
+        descripciones["Área"] = "Área superficial estimada del embalse."
 
     for pestana, variable in zip(pestanas, nombres_variables):
         with pestana:
@@ -233,6 +295,8 @@ def _mostrar_tarjetas_rio_swot(nombre_territorio: str, cfg_rio: dict) -> None:
                 width="stretch",
             )
             st.caption(f"Archivo: {CARPETA_TARJETAS_SWOT.name}/{ruta.name}")
+            if nombre_territorio == "Bogotá":
+                _mostrar_series_embalse_bogota(cfg_rio, variable)
 
 def mostrar_tarjetas_swot(nombre_territorio: str) -> None:
     """Muestra las tarjetas técnicas SWOT disponibles para el territorio activo."""
@@ -245,6 +309,8 @@ def mostrar_tarjetas_swot(nombre_territorio: str) -> None:
         unsafe_allow_html=True,
     )
     st.write(
+        "Consulta las fichas de **WSE y área** de Chuza y San Rafael, junto con las observaciones e incertidumbres originales."
+        if nombre_territorio == "Bogotá" else
         "Consulta las fichas de **WSE, ancho, área y pendiente** construidas para los "
         "reaches seleccionados. Cada ficha resume el comportamiento de la variable y "
         "sirve como complemento de la animación temporal del ancho."
@@ -259,6 +325,10 @@ def mostrar_tarjetas_swot(nombre_territorio: str) -> None:
     else:
         st.markdown(f"### {rios[0]['rio']}")
         _mostrar_tarjetas_rio_swot(nombre_territorio, rios[0])
+
+    if nombre_territorio == "Bogotá":
+        st.caption("WSE: elevación de la superficie del agua. Área: superficie estimada del embalse. No se dispone de banderas oficiales en los CSV aportados; no se aplica el control M7 de reaches fluviales.")
+        return
 
     st.markdown(
         dedent("""

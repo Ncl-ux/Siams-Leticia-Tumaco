@@ -1,0 +1,3 @@
+MapBiomas: nomenclatura de las demás sedes; sustituir la extensión GIF por MP4.
+Tres animaciones originales de 40 años, 20 s. Las tablas duplicadas se conservaron una sola vez. Unidad de área y colección por confirmar.
+SWOT: nombres propuestos siguiendo el patrón swot_sede_cuerpo; verificar rutas reales del repositorio antes de integrar. San Rafael convertido desde GIF original (69 observaciones); Chuza reutiliza una animación generada anteriormente desde los CSV, no del GIF original. Los CSV y fichas están en una carpeta de insumos provisional, no necesariamente su destino final. No se han modificado ni publicado ramas del repositorio.

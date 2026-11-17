@@ -1,0 +1,107 @@
+{
+  "sede": "arauca",
+  "lat": 7.012222763876252,
+  "lon": -70.74338825990411,
+  "comunidad": "AG",
+  "inicio_solicitado": "1981-01-01",
+  "fin_solicitado": "2026-11-16",
+  "modo": "historico",
+  "consulta": {
+    "url": "https://power.larc.nasa.gov/api/temporal/daily/point?parameters=PRECTOTCORR,T2M,T2M_MAX,T2M_MIN,RH2M,WS2M,PS,ALLSKY_SFC_SW_DWN&community=AG&longitude=-70.74338825990411&latitude=7.012222763876252&start=19810101&end=20261116&format=JSON",
+    "header": {
+      "title": "NASA/POWER Source Native Resolution Daily Data",
+      "api": {
+        "version": "v2.10.3",
+        "name": "POWER Daily API"
+      },
+      "sources": [
+        "MERRA2",
+        "GEOSIT",
+        "SRB",
+        "SYN1DEG",
+        "FLASHFLUX",
+        "POWER"
+      ],
+      "fill_value": -999.0,
+      "time_standard": "LST",
+      "start": "19810101",
+      "end": "20261116"
+    },
+    "parameters": {
+      "PRECTOTCORR": {
+        "units": "mm/day",
+        "longname": "Precipitation Corrected"
+      },
+      "T2M": {
+        "units": "C",
+        "longname": "Temperature at 2 Meters"
+      },
+      "T2M_MAX": {
+        "units": "C",
+        "longname": "Temperature at 2 Meters Maximum"
+      },
+      "T2M_MIN": {
+        "units": "C",
+        "longname": "Temperature at 2 Meters Minimum"
+      },
+      "RH2M": {
+        "units": "%",
+        "longname": "Relative Humidity at 2 Meters"
+      },
+      "WS2M": {
+        "units": "m/s",
+        "longname": "Wind Speed at 2 Meters"
+      },
+      "PS": {
+        "units": "kPa",
+        "longname": "Surface Pressure"
+      },
+      "ALLSKY_SFC_SW_DWN": {
+        "units": "MJ/m^2/day",
+        "longname": "All Sky Surface Shortwave Downward Irradiance"
+      }
+    }
+  },
+  "cobertura": {
+    "precipitacion_mm_dia": {
+      "validos": 16753,
+      "inicio": "1981-01-01",
+      "fin": "2026-11-13"
+    },
+    "temperatura_media_C": {
+      "validos": 16753,
+      "inicio": "1981-01-01",
+      "fin": "2026-11-13"
+    },
+    "temperatura_maxima_C": {
+      "validos": 16753,
+      "inicio": "1981-01-01",
+      "fin": "2026-11-13"
+    },
+    "temperatura_minima_C": {
+      "validos": 16753,
+      "inicio": "1981-01-01",
+      "fin": "2026-11-13"
+    },
+    "humedad_relativa_pct": {
+      "validos": 16753,
+      "inicio": "1981-01-01",
+      "fin": "2026-11-13"
+    },
+    "viento_2m_m_s": {
+      "validos": 16753,
+      "inicio": "1981-01-01",
+      "fin": "2026-11-13"
+    },
+    "presion_superficie_kPa": {
+      "validos": 16753,
+      "inicio": "1981-01-01",
+      "fin": "2026-11-13"
+    },
+    "radiacion_solar_MJ_m2_dia": {
+      "validos": 15654,
+      "inicio": "1984-01-01",
+      "fin": "2026-11-11"
+    }
+  }
+}

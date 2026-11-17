@@ -277,10 +277,10 @@ TERRITORIOS = {
 ESTADO_COMPONENTES = {
     "Bogotá": [
         ("Identificación y contexto", "Completo", "Sede, coordenadas y contexto territorial incorporados."),
-        ("Cartografía e hidrología", "En proceso", "Piloto de ubicación multiescala incorporado; hidrología temática queda para una fase posterior."),
+        ("Cartografía e hidrología", "En proceso", "Ubicación multiescala y observaciones SWOT de Chuza y San Rafael incorporadas; cartografía temática pendiente."),
         ("Clima", "Pendiente", "No se ha integrado todavía una base climática específica para Bogotá."),
         ("Geología", "Pendiente", "No se ha incorporado todavía cartografía geológica específica."),
-        ("Cobertura y relieve", "Pendiente", "No se han incorporado aún capas temáticas de cobertura o relieve."),
+        ("Cobertura y relieve", "En proceso", "MapBiomas 1985–2024 integrado; cartografía de relieve pendiente."),
         ("Estaciones y calidad", "Pendiente", "Inventario de estaciones y control de datos por consolidar."),
         ("Hidrogeología", "Pendiente", "Componente por desarrollar."),
         ("IRCA", "Pendiente", "Componente por desarrollar."),
