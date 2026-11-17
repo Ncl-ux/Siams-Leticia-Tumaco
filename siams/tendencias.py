@@ -97,7 +97,7 @@ def _buscar_columna_variable(df: pd.DataFrame, aliases) -> str | None:
     return None
 
 @st.cache_data(show_spinner=False)
-def extraer_series_historicas_excel(ruta_texto: str):
+def extraer_series_historicas_excel(ruta_texto: str, version_archivo=None):
     """
     Busca automáticamente series históricas dentro de un Excel procesado.
 

@@ -102,8 +102,8 @@ from siams.homogeneidad_a1 import renderizar_a1_homogeneidad  # SIAMS_A1_IMPORT
 
 # =========================================================
 # NASA POWER · Compatibilidad A2 y A3 (solo en app.py)
-# Se conservan sin modificar siams/clima.py, siams/tendencias.py
-# y los complementos nuevos de GRACE e hidrogeoquímica.
+# Se conservan las fórmulas y los complementos de GRACE e hidrogeoquímica.
+# Los productos NASA semanales reutilizan los lectores existentes.
 # =========================================================
 
 
@@ -133,6 +133,7 @@ def _leer_nasa_climatologia_a2a3(ruta: str, version_archivo: tuple[int, int], tu
         "precipitacion_media_mensual_multianual_mm_mes",
         "precipitacion_media_mensual_mm_mes",
         "precipitacion_acumulada_mm_mes",
+        "precipitacion_mm_mes",
         "precipitacion_mm_dia",
     ), "Regimen_P")
     # Regimen_P representa la MEDIA de acumulados de cada mes, no lluvia diaria.
@@ -277,6 +278,14 @@ from siams.catalogo import restablecer_estados_componentes
 restablecer_estados_componentes()
 actualizar_estado_coberturas()
 actualizar_estado_landsat()
+if ARCHIVOS_CLIMA_NASA.get("Bogotá") is not None:
+    TERRITORIOS["Bogotá"]["fuente_clima"] = "NASA POWER AG · estimación de grilla"
+    TERRITORIOS["Bogotá"]["estado_datos"] = "Climatología NASA POWER y piloto cartográfico disponibles"
+    ESTADO_COMPONENTES["Bogotá"] = [
+        (componente, "Completo", "NASA POWER actualizado; contraste con IDEAM pendiente.")
+        if componente == "Clima" else (componente, estado, nota)
+        for componente, estado, nota in ESTADO_COMPONENTES["Bogotá"]
+    ]
 
 
 def mostrar_mapa_imagen(
@@ -382,6 +391,9 @@ grupo = st.sidebar.selectbox(
 )
 
 from siams.ideam_leticia import mostrar_ideam_leticia
+from siams.ideam_bogota import mostrar_ideam_bogota, mostrar_homogeneidad_bogota
+from siams.precipitacion_satelital import mostrar_precipitacion_satelital
+from siams.ideam_bogota_clima import mostrar_contraste_clima_bogota, agregar_tendencias_ideam_bogota
 
 SUBMENUS = {
     "Inicio": [
@@ -424,7 +436,7 @@ SUBMENUS = {
 }
 
 opciones_submenu = SUBMENUS[grupo]
-if grupo == 'Clima y datos' and territorio == 'Leticia':
+if grupo == 'Clima y datos' and territorio in ('Leticia', 'Bogotá'):
     opciones_submenu = list(opciones_submenu)
     opciones_submenu.insert(opciones_submenu.index('Clima') + 1, 'Precipitación IDEAM')
 # SIAMS_IDEAM_CLIMA_V2
@@ -794,6 +806,9 @@ elif seccion == "Clima":
                         "Los Excel NASA procesados no almacenan las coordenadas de descarga."
                     )
 
+                if Path(archivo_nasa).name.endswith("_actualizado.xlsx"):
+                    st.caption("NASA POWER actualizado: régimen de meses completos por variable, con inicio histórico original. IDEAM conserva su periodo; la comparación de regímenes no implica periodos idénticos.")
+
                 p_ideam_anual = df["Precipitación IDEAM (mm)"].sum()
                 p_nasa_anual = df["Precipitación NASA (mm)"].sum()
                 diferencia_p = (
@@ -1087,7 +1102,9 @@ elif seccion == "Clima":
                 st.success(
                     f"Datos reales cargados desde `{Path(archivo_nasa).name}` · Fuente: NASA POWER."
                 )
-                if territorio == "La Paz":
+                if Path(archivo_nasa).name.endswith("_actualizado.xlsx"):
+                    st.caption("Producto derivado del CSV semanal NASA POWER AG. Régimen: meses completos por variable; inicio de análisis conservado por sede (Bogotá desde 1981). Histórico completo disponible en el CSV.")
+                if territorio == "La Paz" and not Path(archivo_nasa).name.endswith("_actualizado.xlsx"):
                     st.caption(
                         f"Coordenadas oficiales de referencia de la Sede de La Paz en SIAMS: "
                         f"{info['lat']:.6f}, {info['lon']:.6f}. "
@@ -1262,6 +1279,10 @@ elif seccion == "Clima":
                             key=f"descarga_clima_{territorio}",
                         )
 
+    if territorio == "Bogotá":
+        mostrar_contraste_clima_bogota()
+    mostrar_precipitacion_satelital(territorio)
+
 # =========================================================
 # ANÁLISIS DE TENDENCIAS · MANN-KENDALL + SEN
 # =========================================================
@@ -1269,8 +1290,10 @@ elif seccion == "Clima":
 elif seccion == "Precipitación IDEAM":
     if territorio == "Leticia":
         mostrar_ideam_leticia()
+    elif territorio == "Bogotá":
+        mostrar_ideam_bogota()
     else:
-        st.info("Selecciona Leticia para consultar precipitación IDEAM.")
+        st.info("Selecciona Leticia o Bogotá para consultar precipitación IDEAM.")
 
 elif seccion == "Análisis de tendencias":
     st.title(f"📈 Análisis de tendencias · {territorio}")
@@ -1292,6 +1315,8 @@ elif seccion == "Análisis de tendencias":
         st.code("pip install numpy", language="bash")
     else:
         series_disp = series_tendencia_territorio(territorio, info)
+        if territorio == "Bogotá":
+            series_disp = agregar_tendencias_ideam_bogota(series_disp)
 
         if not series_disp:
             st.warning(
@@ -1429,6 +1454,9 @@ elif seccion == "Análisis de tendencias":
                 )
 
                 if res is not None:
+                    es_ideam_bogota = territorio == "Bogotá" and paquete["fuente"] == "IDEAM · exploratorio"
+                    if es_ideam_bogota:
+                        st.warning("Diagnóstico exploratorio IDEAM: serie de años completos, posiblemente discontinua. No confirma una tendencia climática regional; consultar homogeneidad A1 y calidad de la estación.")
                     icono = "↗️" if res["significativa"] and res["tau"] > 0 else (
                         "↘️" if res["significativa"] and res["tau"] < 0 else "➡️"
                     )
@@ -1474,9 +1502,12 @@ elif seccion == "Análisis de tendencias":
 
                     tendencia_sen = res["intercepto"] + res["pendiente"] * anual["Año"].astype(float)
                     fig = go.Figure()
+                    vista_anual = anual
+                    if es_ideam_bogota:
+                        vista_anual = anual.set_index("Año").reindex(range(int(anual["Año"].min()), int(anual["Año"].max()) + 1)).rename_axis("Año").reset_index()
                     fig.add_trace(go.Scatter(
-                        x=anual["Año"], y=anual["Valor"],
-                        mode="lines+markers", name=seleccion,
+                        x=vista_anual["Año"], y=vista_anual["Valor"],
+                        mode="lines+markers", name=seleccion, connectgaps=False,
                     ))
                     fig.add_trace(go.Scatter(
                         x=anual["Año"], y=tendencia_sen,
@@ -1543,6 +1574,8 @@ elif seccion == "Análisis de tendencias":
 elif seccion == "Homogeneidad (A1)":
     if territorio == "Tumaco":
         renderizar_a1_homogeneidad()
+    elif territorio == "Bogotá":
+        mostrar_homogeneidad_bogota()
     else:
         st.title(f"🌧️ Homogeneidad de series · {territorio}")
         st.info(
@@ -1550,6 +1583,16 @@ elif seccion == "Homogeneidad (A1)":
             "está disponible inicialmente para Tumaco. Para este territorio aún "
             "no se han integrado resultados de homogeneidad validados."
         )
+
+    ruta_nasa = archivo_nasa_territorio(territorio)
+    if ruta_nasa is not None and Path(ruta_nasa).name.endswith("_actualizado.xlsx"):
+        st.subheader("Homogeneidad NASA POWER · diagnóstico complementario")
+        st.caption("Pettitt y SNHT absolutos sobre agregados anuales, con las funciones existentes de SIAMS. No reemplaza A1 IDEAM ni certifica homogeneidad. Un cambio significativo requiere contraste independiente.")
+        try:
+            resultados_nasa = pd.read_excel(ruta_nasa, sheet_name="Homogeneidad_NASA")
+            st.dataframe(resultados_nasa, hide_index=True, use_container_width=True)
+        except (ValueError, OSError) as error:
+            st.info(f"Diagnóstico NASA no disponible: {error}")
 
 # =========================================================
 # HIDROLOGÍA
@@ -2529,7 +2572,7 @@ elif seccion == "Comparar territorios":
         """
         <div class="soft-box">
             <strong>Criterio de comparación:</strong>
-            Leticia, Medellín, San Andrés y La Paz utilizan NASA POWER cuando el archivo procesado está disponible.
+            Bogotá, Leticia, Medellín, San Andrés y La Paz utilizan NASA POWER cuando el archivo procesado está disponible.
             Tumaco y Arauca utilizan IDEAM como referencia terrestre para precipitación y temperatura,
             mientras que NASA POWER se usa como contraste y para variables sin observación terrestre equivalente.
             En Arauca la humedad IDEAM se muestra con advertencia metodológica. Las fuentes no se fusionan.
@@ -2544,7 +2587,7 @@ elif seccion == "Comparar territorios":
     # -----------------------------------------------------
     # TERRITORIOS NASA POWER COMO FUENTE PRINCIPAL
     # -----------------------------------------------------
-    for nombre in ("Leticia", "Medellín", "San Andrés", "La Paz"):
+    for nombre in ("Bogotá", "Leticia", "Medellín", "San Andrés", "La Paz"):
         archivo = ARCHIVOS_CLIMA_NASA.get(nombre)
         if archivo is None:
             continue
@@ -2656,6 +2699,7 @@ elif seccion == "Comparar territorios":
     # VISUALIZACIÓN
     # -----------------------------------------------------
     if datasets:
+        st.caption("Los regímenes conservan los periodos de cada sede y fuente; no constituyen una comparación sobre un periodo común.")
         comparar = pd.concat(datasets, ignore_index=True, sort=False)
 
         tab_p, tab_t, tab_hr, tab_otras, tab_resumen, tab_fuentes = st.tabs([
@@ -2683,7 +2727,7 @@ elif seccion == "Comparar territorios":
             )
             st.plotly_chart(fig, use_container_width=True)
             st.caption(
-                "Tumaco y Arauca usan precipitación IDEAM; Leticia, Medellín, San Andrés y La Paz usan NASA POWER."
+                "Tumaco y Arauca usan precipitación IDEAM; Bogotá, Leticia, Medellín, San Andrés y La Paz usan NASA POWER."
             )
 
         with tab_t:
@@ -2886,6 +2930,7 @@ elif seccion == "Fuentes y descargas":
             "Los botones se habilitan únicamente cuando el archivo existe junto al script o en una carpeta de datos reconocida."
         )
         archivos = [
+            ("NASA POWER · Bogotá", archivo_nasa_territorio("Bogotá"), "descarga_fuente_bogota"),
             ("NASA POWER · Leticia", ARCHIVO_CLIMA_LETICIA, "descarga_fuente_leticia"),
             ("NASA POWER · Medellín", ARCHIVO_CLIMA_MEDELLIN, "descarga_fuente_medellin"),
             ("NASA POWER · San Andrés", ARCHIVO_CLIMA_SAN_ANDRES, "descarga_fuente_san_andres"),
@@ -2896,6 +2941,14 @@ elif seccion == "Fuentes y descargas":
             ("IDEAM procesado · Arauca", ARCHIVO_IDEAM_ARAUCA, "descarga_fuente_ideam_arauca"),
             ("GWSa Colombia · GRACE/GLDAS", ARCHIVO_GWS, "descarga_fuente_gws"),
         ]
+        for nombre in ("Bogotá", "Leticia", "Tumaco", "Arauca", "La Paz", "Medellín", "San Andrés"):
+            slug = normalizar_etiqueta(nombre)
+            base = CARPETA_PROYECTO / "data" / "processed" / "actualizacion" / f"nasa_power_{slug}.csv"
+            if base.is_file():
+                archivos.append((f"NASA POWER · {nombre} · histórico diario completo", base, f"nasa_csv_{slug}"))
+            original = buscar_excel_climatico(nombre, "nasa")
+            if original is not None and original != archivo_nasa_territorio(nombre):
+                archivos.append((f"NASA POWER · {nombre} · Excel original de referencia", original, f"nasa_original_{slug}"))
         for nombre_cob, config_cob in COBERTURAS_POR_TERRITORIO.items():
             for codigo_cob, zona_cob in config_cob["zonas"].items():
                 rutas_cob = encontrar_csv_coberturas(nombre_cob, codigo_cob)
