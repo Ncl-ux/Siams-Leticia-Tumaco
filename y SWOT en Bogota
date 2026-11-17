@@ -1,0 +1,33 @@
+ Animaciones_SWOT/swot_bogota_chuza.mp4             | Bin [31m0[m -> [32m32629[m bytes
+ Animaciones_SWOT/swot_bogota_san_rafael.mp4        | Bin [31m0[m -> [32m221017[m bytes
+ .../Bogota/mapbiomas_bogota_ant_nat.mp4            | Bin [31m0[m -> [32m829490[m bytes
+ .../Bogota/mapbiomas_bogota_nivel_1.mp4            | Bin [31m0[m -> [32m849952[m bytes
+ .../Bogota/mapbiomas_bogota_nivel_2.mp4            | Bin [31m0[m -> [32m862234[m bytes
+ Tarjetas_SWOT/swot_bogota_chuza_area.png           | Bin [31m0[m -> [32m231968[m bytes
+ Tarjetas_SWOT/swot_bogota_chuza_wse.png            | Bin [31m0[m -> [32m237925[m bytes
+ Tarjetas_SWOT/swot_bogota_san_rafael_area.png      | Bin [31m0[m -> [32m301485[m bytes
+ Tarjetas_SWOT/swot_bogota_san_rafael_wse.png       | Bin [31m0[m -> [32m300377[m bytes
+ data/processed/actualizacion/imerg_consulta.json   |  11 [32m++[m
+ .../actualizacion/nasa_power_arauca.consulta.json  | 107 [32m+++++++++++[m
+ .../actualizacion/nasa_power_bogota.consulta.json  | 107 [32m+++++++++++[m
+ .../actualizacion/nasa_power_la_paz.consulta.json  | 107 [32m+++++++++++[m
+ .../actualizacion/nasa_power_leticia.consulta.json | 107 [32m+++++++++++[m
+ .../nasa_power_medellin.consulta.json              | 107 [32m+++++++++++[m
+ .../nasa_power_san_andres.consulta.json            | 107 [32m+++++++++++[m
+ .../actualizacion/nasa_power_tumaco.consulta.json  | 107 [32m+++++++++++[m
+ data/processed/insumos_swot_bogota/LEEME.txt       |   3 [32m+[m
+ .../mapbiomas/Bogota/mapbiomas_ant_nat_b.csv       |  31 [32m++++[m
+ .../Bogota/mapbiomas_cobertura_2024_b.csv          |  31 [32m++++[m
+ ...biomas_serie_temporal_cobertura_1985-2024_b.csv |  31 [32m++++[m
+ data/processed/swot/swot_bogota_chuza_area.csv     |  34 [32m++++[m
+ data/processed/swot/swot_bogota_chuza_wse.csv      |  34 [32m++++[m
+ .../processed/swot/swot_bogota_san_rafael_area.csv |  70 [32m++++++++[m
+ data/processed/swot/swot_bogota_san_rafael_wse.csv |  70 [32m++++++++[m
+ h origin mejoras-revision-siams                    |  18 [32m++[m
+ scripts/ajustar_la_paz.py                          | 196 [32m+++++++++++++++++++++[m
+ siams/catalogo.py                                  |   4 [32m+[m[31m-[m
+ siams/mapbiomas.py                                 |   8 [32m+[m
+ siams/swot.py                                      |  72 [32m+++++++[m[31m-[m
+ tests/test_bogota_mapbiomas_swot.py                |  31 [32m++++[m
+ tests/test_mp4_siams.py                            |   4 [32m+[m[31m-[m
+ 32 files changed, 1392 insertions(+), 5 deletions(-)
