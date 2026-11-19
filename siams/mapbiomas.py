@@ -31,6 +31,7 @@ CARPETA_COBERTURAS = resolver_carpeta_preferida("Coberturas_MapBiomas", "Cobertu
 CARPETA_CSV_MAPBIOMAS = resolver_carpeta_preferida("data/processed/mapbiomas", "Coberturas_MapBiomas")
 
 COBERTURAS_POR_TERRITORIO = {
+    "Chingaza": {"carpeta": "Chingaza", "zonas": {"CH": "PNN Chingaza"}},
     "Bogotá": {"carpeta": "Bogota", "zonas": {"B": "Bogotá"}},
     "Arauca": {"carpeta": "Arauca", "zonas": {"A": "Arauca"}},
     "La Paz": {"carpeta": "La_Paz", "zonas": {"LP": "La Paz"}},
@@ -73,6 +74,11 @@ def encontrar_csv_coberturas(nombre_territorio: str, codigo: str) -> dict:
     return resultado
 
 MAPBIOMAS_GIFS_POR_TERRITORIO = {
+    "Chingaza": {
+        "Nivel 1": "mapbiomas_chingaza_nivel_1.mp4",
+        "Nivel 2": "mapbiomas_chingaza_nivel_2.mp4",
+        "Natural / antrópico": "mapbiomas_chingaza_ant_nat.mp4",
+    },
     "Bogotá": {
         "Nivel 1": "mapbiomas_bogota_nivel_1.gif",
         "Nivel 2": "mapbiomas_bogota_nivel_2.gif",
@@ -224,7 +230,10 @@ def mostrar_presentacion_cobertura_mapbiomas(nombre_territorio: str, tipo: str, 
         st.markdown("#### Interpretación del mapa")
         st.markdown(cfg["explicacion"])
         st.markdown(f"**Zona estadística:** {zona}")
-        st.caption("Fuente: MapBiomas · estadísticas y animación de coberturas.")
+        if nombre_territorio == "Chingaza":
+            st.caption("Fuente: [MapBiomas Colombia](https://colombia.mapbiomas.org/) · exportaciones de estadísticas y animaciones 1985–2024 para PNN Chingaza; colección no identificada en los CSV.")
+        else:
+            st.caption("Fuente: MapBiomas · estadísticas y animación de coberturas.")
         if nombre_territorio == "San Andrés":
             st.caption(
                 "El GIF representa San Andrés a escala territorial. Las estadísticas "

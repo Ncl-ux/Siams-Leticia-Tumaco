@@ -70,6 +70,9 @@ GIFS_SWOT_POR_TERRITORIO = {
     ],
 }
 
+# SIAMS_CHINGAZA_SWOT_COMPARTIDO
+GIFS_SWOT_POR_TERRITORIO["Chingaza"] = [x for x in GIFS_SWOT_POR_TERRITORIO["Bogotá"] if x["archivo"] == "swot_bogota_chuza.mp4"]
+
 GIFS_SWOT_ANTIGUOS = {'swot_leticia_amazonas_ancho.gif': 'R_o_Amazonas_Leticia_SWOT_Ancho.gif', 'swot_medellin_medellin_ancho.gif': 'R_o_Medell_n_Medell_n_SWOT_Ancho.gif', 'swot_tumaco_mira_ancho.gif': 'R_o_Mira_Tumaco_SWOT_Ancho.gif', 'swot_tumaco_rosario_ancho.gif': 'R_o_Rosario_Tumaco_SWOT_Ancho.gif', 'swot_arauca_arauca_ancho.gif': 'Rio_Arauca_SWOT_Profesional.gif'}
 
 def buscar_gif_swot(nombre_archivo: str):
@@ -88,13 +91,13 @@ def mostrar_gifs_swot(nombre_territorio: str) -> None:
         return
 
     st.markdown(
-        '<div class="section-title">Dinámica de embalses observada por SWOT</div>' if nombre_territorio == "Bogotá" else '<div class="section-title">Dinámica fluvial observada por SWOT</div>',
+        '<div class="section-title">Dinámica de embalses observada por SWOT</div>' if nombre_territorio in ("Bogotá", "Chingaza") else '<div class="section-title">Dinámica fluvial observada por SWOT</div>',
         unsafe_allow_html=True,
     )
     st.write(
-        "Estas animaciones muestran observaciones temporales de los embalses Chuza y San Rafael. "
+        ("Estas animaciones muestran observaciones temporales del embalse Chuza. " if nombre_territorio == "Chingaza" else "Estas animaciones muestran observaciones temporales de los embalses Chuza y San Rafael. ") +
         "Son recursos exploratorios; no sustituyen las series originales ni la validación de campo."
-        if nombre_territorio == "Bogotá" else
+        if nombre_territorio in ("Bogotá", "Chingaza") else
         "Estas animaciones resumen la variación temporal del ancho del cauce en los "
         "reaches seleccionados. La geometría del río es esquemática; los valores numéricos "
         "mostrados en cada fecha corresponden a las observaciones procesadas."
@@ -132,7 +135,7 @@ def mostrar_gifs_swot(nombre_territorio: str) -> None:
                 )
             st.caption(f"Archivo: {CARPETA_GIFS.name}/{ruta.name}")
 
-    if nombre_territorio == "Bogotá":
+    if nombre_territorio in ("Bogotá", "Chingaza"):
         st.caption("Consulta las fichas y las series originales de elevación y área en el bloque siguiente.")
         return
 
@@ -209,6 +212,8 @@ TARJETAS_SWOT_POR_TERRITORIO = {
     ],
 }
 
+TARJETAS_SWOT_POR_TERRITORIO["Chingaza"] = [x for x in TARJETAS_SWOT_POR_TERRITORIO["Bogotá"] if x["rio"] == "Embalse Chuza"]
+
 TARJETAS_SWOT_NOMBRES_NUEVOS = {'01_WSE_Arauca_SWOT.png': 'swot_arauca_arauca_wse.png', '01_WSE_Leticia_SWOT.png': 'swot_leticia_amazonas_wse.png', '01_WSE_Medellin_SWOT.png': 'swot_medellin_medellin_wse.png', '01_WSE_Tumaco_SWOT Rosario.png': 'swot_tumaco_rosario_wse.png', '01_WSE_Tumaco_SWOT.png': 'swot_tumaco_mira_wse.png', '02_Ancho_Arauca_SWOT.png': 'swot_arauca_arauca_ancho.png', '02_Ancho_Leticia_SWOT.png': 'swot_leticia_amazonas_ancho.png', '02_Ancho_Medellin_SWOT.png': 'swot_medellin_medellin_ancho.png', '02_Ancho_Tumaco_SWOT Rosario.png': 'swot_tumaco_rosario_ancho.png', '02_Ancho_Tumaco_SWOT.png': 'swot_tumaco_mira_ancho.png', '03_Area_Arauca_SWOT.png': 'swot_arauca_arauca_area.png', '03_Area_Leticia_SWOT.png': 'swot_leticia_amazonas_area.png', '03_Area_Medellin_SWOT.png': 'swot_medellin_medellin_area.png', '03_Area_Tumaco_SWOT Rosario.png': 'swot_tumaco_rosario_area.png', '03_Area_Tumaco_SWOT.png': 'swot_tumaco_mira_area.png', '04_Pendiente_Arauca_SWOT.png': 'swot_arauca_arauca_pendiente.png', '04_Pendiente_Leticia_SWOT.png': 'swot_leticia_amazonas_pendiente.png', '04_Pendiente_Medellin_SWOT.png': 'swot_medellin_medellin_pendiente.png', '04_Pendiente_Tumaco_SWOT Rosario.png': 'swot_tumaco_rosario_pendiente.png', '04_Pendiente_Tumaco_SWOT.png': 'swot_tumaco_mira_pendiente.png'}
 
 def buscar_tarjeta_swot(nombre_archivo: str):
@@ -234,7 +239,7 @@ def _leer_serie_embalse_bogota(ruta: Path, identificador: str, variable: str) ->
     return tabla.sort_values("Fecha UTC").reset_index(drop=True)
 
 
-def _mostrar_series_embalse_bogota(cfg_rio: dict, variable: str) -> None:
+def _mostrar_series_embalse_bogota(cfg_rio: dict, variable: str, territorio: str = "Bogotá") -> None:
     slug, identificador = {"Embalse Chuza": ("chuza", "6150035523"), "Embalse San Rafael": ("san_rafael", "6120004832")}[cfg_rio["rio"]]
     sufijo = "wse" if variable == "WSE" else "area"
     unidad = "m" if variable == "WSE" else "km²"
@@ -254,10 +259,10 @@ def _mostrar_series_embalse_bogota(cfg_rio: dict, variable: str) -> None:
     fig = go.Figure(go.Scatter(x=datos["Fecha UTC"], y=datos["Valor"], mode="markers", name=variable,
                               error_y=dict(type="data", array=datos["Incertidumbre"], visible=True)))
     fig.update_layout(xaxis_title="Fecha UTC", yaxis_title=f"{variable} ({unidad})", template="plotly_white")
-    st.plotly_chart(fig, width="stretch", key=f"swot_bogota_{slug}_{sufijo}_serie")
+    st.plotly_chart(fig, width="stretch", key=f"swot_{territorio}_{slug}_{sufijo}_serie")
     with st.expander("Ver datos originales e incertidumbres", expanded=False):
         st.dataframe(datos, hide_index=True, width="stretch")
-        st.download_button("Descargar CSV original", ruta.read_bytes(), ruta.name, "text/csv", key=f"swot_bogota_{slug}_{sufijo}_csv")
+        st.download_button("Descargar CSV original", ruta.read_bytes(), ruta.name, "text/csv", key=f"swot_{territorio}_{slug}_{sufijo}_csv")
 
 
 def _mostrar_tarjetas_rio_swot(nombre_territorio: str, cfg_rio: dict) -> None:
@@ -272,7 +277,7 @@ def _mostrar_tarjetas_rio_swot(nombre_territorio: str, cfg_rio: dict) -> None:
         "Pendiente": "Pendiente longitudinal de la superficie del agua reportada por SWOT.",
     }
 
-    if nombre_territorio == "Bogotá":
+    if nombre_territorio in ("Bogotá", "Chingaza"):
         descripciones["Área"] = "Área superficial estimada del embalse."
 
     for pestana, variable in zip(pestanas, nombres_variables):
@@ -295,8 +300,8 @@ def _mostrar_tarjetas_rio_swot(nombre_territorio: str, cfg_rio: dict) -> None:
                 width="stretch",
             )
             st.caption(f"Archivo: {CARPETA_TARJETAS_SWOT.name}/{ruta.name}")
-            if nombre_territorio == "Bogotá":
-                _mostrar_series_embalse_bogota(cfg_rio, variable)
+            if nombre_territorio in ("Bogotá", "Chingaza"):
+                _mostrar_series_embalse_bogota(cfg_rio, variable, nombre_territorio)
 
 def mostrar_tarjetas_swot(nombre_territorio: str) -> None:
     """Muestra las tarjetas técnicas SWOT disponibles para el territorio activo."""
@@ -309,8 +314,8 @@ def mostrar_tarjetas_swot(nombre_territorio: str) -> None:
         unsafe_allow_html=True,
     )
     st.write(
-        "Consulta las fichas de **WSE y área** de Chuza y San Rafael, junto con las observaciones e incertidumbres originales."
-        if nombre_territorio == "Bogotá" else
+        ("Consulta las fichas de **WSE y área** de Chuza, junto con las observaciones satelitales e incertidumbres de HydroWeb / SWOT." if nombre_territorio == "Chingaza" else "Consulta las fichas de **WSE y área** de Chuza y San Rafael, junto con las observaciones e incertidumbres originales.")
+        if nombre_territorio in ("Bogotá", "Chingaza") else
         "Consulta las fichas de **WSE, ancho, área y pendiente** construidas para los "
         "reaches seleccionados. Cada ficha resume el comportamiento de la variable y "
         "sirve como complemento de la animación temporal del ancho."
@@ -326,7 +331,7 @@ def mostrar_tarjetas_swot(nombre_territorio: str) -> None:
         st.markdown(f"### {rios[0]['rio']}")
         _mostrar_tarjetas_rio_swot(nombre_territorio, rios[0])
 
-    if nombre_territorio == "Bogotá":
+    if nombre_territorio in ("Bogotá", "Chingaza"):
         st.caption("WSE: elevación de la superficie del agua. Área: superficie estimada del embalse. No se dispone de banderas oficiales en los CSV aportados; no se aplica el control M7 de reaches fluviales.")
         return
 

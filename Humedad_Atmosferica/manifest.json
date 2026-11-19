@@ -1,0 +1,37 @@
+{
+  "territorios": {
+    "Arauca": {
+      "gif_original": "sedes/arauca/gif_Rastreo_Orinoquia_1990-2019.gif",
+      "sha256_gif": "51a6f6f3fe0f766ce66884d57635d36ea68cb54cab74fee8c8f5a6aeab55b192",
+      "grafica_original": "sedes/arauca/climatologia_mensual_humedad_rastreada_mm_cuencas_nivel02.png",
+      "periodo": "1990-2019",
+      "fotogramas": 360,
+      "duracion_s": 252
+    },
+    "La Paz": {
+      "gif_original": "sedes/la paz/gif_Rastreo_Cesar_1990-2019.gif",
+      "sha256_gif": "a85b9a406ba363540f66e329986405da9f93560ef892bebf1042b0994be961f2",
+      "grafica_original": "sedes/la paz/climatologia_mensual_humedad_rastreada_mm_cuencas_nivel02.png",
+      "periodo": "1990-2019",
+      "fotogramas": 360,
+      "duracion_s": 252
+    },
+    "Medellin": {
+      "gif_original": "sedes/medellin/gif_Rastreo_Medellin_1990-2019.gif",
+      "sha256_gif": "a77882df0a6344c98db8dc91ccb033d6a08f01639c9283143da88a580bbcc619",
+      "grafica_original": "sedes/medellin/climatologia_mensual_humedad_rastreada_mm_cuencas_nivel02.png",
+      "periodo": "1990-2019",
+      "fotogramas": 360,
+      "duracion_s": 252
+    },
+    "Tumaco": {
+      "gif_original": "sedes/tumaco/gif_Rastreo_Tumaco_1990-2019.gif",
+      "sha256_gif": "bce369d803681370dd01e6817feacbb9905dc924f1945d111ce38ec7d671d4c1",
+      "grafica_original": "sedes/tumaco/climatologia_mensual_humedad_rastreada_mm_cuencas_nivel02.png",
+      "periodo": "1990-2019",
+      "fotogramas": 360,
+      "duracion_s": 252
+    }
+  },
+  "duplicado_excluido": "sedes/arauca/gif_Rastreo_LA_Paz_1990-2019.gif (idéntico al GIF de La Paz)"
+}

@@ -42,16 +42,16 @@ CARPETAS_SENTINEL_POR_TERRITORIO = {
 SENTINEL_ARCHIVOS_POR_TERRITORIO = {
     "Leticia": {
         2025: {
-            "NDVI": "animacion_NDVI_2025 Leticia.mp4",
-            "MNDWI": "animacion_MNDWI_2025 Leticia.mp4",
-            "SCL": "animacion_SCL_2025 Leticia.mp4",
+            "NDVI": "mejores_meses/leticia_estado_de_la_vegetacion_ndvi.mp4",
+            "MNDWI": "mejores_meses/leticia_deteccion_de_agua_superficial_mndwi.mp4",
+            "SCL": "mejores_meses/leticia_clasificacion_de_superficies_y_nubes_scl.mp4",
         },
     },
     "Arauca": {
         2025: {
-            "NDVI": "animacion_NDVI_2025 Arauca.gif",
-            "MNDWI": "animacion_MNDWI_2025 Arauca.gif",
-            "SCL": "animacion_SCL_2025 Arauca.gif",
+            "NDVI": "animacion_NDVI_2025 Arauca.mp4",
+            "MNDWI": "animacion_MNDWI_2025 Arauca.mp4",
+            "SCL": "animacion_SCL_2025 Arauca.mp4",
         },
     },
 }
@@ -215,6 +215,11 @@ def mostrar_sentinel_territorio(nombre_territorio: str) -> None:
         </div>
         """).strip(), unsafe_allow_html=True,
     )
+
+    # SIAMS: selección mensual multianual
+    from .sentinel_mejores_meses import mostrar_seleccion_mensual
+    if mostrar_seleccion_mensual(st, CARPETA_SENTINEL, nombre_territorio, animaciones):
+        return
 
     if not animaciones:
         st.info(

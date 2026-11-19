@@ -22,3 +22,15 @@ Calidad del agua e IRCA,INS y documentos efectivamente incorporados,Indicadores 
 Monitoreo y curvas · sondas,Registros de sondas locales,"Curvas de niveles, mínimos diarios y eventos","Sondas son observaciones in situ: conservar fecha, equipo, horario y registro original.",
 Monitoreo y curvas · clima,Archivo externo de contraste seleccionado,Precipitación y demás series de contexto,"Referenciar IDEAM o NASA POWER según el archivo usado, sin alterar la hora de sonda.",
 Fuentes y descargas,Inventario de archivos presentes en SIAMS,Documentos y datos disponibles para descargar,Que SIAMS contenga una copia no implica por sí solo derecho de redistribución.,
+Chingaza · EAAB,"EAAB E.S.P. · SIH, informe 2024/02/02",Precipitación y caudal mensual,INFORMACIÓN CHINGAZA_Acueducto.xlsx del proyecto Chingaza. Meses completos; no se redistribuyen registros diarios.,
+Chingaza · IDEAM,IDEAM · archivos entregados al proyecto Chingaza,Series mensuales y catálogo de estaciones,Selección espacial por zona de influencia. No se redistribuyen registros diarios.,https://www.dhime.ideam.gov.co/atencionciudadano/
+Precipitación · CHIRPS,UCSB Climate Hazards Center · CHIRPS v3 Final,Precipitación mensual,Extracción puntual; no representa promedio de cuenca.,https://data.chc.ucsb.edu/products/CHIRPS/v3.0/
+Precipitación · IMERG,NASA GPM · IMERG Final V07B,Precipitación mensual,"Extracción puntual; producto 3B-MONTH, convertir a acumulado según unidad del archivo.",https://doi.org/10.5067/GPM/IMERG/3B-MONTH/07
+Chingaza · Cartografía,Proyecto Chingaza · SIG / Geodatabase,"Parque, cuencas y drenajes",Capas derivadas para exploración; fuente primaria y fecha por capa pendientes.,
+Chingaza · Relieve,Copernicus DEM GLO-30 · ESA/Airbus,Elevación y pendientes a 30 m,"DSM EGM2008, DLR 2010–2014 y Airbus 2014–2018; procesamiento SIAMS.",https://copernicus-dem-30m.s3.amazonaws.com/
+Chingaza · Geología,"UNAL–EAB · Fase I, 2013",Mapa geológico de Chuza,"Convenio 9-07-26200-0766 de 2012, figura 1, p. 19. Alcance: cuenca Chuza.",
+Chingaza · Hidrogeología,"GMAS–EAB · Fase II, 2016",Modelo hidrogeológico conceptual,"Contrato 2-24300-594-2015, figura 17, p. 73; interpretación geofísica, no modelo calibrado.",
+Chingaza · Isótopos,"UNAL · Proyecto Chingaza, BASE_UNAL.xlsx","Muestras de precipitación identificadas por mes, 2023",Ajuste exploratorio de línea meteórica; no se publican muestreos puntuales pendientes de autorización.,
+Origen de humedad atmosférica,Productos entregados al proyecto SIAMS,Animaciones y climatologías; rastreo 1990–2019,"Autoría, modelo, datos numéricos y metodología original pendientes de confirmar; SIAMS no recalcula el rastreo.",
+Chingaza · MapBiomas,MapBiomas Colombia · exportación de la plataforma,Series y animaciones 1985–2024,Colección exacta pendiente de confirmar en metadatos de la exportación.,https://colombia.mapbiomas.org/
+Landsat · procesamiento STAC,"USGS/NASA · Landsat Collection 2 Level-2, vía Microsoft Planetary Computer",Compuestos y escenas con control de calidad,SIAMS conserva las máscaras y criterios del proyecto; no se equipara a clasificación validada de coberturas.,https://planetarycomputer.microsoft.com/

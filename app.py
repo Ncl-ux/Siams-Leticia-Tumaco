@@ -93,6 +93,7 @@ from siams.cartografia import MAPAS_QGIS_NOMBRES_NUEVOS, buscar_mapa, mostrar_pd
 from siams.mapbiomas import CARPETA_COBERTURAS, COBERTURAS_POR_TERRITORIO, COLORES_COBERTURAS, encontrar_csv_coberturas, MAPBIOMAS_GIFS_POR_TERRITORIO, MAPBIOMAS_GIFS_NOMBRES_ANTIGUOS, buscar_gif_mapbiomas, _mostrar_gif_mapbiomas, mostrar_presentacion_cobertura_mapbiomas, buscar_csv_natural_antropico, _tipo_natural_antropico, _numero_antnat, cargar_csv_natural_antropico, mostrar_analisis_natural_antropico, cargar_csv_cobertura, preparar_cobertura_nivel, comparar_coberturas, mostrar_resumen_coberturas, mostrar_analisis_coberturas_nivel, mostrar_coberturas_mapbiomas
 from siams.landsat import CARPETA_LANDSAT, COLORES_LANDSAT, carpeta_landsat_sede, inventario_landsat, anio_gif_landsat, leer_csv_landsat, _leer_landsat_si_existe, _tabla_areas_landsat, preparar_gif_landsat_lento, mostrar_landsat_territorio
 from siams.sentinel import CARPETA_SENTINEL, CARPETAS_SENTINEL_POR_TERRITORIO, SENTINEL_ARCHIVOS_POR_TERRITORIO, SENTINEL_DESCRIPCIONES, carpeta_sentinel_territorio, buscar_animaciones_sentinel, _mostrar_gif_sentinel, _panel_sentinel, mostrar_sentinel_territorio
+from siams.humedad_atmosferica import mostrar_humedad_territorio
 from siams.sedes_2026 import ultima_actualizacion, mostrar_niveles, mostrar_cargar_datos_campo, mostrar_pruebas_bombeo, mostrar_fq_sede, mostrar_fq_bogota, mostrar_isotopos
 FECHA_ACTUALIZACION = ultima_actualizacion(FECHA_ACTUALIZACION_BASE)
 from siams.estados import actualizar_estado_coberturas, actualizar_estado_landsat
@@ -373,7 +374,7 @@ st.sidebar.markdown(
 
 territorio = st.sidebar.selectbox(
     "Territorio",
-    ["Bogotá", "Leticia", "Tumaco", "Medellín", "San Andrés", "Arauca", "La Paz"],
+    ["Bogotá", "Leticia", "Tumaco", "Medellín", "San Andrés", "Arauca", "La Paz", "Chingaza"],
     key="siams_nav_territorio",
 )
 
@@ -405,6 +406,7 @@ SUBMENUS = {
         "Hidrología",
         "Cobertura y relieve",
         "Landsat",
+        "Origen de humedad atmosférica",
         "Sentinel-2",
     ],
     "Clima y datos": [
@@ -542,7 +544,14 @@ if MODO_DESARROLLO:
 
 info = territorio_actual(territorio)
 
-if seccion == "Inicio":
+from siams.chingaza import mostrar as mostrar_chingaza
+
+if territorio == "Chingaza" and seccion in {"Mapa y territorio", "Clima", "Hidrología", "Estaciones y datos", "Análisis de tendencias", "Geología", "Hidrogeología", "Isótopos", "Homogeneidad (A1)"}:
+    mostrar_chingaza(seccion)
+elif territorio == "Chingaza" and seccion in {"Hidrogeoquímica", "Pruebas de bombeo", "Calidad del agua e IRCA", "Niveles de agua subterránea", "Cargar datos de campo", "Monitoreo y curvas"}:
+    st.title(f"{seccion} · Chingaza")
+    st.info("Componente pendiente de integración específica y revisión metodológica para Chingaza. No se muestran series de otras sedes.")
+elif seccion == "Inicio":
     mostrar_encabezado(
         "Plataforma hidroambiental SIAMS",
         "Un espacio para explorar información climática, hidrológica, geológica, "
@@ -627,6 +636,7 @@ if seccion == "Inicio":
             "Monitoreo": ["—", "—", "—", "—", "—", "🟡", "🟡"],
         })
 
+        cobertura = pd.concat([cobertura, pd.DataFrame([{"Territorio":"Chingaza", "Ubicación":"✅", "Clima":"🟡", "Hidrología":"🟡", "Geología":"🟡", "Hidrogeología":"🟡", "GWSa GRACE":"🟡", "GGDI":"🟡", "Calidad del agua":"—", "Monitoreo":"—"}])], ignore_index=True)
         st.dataframe(
             cobertura,
             width="stretch",
@@ -1878,6 +1888,12 @@ elif seccion == "Agua subterránea (GRACE)":
     else:
         st.title(f"🌐 Agua subterránea satelital · {territorio}")
         st.caption("GWSa + índice de sequía de agua subterránea (GGDI) · GRACE/GRACE-FO + GLDAS")
+        # SIAMS_CHINGAZA_GRACE_REGIONAL
+        if territorio == "Chingaza":
+            st.info("La señal GRACE/GRACE-FO es regional (resolución efectiva de cientos de kilómetros). "
+                    "La celda válida más próxima al punto de referencia del parque puede compartir señal con Bogotá. "
+                    "No corresponde a una medición independiente de la cuenca, del embalse Chuza ni de un pozo. "
+                    "GGDI se obtiene de GWSa y su climatología mensual, no de precipitación menos evapotranspiración.")
         # SIAMS_A4_REFERENCIA_CF
         st.caption(
             "Referencia metodológica: Romero, P. y Piña, A. (2025), "
@@ -2423,6 +2439,9 @@ elif seccion == "Calidad del agua e IRCA":
 # SENTINEL-2 · VISOR SATELITAL POR SEDE
 # =========================================================
 
+elif seccion == "Origen de humedad atmosférica":
+    mostrar_humedad_territorio(territorio)
+
 elif seccion == "Sentinel-2":
     st.title(f"🛰️ Sentinel-2 · {territorio}")
     mostrar_sentinel_territorio(territorio)
@@ -2434,6 +2453,10 @@ elif seccion == "Landsat":
 # =========================================================
 # COBERTURA Y RELIEVE
 # =========================================================
+
+elif territorio == "Chingaza" and seccion == "Cobertura y relieve":
+    from siams.chingaza_relieve import mostrar as mostrar_relieve_chingaza
+    mostrar_relieve_chingaza()
 
 elif seccion == "Cobertura y relieve":
     st.title(f"🌿 Cobertura y relieve de {territorio}")
@@ -2579,7 +2602,7 @@ elif seccion == "Comparar territorios":
         """
         <div class="soft-box">
             <strong>Criterio de comparación:</strong>
-            Bogotá, Leticia, Medellín, San Andrés y La Paz utilizan NASA POWER cuando el archivo procesado está disponible.
+            Bogotá, Leticia, Medellín, San Andrés, La Paz y Chingaza utilizan NASA POWER cuando el archivo procesado está disponible.
             Tumaco y Arauca utilizan IDEAM como referencia terrestre para precipitación y temperatura,
             mientras que NASA POWER se usa como contraste y para variables sin observación terrestre equivalente.
             En Arauca la humedad IDEAM se muestra con advertencia metodológica. Las fuentes no se fusionan.
@@ -2618,6 +2641,14 @@ elif seccion == "Comparar territorios":
             st.warning(f"No fue posible incorporar los datos NASA POWER de {nombre} en la comparación.")
 
     # -----------------------------------------------------
+    # Chingaza usa un producto exclusivamente mensual, sin publicar registros diarios.
+    from siams.chingaza_datos import climatologia_nasa as clima_mensual_chingaza
+    temporal_chingaza = clima_mensual_chingaza()
+    if not temporal_chingaza.empty:
+        temporal_chingaza["Territorio"] = "Chingaza"
+        temporal_chingaza["Fuente principal"] = "NASA POWER"
+        datasets.append(temporal_chingaza)
+        fuentes_resumen.append({"Territorio":"Chingaza", "Precipitación":"NASA POWER", "Temperatura":"NASA POWER", "Humedad":"NASA POWER", "Viento / presión / radiación":"NASA POWER"})
     # TUMACO Y ARAUCA: IDEAM + NASA POWER
     # -----------------------------------------------------
     for nombre in ("Tumaco", "Arauca"):
@@ -2734,7 +2765,7 @@ elif seccion == "Comparar territorios":
             )
             st.plotly_chart(fig, width="stretch")
             st.caption(
-                "Tumaco y Arauca usan precipitación IDEAM; Bogotá, Leticia, Medellín, San Andrés y La Paz usan NASA POWER."
+                "Tumaco y Arauca usan precipitación IDEAM; Bogotá, Leticia, Medellín, San Andrés, La Paz y Chingaza usan NASA POWER."
             )
 
         with tab_t:

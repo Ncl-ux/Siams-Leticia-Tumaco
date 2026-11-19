@@ -117,6 +117,17 @@ UNAL_SEDES = pd.DataFrame([
 ])
 
 TERRITORIOS = {
+    "Chingaza": {
+        "region": "Región Andina", "departamento": "Cundinamarca y Meta",
+        "sede": "Proyecto Chingaza · SIAMS (territorio de estudio)",
+        "lat": 4.567931, "lon": -73.744330,
+        "area_principal": "PNN Chingaza y cuencas de estudio", "contexto": "Sistema hídrico Chingaza",
+        "fuente_clima": "EAAB; NASA POWER, CHIRPS, IMERG e IDEAM según disponibilidad",
+        "estado_datos": "Cartografía derivada y series EAAB mensuales; otros productos en integración",
+        "descripcion": "Observatorio del sistema hídrico de Chingaza orientado a la caracterización de cuencas, precipitación y caudales.",
+        "precipitacion": [], "temperatura": [], "humedad": [],
+        "hallazgo": "La información del proyecto incluye delimitaciones hidrográficas y registros EAAB históricos. Las series se presentan exclusivamente a escala mensual.",
+    },
     "Bogotá": {
         "region": "Región Andina",
         "departamento": "Bogotá D.C.",
@@ -275,6 +286,19 @@ TERRITORIOS = {
 }
 
 ESTADO_COMPONENTES = {
+    "Chingaza": [
+        ("Identificación y contexto", "Completo", "Territorio de estudio, no sede UNAL."),
+        ("Cartografía e hidrología", "En proceso", "Geovisor y series mensuales EAAB; SWOT pendiente."),
+        ("Clima", "En proceso", "EAAB mensual; descargas satelitales e IDEAM por completar."),
+        ("Geología", "En proceso", "Mapa y caracterización de Chuza (Fase I, 2013); falta cartografía vectorial."),
+        ("Cobertura y relieve", "Pendiente", "DEM, Landsat y MapBiomas por integrar."),
+        ("Estaciones y calidad", "En proceso", "Inventario EAAB; selección IDEAM pendiente."),
+        ("Hidrogeología", "En proceso", "Modelo conceptual de Chuza (Fase II, 2016); no es un modelo dinámico calibrado."),
+        ("Sentinel-2", "En proceso", "Selección de mejores meses recibida."),
+        ("Hidrogeoquímica", "Pendiente", "Calidad de agua y muestras puntuales por revisar."),
+        ("Isótopos", "En proceso", "18 pares de lluvia, tres totalizadores, mayo–octubre de 2023; muestreos puntuales pendientes."),
+        ("Monitoreo", "Pendiente", "Información de campo por revisar."),
+    ],
     "Bogotá": [
         ("Identificación y contexto", "Completo", "Sede, coordenadas y contexto territorial incorporados."),
         ("Cartografía e hidrología", "En proceso", "Ubicación multiescala y observaciones SWOT de Chuza y San Rafael incorporadas; cartografía temática pendiente."),

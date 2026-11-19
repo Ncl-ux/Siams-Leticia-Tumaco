@@ -1,0 +1,148 @@
+{
+  "version": 2,
+  "territorios": {
+    "tumaco": {
+      "archivo_original": "Sentinel2_Agua_Unal_Tumaco_10km-20261118T230150Z-1-001.zip",
+      "identificacion": "confirmada",
+      "productos": {
+        "SCL": "Tumaco/mejores_meses/tumaco_clasificacion_de_superficies_y_nubes_scl.mp4",
+        "NDVI": "Tumaco/mejores_meses/tumaco_estado_de_la_vegetacion_ndvi.mp4",
+        "MNDWI": "Tumaco/mejores_meses/tumaco_deteccion_de_agua_superficial_mndwi.mp4"
+      },
+      "tipo_secuencia": "mejores_meses_de_distintos_anios",
+      "publicar": true,
+      "nombre_visible": "Tumaco",
+      "sha256": {
+        "SCL": "257984dfa5adf3787290f75fd814227d6ddb16777c8ea15435c8b19bc0a9a47a",
+        "NDVI": "83cfa4b7260df66cf54d26045c38cba215d41ea808454a0dd0794b9f51f22443",
+        "MNDWI": "6e3dbbd2211223578843c6e0055f88921ed0ff7ef4d399deecc3e6a93be71744"
+      }
+    },
+    "arauca": {
+      "archivo_original": "visualizacion_temporal-20261118T230122Z-1-001.zip",
+      "identificacion": "confirmada_por_responsable",
+      "productos": {
+        "MNDWI": "Arauca/mejores_meses/arauca_deteccion_de_agua_superficial_mndwi.mp4",
+        "SCL": "Arauca/mejores_meses/arauca_clasificacion_de_superficies_y_nubes_scl.mp4",
+        "NDVI": "Arauca/mejores_meses/arauca_estado_de_la_vegetacion_ndvi.mp4"
+      },
+      "tipo_secuencia": "mejores_meses_de_distintos_anios",
+      "publicar": true,
+      "nombre_visible": "Arauca",
+      "sha256": {
+        "MNDWI": "5db22e9f299ebcbad1acd3bae32c35c96f6e9e09ae1107842f97528615cb77a4",
+        "SCL": "7087e70564e854132833292bcf60e4092372645854b55a63a408870819cc9baf",
+        "NDVI": "1c947f21bddfa81e76cd8c1253bda37217c993a9af984d2f0c314a50cd0022d7"
+      }
+    },
+    "bogota": {
+      "archivo_original": "visualizacion_temporal-20261118T230128Z-1-001.zip",
+      "identificacion": "confirmada_por_responsable",
+      "productos": {
+        "NDVI": "Bogota/mejores_meses/bogota_estado_de_la_vegetacion_ndvi.mp4",
+        "SCL": "Bogota/mejores_meses/bogota_clasificacion_de_superficies_y_nubes_scl.mp4",
+        "MNDWI": "Bogota/mejores_meses/bogota_deteccion_de_agua_superficial_mndwi.mp4"
+      },
+      "tipo_secuencia": "mejores_meses_de_distintos_anios",
+      "publicar": true,
+      "nombre_visible": "Bogotá",
+      "sha256": {
+        "NDVI": "c2c54bac20ce4253ac40198acb33a53b27f286af7eabe704d72a497a3bfa0f8f",
+        "SCL": "8c2279d31c882ce316c70bfc2cb594896390cdb700616b19842d1215e18c65fc",
+        "MNDWI": "91f1029e3f9876c23402e1feae18f0d165c104272dfc09e0919a810ba9405c8e"
+      }
+    },
+    "la_paz": {
+      "archivo_original": "visualizacion_temporal-20261118T230133Z-1-001.zip",
+      "identificacion": "confirmada_por_responsable",
+      "productos": {
+        "SCL": "La Paz/mejores_meses/la_paz_clasificacion_de_superficies_y_nubes_scl.mp4",
+        "NDVI": "La Paz/mejores_meses/la_paz_estado_de_la_vegetacion_ndvi.mp4",
+        "MNDWI": "La Paz/mejores_meses/la_paz_deteccion_de_agua_superficial_mndwi.mp4"
+      },
+      "tipo_secuencia": "mejores_meses_de_distintos_anios",
+      "publicar": true,
+      "nombre_visible": "La Paz",
+      "sha256": {
+        "SCL": "eab05bb8823aaa91e76fda12b4d1685f42fc83184f0bcb7d5b5a141087b78af3",
+        "NDVI": "9f61b2bf4077bf9e7983f6afde921ecc8c5a9e998b472f3633468bfab52879d2",
+        "MNDWI": "174468fe63aeee1038a22e280874fbe33f4d9028fc1a4f8ad9fef56168b3bbe3"
+      }
+    },
+    "leticia": {
+      "archivo_original": "visualizacion_temporal-20261118T230137Z-1-001.zip",
+      "identificacion": "confirmada_por_responsable",
+      "productos": {
+        "MNDWI": "Leticia/mejores_meses/leticia_deteccion_de_agua_superficial_mndwi.mp4",
+        "SCL": "Leticia/mejores_meses/leticia_clasificacion_de_superficies_y_nubes_scl.mp4",
+        "NDVI": "Leticia/mejores_meses/leticia_estado_de_la_vegetacion_ndvi.mp4"
+      },
+      "tipo_secuencia": "mejores_meses_de_distintos_anios",
+      "publicar": true,
+      "nombre_visible": "Leticia",
+      "sha256": {
+        "MNDWI": "27461a5735adadae34965d6ca05974b648ce326e176091f742d67d73c1d69b80",
+        "SCL": "50b2432491aa7c6ddbdc7e93ab08f1b3d93c039cf8db4bf28557d7e681190223",
+        "NDVI": "91e2a8b4e467983ee1c96aaaf83a2267e47b34e83946123b9b21460cf832d7a9"
+      }
+    },
+    "medellin": {
+      "archivo_original": "visualizacion_temporal-20261118T230143Z-1-001.zip",
+      "identificacion": "confirmada_por_responsable",
+      "productos": {
+        "MNDWI": "Medellin/mejores_meses/medellin_deteccion_de_agua_superficial_mndwi.mp4",
+        "NDVI": "Medellin/mejores_meses/medellin_estado_de_la_vegetacion_ndvi.mp4",
+        "SCL": "Medellin/mejores_meses/medellin_clasificacion_de_superficies_y_nubes_scl.mp4"
+      },
+      "tipo_secuencia": "mejores_meses_de_distintos_anios",
+      "publicar": true,
+      "nombre_visible": "Medellín",
+      "sha256": {
+        "MNDWI": "d325349f92304a69f9dbc1e606be195e449b11e6dd858877430abe070fe1d1ce",
+        "NDVI": "0aea89f27ec63076d5910801bd68b924cc13b1ec666844186015e0f4b742d9fe",
+        "SCL": "ff638998861ae592f6dab1cf03674ce36c0a8ead092223fabcdbe1f92ef97dfe"
+      }
+    },
+    "san_andres": {
+      "archivo_original": "visualizacion_temporal-20261118T230148Z-1-001.zip",
+      "identificacion": "confirmada_por_responsable",
+      "productos": {
+        "NDVI": "San Andres/mejores_meses/san_andres_estado_de_la_vegetacion_ndvi.mp4",
+        "SCL": "San Andres/mejores_meses/san_andres_clasificacion_de_superficies_y_nubes_scl.mp4",
+        "MNDWI": "San Andres/mejores_meses/san_andres_deteccion_de_agua_superficial_mndwi.mp4"
+      },
+      "tipo_secuencia": "mejores_meses_de_distintos_anios",
+      "publicar": true,
+      "nombre_visible": "San Andrés",
+      "sha256": {
+        "NDVI": "004b859a659748f7aae0970b158b3e443da3979f86d0d242d90a89ed974a5dbc",
+        "SCL": "679cd6d6fa565736d768cd7f22f058a798d548561a2abe6b3ed069b1a25da562",
+        "MNDWI": "dd451e0c0b5a5eb696a241c4ffe40bd8c771772b22bd430e852c5f1d364a5b88"
+      }
+    },
+    "chingaza": {
+      "archivo_original": "visualizacion_temporal-20261119T001320Z-1-001.zip",
+      "identificacion": "confirmada",
+      "productos": {
+        "SCL": "Chingaza/mejores_meses/chingaza_clasificacion_de_superficies_y_nubes_scl.mp4",
+        "NDVI": "Chingaza/mejores_meses/chingaza_estado_de_la_vegetacion_ndvi.mp4",
+        "MNDWI": "Chingaza/mejores_meses/chingaza_deteccion_de_agua_superficial_mndwi.mp4"
+      },
+      "tipo_secuencia": "mejores_meses_de_distintos_anios",
+      "publicar": true,
+      "nombre_visible": "Chingaza",
+      "sha256": {
+        "SCL": "e778d572847c3a19dd75480158eded3ec1caca85dde0a06d030c0ebdfd369c0c",
+        "NDVI": "08a28c55fd5fe8defad3e64c708c4dad5e81eafe0123c2952c972ab3b43ff713",
+        "MNDWI": "66835486749b454edeb032abdae82f404c80c71afabef1ecda3bcdf133a62745"
+      }
+    }
+  },
+  "nombre_modulo": "Sentinel-2",
+  "nombres_productos": {
+    "MNDWI": "Detección de agua superficial",
+    "NDVI": "Estado de la vegetación",
+    "SCL": "Clasificación de superficies y nubes"
+  },
+  "nota": "Selección mensual multianual. Las sedes provisionales solo se muestran con SIAMS_SENTINEL_PREVIA=1."
+}

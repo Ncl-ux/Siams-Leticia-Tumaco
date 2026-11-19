@@ -1,0 +1,83 @@
+{
+  "referencia": {
+    "lat": 4.567931,
+    "lon": -73.74433,
+    "criterio": "Punto interior representativo del polígono PNN Chingaza entregado; no corresponde al centro del embalse ni al promedio de una cuenca."
+  },
+  "capas": [
+    {
+      "archivo": "Chingaza.geojson",
+      "nombre": "PNN Chingaza",
+      "elementos": 1,
+      "geometrias_reparadas": 0,
+      "fuente": "Proyecto Chingaza / SIG / Geodatabase / Chingaza.shp",
+      "crs_salida": "EPSG:4326"
+    },
+    {
+      "archivo": "Chingaza_Buffer.geojson",
+      "nombre": "Zona de influencia",
+      "elementos": 1,
+      "geometrias_reparadas": 0,
+      "fuente": "Proyecto Chingaza / SIG / Geodatabase / Chingaza_Buffer.shp",
+      "crs_salida": "EPSG:4326"
+    },
+    {
+      "archivo": "Full_Chuza_Catchment.geojson",
+      "nombre": "Cuenca río Chuza",
+      "elementos": 1,
+      "geometrias_reparadas": 1,
+      "fuente": "Proyecto Chingaza / SIG / Geodatabase / Full_Chuza_Catchment.shp",
+      "crs_salida": "EPSG:4326"
+    },
+    {
+      "archivo": "Sampling_Catchment_Chuza.geojson",
+      "nombre": "Cuenca de muestreo Chuza",
+      "elementos": 1,
+      "geometrias_reparadas": 1,
+      "fuente": "Proyecto Chingaza / SIG / Geodatabase / Sampling_Catchment_Chuza.shp",
+      "crs_salida": "EPSG:4326"
+    },
+    {
+      "archivo": "Cuenca_Playa_Frai_Frio.geojson",
+      "nombre": "Cuenca Playa–Fray–Frío",
+      "elementos": 1,
+      "geometrias_reparadas": 1,
+      "fuente": "Proyecto Chingaza / SIG / Geodatabase / Cuenca_Playa_Frai_Frio.shp",
+      "crs_salida": "EPSG:4326"
+    },
+    {
+      "archivo": "Piedras_Gordas.geojson",
+      "nombre": "Cuenca Piedras Gordas",
+      "elementos": 1,
+      "geometrias_reparadas": 0,
+      "fuente": "Proyecto Chingaza / SIG / Geodatabase / Piedras_Gordas.shp",
+      "crs_salida": "EPSG:4326"
+    },
+    {
+      "archivo": "DrainageLine_Chuza.geojson",
+      "nombre": "Drenaje Chuza",
+      "elementos": 146,
+      "geometrias_reparadas": 0,
+      "fuente": "Proyecto Chingaza / SIG / Geodatabase / DrainageLine_Chuza.shp",
+      "crs_salida": "EPSG:4326"
+    },
+    {
+      "archivo": "DrainageLine_Playa_Frai_Frio.geojson",
+      "nombre": "Drenaje Playa–Fray–Frío",
+      "elementos": 132,
+      "geometrias_reparadas": 0,
+      "fuente": "Proyecto Chingaza / SIG / Geodatabase / DrainageLine_Playa_Frai_Frio.shp",
+      "crs_salida": "EPSG:4326"
+    },
+    {
+      "archivo": "DrainageLine_PiedrasGordas.geojson",
+      "nombre": "Drenaje Piedras Gordas",
+      "elementos": 1,
+      "geometrias_reparadas": 0,
+      "fuente": "Proyecto Chingaza / SIG / Geodatabase / DrainageLine_PiedrasGordas.shp",
+      "crs_salida": "EPSG:4326"
+    }
+  ],
+  "simplificacion_grados": 0.0001,
+  "nota": "Cartografía derivada para visualización. Fuente primaria y fecha de cada capa pendientes de confirmar; no usar para medición de área o modelación."
+}

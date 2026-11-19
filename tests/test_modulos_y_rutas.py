@@ -24,7 +24,7 @@ def test_importar_modulo(nombre):
 
 def test_territorios_y_datos_basicos():
     from siams.catalogo import TERRITORIOS, ESTADO_COMPONENTES
-    esperado = {"Bogotá", "Leticia", "Tumaco", "Medellín", "San Andrés", "Arauca", "La Paz"}
+    esperado = {"Bogotá", "Leticia", "Tumaco", "Medellín", "San Andrés", "Arauca", "La Paz", "Chingaza"}
     assert set(TERRITORIOS) == esperado
     assert set(ESTADO_COMPONENTES) == esperado
     for sede, registro in TERRITORIOS.items():

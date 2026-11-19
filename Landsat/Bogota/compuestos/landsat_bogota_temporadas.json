@@ -1,0 +1,30 @@
+[
+  {
+    "temporada": 2023,
+    "ficha": "bogota_2022-12_2023-02_compuesto.json",
+    "imagen": "bogota_2022-12_2023-02_color_natural.jpg",
+    "sha256_ficha": "e5fadbfd7f6f51e0b7ef74c686697c9e7a04bb1c286007faf3191e071a8cbf26",
+    "sha256_imagen": "9e434557ca2fd9badd01d0145925d40e09a1e38e51a0b678b5ade158da8af0bc"
+  },
+  {
+    "temporada": 2024,
+    "ficha": "bogota_2023-12_2024-02_compuesto.json",
+    "imagen": "bogota_2023-12_2024-02_color_natural.jpg",
+    "sha256_ficha": "cb2340f74df43d4a0458f16252b7172d1769d8c48ac95a05517c613425d6d03e",
+    "sha256_imagen": "5f48ed5d9d998fcbe9c7ea1477aeac1e83829398fe3bf44910f409c25e72a1bf"
+  },
+  {
+    "temporada": 2025,
+    "ficha": "bogota_2024-12_2025-02_compuesto.json",
+    "imagen": "bogota_2024-12_2025-02_color_natural.jpg",
+    "sha256_ficha": "83c7a18193660f1bdcccc7b424432ebdecede638088e3613c3bf9adae1367f0e",
+    "sha256_imagen": "358a596eea44995760ebfd25180355a447b3b5dc7b4f26328cc1bef3d3d80c5f"
+  },
+  {
+    "temporada": 2026,
+    "ficha": "bogota_2025-12_2026-02_compuesto.json",
+    "imagen": "bogota_2025-12_2026-02_color_natural.jpg",
+    "sha256_ficha": "ab8ddb70595c0e136f2d4747be563a0f45ea76137a923d116c73c21b2d0a8c88",
+    "sha256_imagen": "17273832a8db36d0163446f4c1996df73975f2a510a3d044c8c95ced043cd949"
+  }
+]

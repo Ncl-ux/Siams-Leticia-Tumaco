@@ -1,0 +1,16 @@
+[
+  {
+    "temporada": 2023,
+    "ficha": "chingaza_2022-12_2023-02_compuesto.json",
+    "imagen": "chingaza_2022-12_2023-02_color_natural.jpg",
+    "sha256_ficha": "f9a3a5c6f2374d33cfe551477116014f211e9cdb1f15050a6199d0837dffe571",
+    "sha256_imagen": "0666cdc0d6a4101f702e35aa24f63eaed54025da96b33b7474e69292b0f11283"
+  },
+  {
+    "temporada": 2024,
+    "ficha": "chingaza_2023-12_2024-02_compuesto.json",
+    "imagen": "chingaza_2023-12_2024-02_color_natural.jpg",
+    "sha256_ficha": "92b622ebb24387020e3bfbaca77660693952c6546c066d8f79810c1c843b02d5",
+    "sha256_imagen": "4e26315d839f4b693ad8ed32fa7fd2abdc9cdd3ec649dece0f3b2b084a3c3908"
+  }
+]
