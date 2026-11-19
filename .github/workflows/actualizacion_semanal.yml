@@ -1,7 +1,7 @@
 name: Actualización semanal de datos abiertos
 
 # Cada lunes 06:00 hora de Colombia (11:00 UTC). Fuentes activas: NASA POWER, CHIRPS v3.0 e
-# IDEAM (datos.gov.co: s54a-sgyg, sbwg-7ju4, bdmn-sqnh). GRACE/GLDAS y ERA5-Land quedan
+# IDEAM (datos.gov.co: s54a-sgyg, sbwg-7ju4, bdmn-sqnh). Chingaza: NASA POWER diario y mensual; CHIRPS e IMERG mensuales por descargador independiente. GRACE/GLDAS y ERA5-Land quedan
 # desactivados porque requieren credenciales (Earthdata / Copernicus CDS); ver pasos comentados.
 on:
   schedule:
@@ -46,6 +46,27 @@ jobs:
             python scripts/16_actualizar_imerg.py --no-interactivo --max-meses 24
           fi
 
+      - name: Chingaza · NASA POWER diario y mensual
+        continue-on-error: true
+        run: python scripts/21_chingaza_satelital.py --fuente nasa_power
+
+      - name: Chingaza · CHIRPS mensual
+        continue-on-error: true
+        run: python scripts/21_chingaza_satelital.py --fuente chirps
+
+      - name: Chingaza · IMERG mensual
+        env:
+          EARTHDATA_USERNAME: ${{ secrets.EARTHDATA_USERNAME }}
+          EARTHDATA_PASSWORD: ${{ secrets.EARTHDATA_PASSWORD }}
+        continue-on-error: true
+        run: |
+          if [ -z "$EARTHDATA_USERNAME" ] || [ -z "$EARTHDATA_PASSWORD" ]; then
+            echo "::warning::IMERG Chingaza sin credenciales Earthdata; se conserva el histórico."
+          else
+            python -m pip install earthaccess h5py
+            python scripts/21_chingaza_satelital.py --fuente imerg --no-interactivo --max-meses 24
+          fi
+
       - name: Regenerar productos NASA POWER de SIAMS
         run: python scripts/14_nasa_productos_actualizados.py
 
@@ -71,6 +92,38 @@ jobs:
             \( -name 'nasa_power_*.csv' -o -name 'nasa_power_*_actualizado.xlsx' \
                -o -name 'chirps_*.csv' -o -name 'chirps_*.nodata.json' \
                -o -name 'imerg_final_*.csv' -o -name 'ideam_*.csv' \
-               -o -name 'metadatos.json' \) -print0 | xargs -0 -r git add --
+               -o -name 'metadatos.json' \) ! -iname '*chingaza*' -print0 | xargs -0 -r git add --
+          # Chingaza: lista cerrada de productos abiertos, sin fuentes institucionales crudas.
+          python - <<'PYTHON'
+          import csv
+          from datetime import date
+          from pathlib import Path
+          import subprocess
+          base = Path("data/processed/actualizacion")
+          for name in ("nasa_power_chingaza_mensual.csv", "chirps_chingaza.csv", "imerg_final_chingaza.csv"):
+              p = base / name
+              if not p.exists():
+                  continue
+              with p.open(encoding="utf-8-sig", newline="") as f:
+                  reader = csv.DictReader(f)
+                  assert {"fecha", "precipitacion_mm_mes"}.issubset(reader.fieldnames or []), p
+                  dates = [date.fromisoformat(row["fecha"]) for row in reader]
+              assert dates and all(d.day == 1 for d in dates) and len(set(dates)) == len(dates), p
+              subprocess.run(["git", "add", "--", str(p)], check=True)
+          p = base / "nasa_power_chingaza.csv"
+          if p.exists():
+              with p.open(encoding="utf-8-sig", newline="") as f:
+                  reader = csv.DictReader(f)
+                  expected = {"fecha", "precipitacion_mm_dia", "temperatura_media_C",
+                              "temperatura_maxima_C", "temperatura_minima_C", "humedad_relativa_pct",
+                              "viento_2m_m_s", "presion_superficie_kPa", "radiacion_solar_MJ_m2_dia"}
+                  assert set(reader.fieldnames or []) == expected, p
+                  dates = [date.fromisoformat(row["fecha"]) for row in reader]
+              assert dates and len(set(dates)) == len(dates), p
+              subprocess.run(["git", "add", "--", str(p)], check=True)
+          p = base / "chirps_chingaza.nodata.json"
+          if p.exists():
+              subprocess.run(["git", "add", "--", str(p)], check=True)
+          PYTHON
           git diff --cached --quiet || git commit -m "Actualización semanal automática de datos abiertos"
           git push

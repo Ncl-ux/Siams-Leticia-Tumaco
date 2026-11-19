@@ -1,0 +1,47 @@
+{
+  "fuente": "Copernicus DEM GLO-30 (ESA/Airbus, © DLR e.V. 2010-2014 y © Airbus Defence and Space GmbH 2014-2018, licencia Copernicus)",
+  "url_tesela": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N04_00_W074_00_DEM/Copernicus_DSM_COG_10_N04_00_W074_00_DEM.tif",
+  "archivo_local": false,
+  "crs": "EPSG:32618",
+  "resolucion_m": 30,
+  "unidad_vertical": "m, EGM2008 (DSM; sin corrección local de sesgo)",
+  "area_estudio": "PNN Chingaza, polígono original SIG sin simplificar",
+  "cobertura_dem_pct": 100.0,
+  "cobertura_pendiente_pct": 100.0,
+  "min_m": 837.4579467773438,
+  "max_m": 3995.97216796875,
+  "media_m": 2956.429443359375,
+  "pendiente_media_deg": 24.41341949121782,
+  "clases_pendiente": [
+    {
+      "clase": "0–5°",
+      "area_ha": 3167.28,
+      "porcentaje": 4.093697181337338
+    },
+    {
+      "clase": "5–15°",
+      "area_ha": 16980.75,
+      "porcentaje": 21.947553867038597
+    },
+    {
+      "clase": "15–25°",
+      "area_ha": 21664.98,
+      "porcentaje": 28.00190307131981
+    },
+    {
+      "clase": "25–35°",
+      "area_ha": 18486.72,
+      "porcentaje": 23.89401428234087
+    },
+    {
+      "clase": "35–45°",
+      "area_ha": 12887.73,
+      "porcentaje": 16.657341307000532
+    },
+    {
+      "clase": "45–90°",
+      "area_ha": 4182.21,
+      "porcentaje": 5.405490290962854
+    }
+  ]
+}

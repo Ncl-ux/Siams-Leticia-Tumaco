@@ -6,3 +6,5 @@ rasterio==1.5.2
 pyproj==3.8.0
 # Pruebas de lectura IMERG (HDF5)
 h5py==3.16.0
+# Pruebas del procesamiento de relieve
+matplotlib==3.11.2

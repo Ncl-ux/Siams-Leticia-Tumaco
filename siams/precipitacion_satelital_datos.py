@@ -7,7 +7,7 @@ RAIZ = Path(__file__).resolve().parents[1]
 ACTUALIZACION = RAIZ / 'data/processed/actualizacion'
 LETICIA = RAIZ / 'data/processed/observatorio_leticia'
 SEDES = {'Bogotá':'bogota','Leticia':'leticia','Tumaco':'tumaco','Medellín':'medellin',
-         'San Andrés':'san_andres','Arauca':'arauca','La Paz':'la_paz'}
+         'San Andrés':'san_andres','Arauca':'arauca','La Paz':'la_paz','Chingaza':'chingaza'}
 VALOR = 'precipitacion_mm_mes'
 
 
@@ -43,6 +43,8 @@ def fuentes(sede, raiz=None):
     d = {'CHIRPS v3 Final':(base/f'chirps_{sede}.csv','fecha',VALOR),
          'IMERG Final V07B (NASA)' :(base/f'imerg_final_{sede}.csv','fecha',VALOR),
          'NASA POWER':(base/f'nasa_power_{sede}.csv','fecha','precipitacion_mm_dia')}
+    if sede == 'chingaza':
+        d['NASA POWER']=(base/'nasa_power_chingaza_mensual.csv','fecha',VALOR)
     if sede == 'leticia':
         d.update({'CHIRPS v2 (histórico Leticia)':(let/'chirps_v2_leticia_mensual.csv','month','Leticia'),
                   'IMERG Final V07 (histórico Leticia)':(let/'imerg_final_leticia_mensual.csv','month','Leticia')})
@@ -54,7 +56,7 @@ def cargar(sede, raiz=None, hoy=None):
     for nombre,(ruta,fecha,valor) in fuentes(sede,raiz).items():
         try:
             df = pd.read_csv(ruta)
-            s = nasa_mensual(df,hoy) if nombre == 'NASA POWER' else mensual(df,fecha,valor,hoy)
+            s = nasa_mensual(df,hoy) if nombre == 'NASA POWER' and sede != 'chingaza' else mensual(df,fecha,valor,hoy)
             if not s.notna().any():
                 raise ValueError('Sin valores mensuales válidos')
             series[nombre] = s.rename(nombre)

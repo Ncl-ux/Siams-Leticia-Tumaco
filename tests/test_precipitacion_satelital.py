@@ -27,7 +27,7 @@ def test_cargar_independiente(tmp_path):
     t,avisos=cargar('bogota',tmp_path,hoy='2021-01-01'); assert len(t.columns)==2 and 'NASA POWER' in avisos
     r=pares(t,'CHIRPS v3 Final').iloc[0]; assert r['Meses comunes']==2 and r['Sesgo (mm)']==10
     assert inventario(t).iloc[0]['Huecos internos']==1
-    assert len(SEDES)==7
+    assert len(SEDES)==8 and SEDES["Chingaza"]=="chingaza"
 
 def test_chirps_no_reemplaza_valido_por_nulo(tmp_path,monkeypatch):
     m=mod('12_actualizacion_semanal.py'); m.SALIDA=tmp_path; m.INICIO['chirps']='2024-01-01'

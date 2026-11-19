@@ -9,7 +9,7 @@ def test_mp4_siams_archivos_en_carpetas_existentes():
     swot = list((RAIZ / 'Animaciones_SWOT').glob('swot_*_ancho.mp4'))
     mapbiomas = list((RAIZ / 'Coberturas_MapBiomas').glob('*/mapbiomas_*.mp4'))
     assert len(swot) == 5, f'SWOT: encontrados {len(swot)} MP4, esperados 5'
-    assert len(mapbiomas) == 21, f'MapBiomas: encontrados {len(mapbiomas)} MP4, esperados 21'
+    assert len(mapbiomas) == 24, f'MapBiomas: encontrados {len(mapbiomas)} MP4, esperados 24'
     assert all(p.stat().st_size > 1024 for p in swot + mapbiomas)
 
 

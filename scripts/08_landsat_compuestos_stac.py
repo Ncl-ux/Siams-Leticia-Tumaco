@@ -53,6 +53,7 @@ from siams.landsat_calidad import cargar_criterios, normalizar  # noqa: E402
 # Coordenadas de TERRITORIOS (app.py) y carpeta de cada sede dentro de Landsat/.
 SEDES = {
     "Bogotá": ((4.6386, -74.0841), "Bogota"),
+    "Chingaza": ((4.567931, -73.74433), "Chingaza"),
     "Arauca": ((7.012222763876252, -70.74338825990411), "Arauca"),
     "La Paz": ((10.390218033322455, -73.20038917337925), "La Paz"),
     "Leticia": ((-4.193717, -69.941001), "Leticia"),
@@ -104,6 +105,29 @@ def malla_utm(lat, lon, buffer_km):
     return f"EPSG:{epsg}", transform, n, circulo
 
 
+def malla_pnn_chingaza(ruta):
+    """Cuadrícula métrica cuadrada y máscara del PNN original, sin simplificar."""
+    from rasterio.features import bounds, geometry_mask
+    from rasterio.transform import from_origin, array_bounds
+    from rasterio.warp import transform_geom, transform_bounds
+
+    datos = json.loads(Path(ruta).read_text(encoding="utf-8-sig"))
+    geoms = [transform_geom("EPSG:4326", "EPSG:32618", f["geometry"])
+             for f in datos["features"] if f.get("geometry")]
+    if not geoms:
+        raise ValueError("El límite PNN no contiene geometrías")
+    limites = [bounds(g) for g in geoms]
+    x0, y0 = min(b[0] for b in limites), min(b[1] for b in limites)
+    x1, y1 = max(b[2] for b in limites), max(b[3] for b in limites)
+    n = int(math.ceil(max(x1-x0, y1-y0)/PIXEL_M)) + 4
+    tr = from_origin((x0+x1-n*PIXEL_M)/2, (y0+y1+n*PIXEL_M)/2, PIXEL_M, PIXEL_M)
+    mask = geometry_mask(geoms, out_shape=(n,n), transform=tr, invert=True)
+    if not mask.any():
+        raise ValueError("El límite PNN no contiene píxeles")
+    bbox = transform_bounds("EPSG:32618", "EPSG:4326", *array_bounds(n,n,tr))
+    return "EPSG:32618", tr, n, mask, list(bbox), n*PIXEL_M/2000
+
+
 def rangos_temporada(meses: list[int], temporada: int) -> tuple[str, str]:
     """Temporada que termina en el año indicado (dic–mar 2024 = dic 2023 a mar 2024)."""
     if meses[0] > meses[-1]:  # cruza el año
@@ -123,18 +147,97 @@ def leer(href, crs, transform, n, resampling):
         return vrt.read(1)
 
 
-def compuesto_sede(sede, temporadas, criterios, max_escenas, salida_base):
+def exportar_escenas_individuales(items, sede, criterios, crs, transform, n, aoi, salida):
+    """Exporta PNG de escenas aprobadas y su registro; nunca confunde compuesto con escena."""
+    from PIL import Image, ImageDraw
+    from rasterio.enums import Resampling
+    from siams.landsat_calidad import analizar_id_escena, motivos_incumplimiento, nombre_imagen_escena
+    import tempfile
+    salida.mkdir(parents=True, exist_ok=True)
+    filas = []
+    vistos = set()
+    cc = criterios['compuestos']
+    with tempfile.TemporaryDirectory(prefix='landsat_escenas_', dir=salida) as tmp:
+        temporal = Path(tmp)
+        for it in items:
+            id_escena = next((str(x) for x in (it.properties.get('landsat:product_id'), it.id)
+                              if x and analizar_id_escena(str(x))), str(it.id))
+            if id_escena in vistos:
+                continue
+            vistos.add(id_escena)
+            fecha = pd.Timestamp(it.datetime).strftime('%Y-%m-%d')
+            info = analizar_id_escena(id_escena) or {}
+            qa = leer(it.assets['qa_pixel'].href, crs, transform, n, Resampling.nearest)
+            valido = mascara_despejado(qa) & aoi
+            # Exigir datos en todas las bandas utilizadas en ambas vistas.
+            porcentaje = 100.0 * (1 - valido.sum()/aoi.sum())
+            motivos = motivos_incumplimiento(dict(id=id_escena, fecha=fecha, nube_aoi_pct=porcentaje,
+                                                  estado_original='aceptada'), sede, criterios)
+            bandas = {}
+            if not motivos:
+                for b in BANDAS:
+                    dn = leer(it.assets[b].href, crs, transform, n, Resampling.bilinear)
+                    valido &= dn > 0
+                    bandas[b] = dn.astype(np.float32)*0.0000275 - 0.2
+                porcentaje = 100.0 * (1 - valido.sum()/aoi.sum())
+                motivos = motivos_incumplimiento(dict(id=id_escena, fecha=fecha, nube_aoi_pct=porcentaje,
+                                                      estado_original='aceptada'), sede, criterios)
+            if not motivos:
+                vistas = []
+                for claves, rangos in [(('red','green','blue'),cc['realce_color_natural']),
+                                       (('swir16','nir08','red'),cc['realce_falso_color'])]:
+                    rgb = np.dstack([(np.clip((bandas[b]-lo)/(hi-lo),0,1)*255).astype(np.uint8)
+                                     for b,(lo,hi) in zip(claves,rangos.values())])
+                    rgb[~valido & aoi] = GRIS_SIN_DATO
+                    rgb[~aoi] = 255
+                    vistas.append(Image.fromarray(rgb).resize((750,750),Image.Resampling.LANCZOS))
+                lienzo = Image.new('RGB',(1500,854),'white')
+                dr = ImageDraw.Draw(lienzo)
+                for k, (vista, rotulo) in enumerate(zip(vistas,('Color natural B4-B3-B2','Falso color B6-B5-B4'))):
+                    lienzo.paste(vista,(750*k,30)); dr.text((750*k+10,5),rotulo,font=_fuente(19),fill='black')
+                dr.text((10,783),f'{sede} | {fecha} | {id_escena}',font=_fuente(18),fill='black')
+                dr.text((10,807),f'AOI sin dato útil: {porcentaje:.2f}% (gris) | {crs} | grilla 30 m',font=_fuente(18),fill='black')
+                dr.text((10,831),'Fuente: USGS/NASA Landsat C2 L2, vía Microsoft Planetary Computer',font=_fuente(18),fill='black')
+                lienzo.save(temporal/nombre_imagen_escena(id_escena),optimize=True)
+            filas.append(dict(fecha=fecha,id_escena=id_escena,sensor=info.get('sensor_nombre',''),
+                              path_row=info.get('path_row',''),tier=info.get('tier',''),
+                              nubosidad_catalogo_pct=it.properties.get('eo:cloud_cover'),
+                              nube_aoi_pct=porcentaje,estado_original='evaluada STAC',fotograma_gif=None,
+                              cumple=not motivos,motivos='; '.join(motivos)))
+            print(f'{id_escena}: AOI sin dato {porcentaje:.2f}% | {"aprobada" if not motivos else "; ".join(motivos)}',flush=True)
+        if not filas:
+            raise RuntimeError('No se encontraron escenas en STAC; no se sustituyeron los registros previos.')
+        tabla = pd.DataFrame(filas).sort_values(['fecha','id_escena'])
+        tabla.to_csv(temporal/'metadatos_escenas.csv',index=False)
+        imagenes = salida/'escenas'
+        imagenes.mkdir(exist_ok=True)
+        for png in temporal.glob('*.png'):
+            png.replace(imagenes/png.name)
+        (temporal/'metadatos_escenas.csv').replace(salida/'metadatos_escenas.csv')
+    print(f'{sede}: {len(tabla)} escenas evaluadas, {int(tabla.cumple.sum())} aprobadas.',flush=True)
+    return tabla
+
+
+def compuesto_sede(sede, temporadas, criterios, max_escenas, salida_base, solo_escenas=False):
     import planetary_computer
     import pystac_client
     from rasterio.enums import Resampling
 
     (lat, lon), carpeta = SEDES[sede]
     meses = criterios["ventana_estacional"][normalizar(sede)]
-    buffer_km = criterios["buffer_km"][normalizar(sede)]
     cc = criterios["compuestos"]
-    crs, transform, n, circulo = malla_utm(lat, lon, buffer_km)
-    d = buffer_km / 111.0
-    bbox = [lon - d / max(math.cos(math.radians(lat)), 0.2), lat - d, lon + d / max(math.cos(math.radians(lat)), 0.2), lat + d]
+    if sede == "Chingaza":
+        crs, transform, n, circulo, bbox, semiancho_km = malla_pnn_chingaza(
+            RAIZ / "data/processed/chingaza/pnn_limite_analisis.geojson")
+        buffer_km = None
+        area_interes = "PNN Chingaza (límite original SIG del proyecto)"
+    else:
+        buffer_km = criterios["buffer_km"][normalizar(sede)]
+        semiancho_km = buffer_km
+        crs, transform, n, circulo = malla_utm(lat, lon, buffer_km)
+        d = buffer_km / 111.0
+        bbox = [lon - d / max(math.cos(math.radians(lat)), 0.2), lat - d, lon + d / max(math.cos(math.radians(lat)), 0.2), lat + d]
+        area_interes = f"Buffer de {buffer_km} km"
     cat = pystac_client.Client.open("https://planetarycomputer.microsoft.com/api/stac/v1",
                                     modifier=planetary_computer.sign_inplace)
     items = []
@@ -145,6 +248,9 @@ def compuesto_sede(sede, temporadas, criterios, max_escenas, salida_base):
         items += [it for it in busq.items() if pd.Timestamp(it.datetime).month in meses]
     items.sort(key=lambda it: it.properties.get("eo:cloud_cover", 100))
     print(f"{sede}: {len(items)} escenas T1 L8/L9 en la ventana {meses} de {temporadas}", flush=True)
+
+    if solo_escenas:
+        return exportar_escenas_individuales(items, sede, criterios, crs, transform, n, circulo, salida_base / carpeta)
 
     registros, pilas = [], {b: [] for b in BANDAS}
     for it in items:
@@ -198,6 +304,7 @@ def compuesto_sede(sede, temporadas, criterios, max_escenas, salida_base):
     meta = dict(
         sede=sede, periodo=periodo.replace("_", " a "), temporadas=temporadas,
         ventana_meses=meses, buffer_km=buffer_km, crs=crs, pixel_m=PIXEL_M,
+        area_interes=area_interes, ancho_grilla_m=n*PIXEL_M,
         producto="Landsat Collection 2 Level-2 Tier 1 (reflectancia superficial), vía Microsoft Planetary Computer",
         sensores=sensores, escenas_consultadas=len(registros), escenas_usadas=len(fechas),
         primera_fecha=min(fechas), ultima_fecha=max(fechas),
@@ -219,7 +326,7 @@ def compuesto_sede(sede, temporadas, criterios, max_escenas, salida_base):
         rgb = np.dstack(canales)
         rgb[~circulo] = 255
         archivo = destino / f"{nombre}_{tipo}.jpg"
-        dibujar(rgb, archivo, sede, meta, rotulo, rango, buffer_km)
+        dibujar(rgb, archivo, sede, meta, rotulo, rango, semiancho_km)
         meta["imagenes"][tipo] = archivo.name
     with open(destino / f"{nombre}_compuesto.json", "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, indent=1)
@@ -267,7 +374,7 @@ def dibujar(rgb, archivo, sede, meta, rotulo, rango, buffer_km, ancho=1000):
     realce = ", ".join(f"{k} {a:g}–{b:g}" for k, (a, b) in rango.items())
     fs = _fuente(16)
     lineas = [
-        f"SIAMS · {sede} · {rotulo} · buffer {buffer_km} km",
+        f"SIAMS · {sede} · {rotulo} · {meta.get('area_interes', f'buffer {buffer_km} km')}",
         f"Mediana de {meta['escenas_usadas']} escenas despejadas ({meta['primera_fecha']} a {meta['ultima_fecha']}), "
         f"meses {', '.join(str(m) for m in meta['ventana_meses'])}",
         f"Landsat 8/9 C2 L2 Tier 1, máscara QA_PIXEL · realce fijo (reflectancia): {realce}",
@@ -287,16 +394,21 @@ def main(argv=None):
     ap.add_argument("--max-escenas", type=int, default=24, help="tope de escenas por compuesto (las menos nubladas)")
     ap.add_argument("--por-temporada", action="store_true",
                     help="genera un compuesto independiente por año de cierre de la temporada")
+    ap.add_argument("--solo-escenas", action="store_true", help="exporta escenas individuales aprobadas y metadatos, sin recalcular compuestos")
     a = ap.parse_args(argv)
     criterios = cargar_criterios()
     temporadas = sorted(set(a.temporadas))
     if a.max_escenas < 1:
         ap.error("--max-escenas debe ser positivo")
+    if a.solo_escenas and (a.por_temporada or not a.sede):
+        ap.error("--solo-escenas requiere --sede y no se combina con --por-temporada")
     for sede in a.sede or list(SEDES):
         grupos = [[t] for t in temporadas] if a.por_temporada else [temporadas]
         for grupo in grupos:
-            compuesto_sede(sede, grupo, criterios, a.max_escenas, RAIZ / "Landsat")
-
+            if a.solo_escenas:
+                compuesto_sede(sede, grupo, criterios, a.max_escenas, RAIZ / "Landsat", solo_escenas=True)
+            else:
+                compuesto_sede(sede, grupo, criterios, a.max_escenas, RAIZ / "Landsat")
 
 if __name__ == "__main__":
     main()

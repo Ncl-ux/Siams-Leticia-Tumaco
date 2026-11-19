@@ -287,6 +287,24 @@ def _compuestos_landsat(carpeta: Path) -> list[dict]:
     return resultado
 
 
+def _compuesto_principal_chingaza(compuestos, max_sin_dato):
+    """Prefiere un compuesto conjunto aprobado; si falta, el anual aprobado más reciente."""
+    candidatos = []
+    for i, c in enumerate(compuestos):
+        d = c["datos"]
+        try:
+            falta = float(d["aoi_sin_observacion_pct"])
+            temporadas = d["temporadas"]
+            if (d.get("sede") != "Chingaza" or d.get("publicable") is not True
+                    or not math.isfinite(falta) or not 0 <= falta <= max_sin_dato
+                    or not temporadas or not {"color_natural", "falso_color"}.issubset(c["imagenes"])):
+                continue
+            candidatos.append((len(set(temporadas)), max(temporadas), -i, i))
+        except (KeyError, TypeError, ValueError):
+            continue
+    return max(candidatos)[-1] if candidatos else 0
+
+
 def _imagen_escena_landsat(carpeta: Path, id_escena: str):
     """Busca PNG validado por el script 07 para un ID Landsat bien formado."""
     if not isinstance(id_escena, str) or not re.fullmatch(r"[A-Za-z0-9_\-]+", id_escena):
@@ -299,7 +317,7 @@ def _descarga_landsat(ruta: Path, etiqueta: str, clave: str) -> None:
     if not ruta.is_file():
         return
     tipos = {".csv": "text/csv", ".json": "application/json",
-             ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png"}
+             ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".mp4": "video/mp4"}
     st.download_button(
         etiqueta, data=ruta.read_bytes(), file_name=ruta.name,
         mime=tipos.get(ruta.suffix.casefold(), "application/octet-stream"),
@@ -317,18 +335,9 @@ def mostrar_landsat_territorio(nombre_territorio: str) -> None:
     carpeta = inv["carpeta"]
     slug = normalizar_etiqueta(nombre_territorio)
 
-    st.markdown(
-        """<div style="background:linear-gradient(110deg,#0b3d36,#146c5c);
-        border-radius:16px;padding:18px 22px;margin:0 0 12px 0;">
-        <div style="font-size:0.74rem;letter-spacing:.12em;font-weight:750;
-        color:#b9efe3!important;">SIAMS · OBSERVACIÓN SATELITAL</div>
-        <div style="font-size:1.45rem;line-height:1.25;font-weight:800;
-        color:#ffffff!important;margin-top:5px;">Landsat · imágenes con criterios</div>
-        <div style="font-size:.92rem;line-height:1.55;color:#e5fbf5!important;
-        margin-top:5px;">Compuestos multitemporales, escenas de calidad y trazabilidad.
-        </div></div>""",
-        unsafe_allow_html=True,
-    )
+    st.caption("SIAMS · OBSERVACIÓN SATELITAL")
+    st.markdown("### Landsat · imágenes con criterios")
+    st.caption("Compuestos multitemporales, escenas de calidad y trazabilidad.")
     st.info(
         "Para análisis de cambios de cobertura, **MapBiomas es la referencia**. "
         "Las imágenes Landsat de este apartado son productos de observación y la "
@@ -359,34 +368,46 @@ def mostrar_landsat_territorio(nombre_territorio: str) -> None:
 
     compuestos = _compuestos_landsat(carpeta)
     meta = _metadatos_landsat(carpeta)
-    umbral = st.slider(
-        "Máximo de AOI sin dato útil para mostrar escenas ya aprobadas (%)",
-        min_value=0.0, max_value=max(umbral_base, 0.1), value=umbral_base,
-        step=0.5,
-        help="Solo filtra de forma más estricta las escenas que ya pasaron "
-             "el procesamiento; no permite aprobar escenas rechazadas.",
-        key=f"landsat_nube_aoi_{slug}",
-    )
+    solo_compuestos = slug == "chingaza" and meta.empty
+    umbral = umbral_base
+    if not solo_compuestos:
+        umbral = st.slider(
+            "Máximo de AOI sin dato útil para mostrar escenas ya aprobadas (%)",
+            min_value=0.0, max_value=max(umbral_base, 0.1), value=umbral_base,
+            step=0.5,
+            help="Solo filtra de forma más estricta las escenas que ya pasaron "
+                 "el procesamiento; no permite aprobar escenas rechazadas.",
+            key=f"landsat_nube_aoi_{slug}",
+        )
     validas = _escenas_landsat_validas(meta, float(umbral))
     n_aprobadas_original = int(meta["cumple"].sum()) if not meta.empty else 0
-    vistas = st.tabs([
-        "Compuesto de temporada seca",
-        "Escenas que cumplen",
-        "Series de coberturas",
-        "Metadatos y descargas",
-    ])
+    etiquetas = ["Compuesto de temporada seca", "Escenas que cumplen",
+                 "Series de coberturas", "Metadatos y descargas"]
+    vistas = dict(zip(etiquetas, st.tabs(etiquetas)))
 
-    with vistas[0]:
+    with vistas["Compuesto de temporada seca"]:
+        if nombre_territorio == "Chingaza":
+            st.caption("Área de interés: límite del PNN Chingaza del proyecto SIG. No es un buffer circular ni toda la zona de influencia.")
         st.markdown("#### Compuesto multitemporal de temporada seca")
         if not compuestos:
             st.info("No hay compuestos JPG/JSON disponibles para esta sede.")
         else:
             nombres = [c["datos"].get("periodo", c["ficha"].stem) for c in compuestos]
-            indice = (st.selectbox(
-                "Período del compuesto", range(len(compuestos)),
-                format_func=lambda i: str(nombres[i]),
-                key=f"landsat_compuesto_{slug}",
-            ) if len(compuestos) > 1 else 0)
+            if slug == "chingaza":
+                principal = _compuesto_principal_chingaza(compuestos, max_sin_dato)
+                indice = principal
+                if len(compuestos) > 1:
+                    with st.expander("Consultar otros compuestos por temporada", expanded=False):
+                        opciones = [principal] + [i for i in range(len(compuestos)) if i != principal]
+                        indice = st.selectbox("Período del compuesto", opciones,
+                            format_func=lambda i: str(nombres[i]), key=f"landsat_compuesto_chingaza_v2")
+                st.caption(f"Período mostrado: {nombres[indice]}.")
+            else:
+                indice = (st.selectbox(
+                    "Período del compuesto", range(len(compuestos)),
+                    format_func=lambda i: str(nombres[i]),
+                    key=f"landsat_compuesto_{slug}",
+                ) if len(compuestos) > 1 else 0)
             elegido = compuestos[indice]
             datos = elegido["datos"]
             faltantes = float(datos.get("aoi_sin_observacion_pct", 100.0))
@@ -428,10 +449,29 @@ def mostrar_landsat_territorio(nombre_territorio: str) -> None:
                 "solo cambios temporales de cobertura.**"
             )
 
-    with vistas[1]:
+        if nombre_territorio in {"Bogotá", "Chingaza"} and meses:
+            from .landsat_secuencia import fotogramas_aprobados
+            origen = carpeta / "compuestos"
+            video = origen / f"landsat_{slug}_temporadas.mp4"
+            ficha_video = video.with_suffix(".json")
+            if video.is_file() and ficha_video.is_file():
+                try:
+                    registros = fotogramas_aprobados(origen, max_sin_dato, nombre_territorio, meses)
+                    vigente = len(registros) >= 2 and json.loads(ficha_video.read_text(encoding="utf-8")) == registros
+                except (OSError, ValueError, RuntimeError):
+                    vigente = False
+                if vigente:
+                    with st.expander("Evolución de compuestos anuales aprobados", expanded=False):
+                        st.video(str(video), autoplay=True, loop=True, muted=True)
+                        st.caption("Temporadas incluidas: " + ", ".join(str(r["temporada"]) for r in registros) + ". No se interpolan años faltantes.")
+                        _descarga_landsat(video, "Descargar MP4", f"landsat_video_{slug}")
+                else:
+                    st.info("La secuencia debe regenerarse con las fichas aprobadas actuales.")
+
+    with vistas["Escenas que cumplen"]:
         st.markdown("#### Escenas individuales que cumplen los criterios")
         if meta.empty:
-            st.info("No hay `metadatos_escenas.csv` utilizable para esta sede.")
+            st.info("Pendiente de procesamiento de escenas individuales. El compuesto de temporada seca está separado de esta evaluación.")
         else:
             a, b, c = st.columns(3)
             a.metric("Escenas registradas", len(meta))
@@ -483,12 +523,12 @@ def mostrar_landsat_territorio(nombre_territorio: str) -> None:
                 "solo puede ser más estricto."
             )
 
-    with vistas[2]:
+    with vistas["Series de coberturas"]:
         st.markdown("#### Series de coberturas preliminares")
         df_areas, clases = _tabla_areas_landsat(_leer_landsat_si_existe(inv["areas"]))
         if meta.empty:
             st.info(
-                "No se muestra la serie porque falta la tabla de calidad "
+                "Serie de coberturas pendiente: falta la tabla de calidad "
                 "con la cual identificar las fechas aceptadas."
             )
         elif validas.empty:
@@ -545,7 +585,7 @@ def mostrar_landsat_territorio(nombre_territorio: str) -> None:
                 f"landsat_areas_{slug}",
             )
 
-    with vistas[3]:
+    with vistas["Metadatos y descargas"]:
         st.markdown("#### Trazabilidad y control de calidad")
         st.markdown(
             f"**AOI sin dato útil permitido:** {umbral_base:g} %  "
@@ -553,11 +593,11 @@ def mostrar_landsat_territorio(nombre_territorio: str) -> None:
             f"**Meses de comparación:** {', '.join(map(str, meses)) if meses else 'no indicados'}"
         )
         st.caption(
-            "AOI sin dato útil = píxeles no aprovechables dentro del buffer de la sede. "
+            "AOI sin dato útil = píxeles no aprovechables dentro del área de interés de la sede. "
             "No equivale a la nubosidad reportada para la escena Landsat completa."
         )
         if meta.empty:
-            st.info("No hay metadatos de escenas para mostrar.")
+            st.caption("No hay un inventario de escenas individuales aprobado por el script 07. Los registros de las escenas consultadas por el script 08 se presentan en las fichas de los compuestos, cuando existen.")
         else:
             st.dataframe(
                 meta[[c for c in (
@@ -582,13 +622,45 @@ def mostrar_landsat_territorio(nombre_territorio: str) -> None:
         for compuesto in compuestos:
             ficha = compuesto["ficha"]
             with st.expander(f"Ficha del compuesto · {compuesto['datos'].get('periodo', ficha.stem)}"):
-                st.json(compuesto["datos"])
+                d = compuesto["datos"]
+                campos = {
+                    "sede": "Territorio", "periodo": "Período", "temporadas": "Temporadas",
+                    "ventana_meses": "Meses de comparación", "area_interes": "Área de interés",
+                    "buffer_km": "Radio del buffer (km)", "crs": "Sistema de referencia",
+                    "pixel_m": "Resolución (m)", "producto": "Fuente y producto",
+                    "sensores": "Sensores", "escenas_consultadas": "Escenas consultadas",
+                    "escenas_usadas": "Escenas utilizadas", "primera_fecha": "Primera observación",
+                    "ultima_fecha": "Última observación", "aoi_sin_observacion_pct": "AOI sin observación (%)",
+                    "publicable": "Aprobado para visualización", "criterio_publicacion": "Criterio de publicación",
+                    "mascara": "Máscara de calidad", "metodo": "Método", "script": "Script de origen",
+                }
+                filas = []
+                for clave, etiqueta in campos.items():
+                    valor = d.get(clave)
+                    if valor is None:
+                        continue
+                    if isinstance(valor, bool):
+                        valor = "Sí" if valor else "No"
+                    elif isinstance(valor, list):
+                        valor = ", ".join(map(str, valor))
+                    filas.append({"Parámetro": etiqueta, "Valor": str(valor)})
+                st.dataframe(pd.DataFrame(filas), hide_index=True, width="stretch")
                 _descarga_landsat(
                     ficha, "Descargar ficha JSON",
                     f"landsat_json_{slug}_{ficha.stem}",
                 )
                 escenas = ficha.with_name(ficha.name.replace("_compuesto.json", "_escenas.csv"))
                 if escenas.is_file():
+                    registro = _leer_landsat_si_existe(escenas)
+                    if registro is not None and not registro.empty:
+                        st.markdown("**Escenas consultadas para este compuesto**")
+                        st.caption("La inclusión en el compuesto no significa aprobación como escena individual; son criterios distintos.")
+                        st.dataframe(registro.rename(columns={
+                            "id_escena": "ID de escena", "fecha": "Fecha", "sensor": "Sensor",
+                            "path_row": "Path/row", "nubosidad_catalogo_pct": "Nubosidad catálogo (%)",
+                            "aoi_cubierto_pct": "AOI cubierto (%)", "aoi_despejado_pct": "AOI despejado (%)",
+                            "usada_en_compuesto": "Utilizada en compuesto",
+                        }), hide_index=True, width="stretch")
                     _descarga_landsat(
                         escenas, "Descargar escenas del compuesto CSV",
                         f"landsat_escenascomp_{slug}_{escenas.stem}",
@@ -599,7 +671,7 @@ def mostrar_landsat_territorio(nombre_territorio: str) -> None:
                         f"landsat_comp_img_{slug}_{imagen.stem}",
                     )
         st.warning(
-            "Los GIF/MP4 históricos no se usan en esta interfaz. "
+            "Las animaciones históricas sin trazabilidad no se muestran. "
             "No se eliminan del disco ni de Git automáticamente."
         )
 

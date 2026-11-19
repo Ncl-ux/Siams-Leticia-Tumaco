@@ -34,7 +34,7 @@ from siams.landsat_calidad import cargar_criterios, evaluar_control_escenas, nom
 CARPETA = RAIZ / "Landsat"
 # Carpeta del repositorio → nombre de la sede en la app (TERRITORIOS).
 SEDES = {"Bogota": "Bogotá", "Arauca": "Arauca", "La Paz": "La Paz", "Leticia": "Leticia", "Medellin": "Medellín",
-         "San Andres": "San Andrés", "Tumaco": "Tumaco"}
+         "San Andres": "San Andrés", "Tumaco": "Tumaco", "Chingaza": "Chingaza"}
 
 
 def extraer_fotogramas(gif: Path, tabla: pd.DataFrame, destino: Path) -> int:

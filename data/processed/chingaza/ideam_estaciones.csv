@@ -1,0 +1,83 @@
+estacion,nombre,latitud,longitud,altitud_m,municipio,departamento,estado_catalogo,zona,series_en_entrega
+21200780,POTRERO LARGO [21200780],4.929222222,-73.78047222,2780.0,Guatavita,Cundinamarca,Activa,Zona de influencia,False
+21200840,FLORESTA LA [21200840],4.85,-73.78333333,2940.0,Guasca,Cundinamarca,Suspendida,Zona de influencia,True
+21201080,SAN FRANCISCO [21201080],4.9,-73.95,2570.0,Sopó,Cundinamarca,Suspendida,Zona de influencia,False
+21201250,SAN PEDRO [21201250],4.871638889,-73.96666667,2560.0,Sopó,Cundinamarca,Suspendida,Zona de influencia,False
+21201570,ESCUELA COL INGENIERIA [21201570],4.783333333,-74.05,2650.0,"Bogota, D.C",Bogota,Suspendida,Zona de influencia,False
+21201610,SAN ISIDRO [21201610],4.850288889,-73.89072222,2698.0,Guasca,Cundinamarca,Activa,Zona de influencia,False
+21201910,CRYOGAS EL RUBI [21201910],4.466666667,-73.28333333,2700.0,Sibaté,Cundinamarca,Suspendida,Zona de influencia,True
+21205013,UNISALLE NORTE [21205013],4.794444444,-74.03055556,2595.0,"Bogota, D.C",Bogota,Suspendida,Zona de influencia,False
+21205700,GUASCA [21205700],4.879861111,-73.86811111,2750.0,Guasca,Cundinamarca,Activa,Zona de influencia,False
+21205730,CENTRO MED ANDES [21205730],4.698166667,-74.03683333,2575.0,"Bogota, D.C",Bogota,Suspendida,Zona de influencia,False
+21205920,SUASUQUE [21205920],4.820833333,-73.96388889,2650.0,Sopó,Cundinamarca,Activa,Zona de influencia,False
+21205990,LLANO EL [21205990],4.927777778,-73.95,2560.0,Sopó,Cundinamarca,Activa,Zona de influencia,False
+21206050,ESCUELA COL INGENIERIA [21206050],4.783333333,-74.05,2650.0,"Bogota, D.C",Bogota,Suspendida,Zona de influencia,False
+21206150,MOLINOS DEL NORTE [21206150],4.7,-74.05,2580.0,"Bogota, D.C",Bogota,Suspendida,Zona de influencia,False
+21206260,C.UNIV.AGROP-UDCA [21206260],4.798638889,-74.04972222,2570.0,"Bogota, D.C",Bogota,Activa,Zona de influencia,False
+21206500,COL ABRAHAM LINCOL [21206500],4.756638889,-74.06158333,2570.0,"Bogota, D.C",Bogota,Suspendida,Zona de influencia,False
+21206540,EDIFICIO PREMIUM [21206540],4.686944444,-74.05422222,2560.0,"Bogota, D.C",Bogota,Suspendida,Zona de influencia,False
+21206670,COL BUCKINGHAM [21206670],4.792055556,-74.04958333,2574.0,"Bogota, D.C",Bogota,Suspendida,Zona de influencia,False
+21206680,COL NUEVO RETIRO [21206680],4.734111111,-74.03702778,2570.0,"Bogota, D.C",Bogota,Suspendida,Zona de influencia,False
+21206690,COL MIGUEL A. CARO [21206690],4.813166667,-74.03111111,2700.0,"Bogota, D.C",Bogota,En Mantenimiento,Zona de influencia,False
+21206980,SANTA CRUZ DE SIECHA  - AUT [21206980],4.784277778,-73.87080556,3100.0,Guasca,Cundinamarca,En Mantenimiento,Zona de influencia,False
+35020010,MONTERREDONDO [35020010],4.2483,-73.8187,1467.0,Guayabetal,Cundinamarca,Activa,Zona de influencia,True
+35020280,CHOACHI [35020280],4.522916667,-73.92658333,1950.0,Choachí,Cundinamarca,Activa,Zona de influencia,True
+35020290,FOMEQUE [35020290],4.486527778,-73.89041667,1900.0,Fómeque,Cundinamarca,Activa,Zona de influencia,True
+35020330,BOLSA LA [35020330],4.575416667,-73.98141667,3195.0,Choachí,Cundinamarca,Suspendida,Zona de influencia,True
+35025060,BOLSA LA [35025060],4.575416667,-73.98141667,3195.0,Choachí,Cundinamarca,Activa,Zona de influencia,True
+35025080,PNN CHINGAZA - AUT [35025080],4.661,-73.82733,3205.0,La Calera,Cundinamarca,En Mantenimiento,PNN Chingaza,False
+35025090,BOSQUE INTERVENIDO  - AUT [35025090],4.664888889,-73.84663889,2944.0,La Calera,Cundinamarca,En Mantenimiento,Zona de influencia,False
+35025100,CALOSTROS BAJO - AUT [35025100],4.673777778,-73.818888889,2943.0,La Calera,Cundinamarca,Suspendida,Zona de influencia,False
+35027001,PLAZA DE FERIAS [35027001],4.403388889,-73.94055556,1670.0,Cáqueza,Cundinamarca,Activa,Zona de influencia,False
+35027002,PARQUE RAFAEL NUNEZ [35027002],4.407416667,-73.9475,1671.0,Cáqueza,Cundinamarca,En Mantenimiento,Zona de influencia,False
+35027020,ORO PODRIDO [35027020],4.35,-73.88333333,1345.0,Cáqueza,Cundinamarca,Suspendida,Zona de influencia,False
+35027190,GUACAPATE [35027190],4.314305556,-73.87494444,1240.0,Quetame,Cundinamarca,Activa,Zona de influencia,False
+35027500,QUEBRADA RINCON  - AUT [35027500],4.664944444,-73.85738889,2943.0,La Calera,Cundinamarca,En Mantenimiento,Zona de influencia,False
+35027510,CALOSTROS BAJO - AUT  [35027510],4.6645,-73.863083333,2943.0,La Calera,Cundinamarca,En Mantenimiento,Zona de influencia,False
+35027520,BOCATOMA EAAB - AUT [35027520],4.661027778,-73.833333333,3077.0,La Calera,Cundinamarca,Suspendida,Zona de influencia,False
+35030010,EL CALVARIO [35030010],4.35259,-73.71319,1902.0,El Calvario,Meta,Activa,Zona de influencia,True
+35030020,MONFORT [35030020],4.310083333,-73.64802778,1100.0,El Calvario,Meta,Activa,Zona de influencia,True
+35030080,LAS CASAS [35030080],4.441166667,-73.93638889,2100.0,Cáqueza,Cundinamarca,Activa,Zona de influencia,True
+35030090,BUENAVISTA [35030090],4.274777778,-73.61783333,1280.0,Restrepo,Meta,Activa,Zona de influencia,True
+3503500062,EL CALVARIO - AUT [3503500062],4.3502,-73.71152,2014.0,El Calvario,Meta,En Mantenimiento,Zona de influencia,False
+35035030,SALINAS DE UPIN [35035030],4.3,-73.56666667,450.0,Restrepo,Meta,Suspendida,Zona de influencia,True
+35035090,ALTO DEL TIGRE [35035090],4.284861111,-73.74833333,3530.0,El Calvario,Meta,Suspendida,Zona de influencia,True
+35035110,SALINAS DE UPIN  - AUT [35035110],4.273861111,-73.58686111,690.0,Restrepo,Meta,En Mantenimiento,Zona de influencia,False
+35035130,PARAMO CHINGAZA  - AUT [35035130],4.713666667,-73.80325,3863.0,Guasca,Cundinamarca,En Mantenimiento,Zona de influencia,True
+35037100,PUENTE ABADIA - AUT [35037100],4.235333333,-73.63536111,523.0,Villavicencio,Meta,En Mantenimiento,Zona de influencia,False
+35037110,PALMARITO [35037110],4.233333333,-73.53333333,349.0,Restrepo,Meta,Suspendida,Zona de influencia,False
+35040010,EL RETIRO [35040010],4.338722222,-73.54652778,870.0,Medina,Cundinamarca,Activa,Zona de influencia,True
+35047030,PUENTE CARRETERA [35047030],4.31245,-73.41238056,389.0,Cumaral,Meta,Activa,Zona de influencia,False
+35050010,MEDINA [35050010],4.51,-73.349997222,480.0,Medina,Cundinamarca,Activa,Zona de influencia,True
+35050020,SAN JUANITO [35050020],4.423222222,-73.39597222,426.0,Medina,Cundinamarca,Activa,Zona de influencia,True
+3505500061,MEDINA - AUT [3505500061],4.51,-73.349997222,533.0,Medina,Cundinamarca,Activa,Zona de influencia,False
+35057040,PUENTE CARRETERA [35057040],4.198344444,-73.57019722,390.0,Restrepo,Meta,Activa,Zona de influencia,False
+35060020,SUEVA [35060020],4.81,-73.70716667,1965.0,Junín,Cundinamarca,Activa,Zona de influencia,True
+35060040,SANTA ROSA D UBALA 1 [35060040],4.816666667,-73.4,1570.0,Ubalá,Cundinamarca,Suspendida,Zona de influencia,True
+35060050,JUNIN [35060050],4.792222222,-73.66872222,2323.0,Junín,Cundinamarca,Activa,Zona de influencia,True
+35060060,GAMA 1 [35060060],4.766666667,-73.61666667,2140.0,Gama,Cundinamarca,Suspendida,Zona de influencia,True
+35060090,GACHALA [35060090],4.690527778,-73.52291667,1733.0,Gachalá,Cundinamarca,Activa,Zona de influencia,True
+35060100,ESCUELA TENA [35060100],4.712694444,-73.52069444,1650.0,Gachalá,Cundinamarca,Activa,Zona de influencia,True
+35060120,VEGA LA SAN JUAN [35060120],4.723305556,-73.47055556,1791.0,Gachalá,Cundinamarca,Activa,Zona de influencia,True
+35060130,MINAS LAS [35060130],4.675166667,-73.48213889,23.0,Gachalá,Cundinamarca,Activa,Zona de influencia,True
+35060140,PALOMAS LAS [35060140],4.704916667,-73.44488889,23.0,Gachalá,Cundinamarca,Activa,Zona de influencia,True
+35060150,TEMBLADARES [35060150],4.704861111,-73.66527778,2878.0,Junín,Cundinamarca,Activa,Zona de influencia,True
+35060160,POTRERITOS [35060160],4.828805556,-73.76927778,2802.0,Guatavita,Cundinamarca,Activa,Zona de influencia,True
+35060180,UBALA [35060180],4.752388889,-73.52858333,1929.0,Ubalá,Cundinamarca,Activa,Zona de influencia,True
+35060200,AMOLADERO EL [35060200],4.857972222,-73.74538889,2963.0,Guatavita,Cundinamarca,Activa,Zona de influencia,True
+35060210,CLARAVAL AUT [35060210],4.65025,-73.64144444,2100.0,Junín,Cundinamarca,Activa,Zona de influencia,True
+35060220,GLORIA LA [35060220],4.815694444,-73.41977778,1845.0,Ubalá,Cundinamarca,Activa,Zona de influencia,True
+35060230,TRES ESQUINAS [35060230],4.781416667,-73.48905556,1943.0,Ubalá,Cundinamarca,Activa,Zona de influencia,True
+35060240,GAMA [35060240],4.764277778,-73.60991667,2210.0,Gama,Cundinamarca,Activa,Zona de influencia,True
+35060250,SANTA ROSA DE UBALA [35060250],4.796777778,-73.40719444,1649.0,Ubalá,Cundinamarca,Activa,Zona de influencia,True
+35065010,GACHETA [35065010],4.830388889,-73.64647222,1752.0,Gachetá,Cundinamarca,En Mantenimiento,Zona de influencia,True
+35065020,MAMBITA [35065020],4.766666667,-73.33333333,840.0,Ubalá,Cundinamarca,Suspendida,Zona de influencia,True
+35067010,GLORIA LA [35067010],4.815916667,-73.41927778,1900.0,Ubalá,Cundinamarca,Activa,Zona de influencia,False
+35067020,UBALA [35067020],4.75,-73.53333333,1920.0,Ubalá,Cundinamarca,Suspendida,Zona de influencia,False
+35067030,UBALA [35067030],4.780222222,-73.49183333,1920.0,Ubalá,Cundinamarca,Activa,Zona de influencia,False
+35067040,CHUSNEQUE [35067040],4.783333333,-73.58333333,1602.0,Ubalá,Cundinamarca,Suspendida,Zona de influencia,False
+35067050,PUENTE HOLGUIN [35067050],4.799055556,-73.62922222,1645.0,Gachetá,Cundinamarca,Suspendida,Zona de influencia,False
+35067090,LA BOCA [35067090],4.704277778,-73.4775,1684.0,Gachalá,Cundinamarca,Activa,Zona de influencia,False
+35067100,VEGA LA [35067100],4.733333333,-73.48333333,1400.0,Ubalá,Cundinamarca,Suspendida,Zona de influencia,False
+35067120,SANTA BARBARA [35067120],4.666666667,-73.51666667,1542.0,Gachalá,Cundinamarca,Suspendida,Zona de influencia,False
+35067330,PUENTE REYES [35067330],4.81775,-73.64261111,1773.0,Gachetá,Cundinamarca,Activa,Zona de influencia,False

@@ -1,0 +1,52 @@
+estacion,etiqueta,archivo_origen,variable,unidad,meses_validos,meses_calendario,estado
+21200840,PTPM_CON,PTPM_CON@21200840.data,Precipitación,mm/mes,122,126,Agregado mensual preliminar
+21201910,PTPM_CON,PTPM_CON@21201910.data,Precipitación,mm/mes,47,64,Agregado mensual preliminar
+35020010,PTPM_CON,PTPM_CON@35020010.data,Precipitación,mm/mes,613,873,Agregado mensual preliminar
+35020280,PTPM_CON,PTPM_CON@35020280.data,Precipitación,mm/mes,472,510,Agregado mensual preliminar
+35020290,PTPM_CON,PTPM_CON@35020290.data,Precipitación,mm/mes,458,510,Agregado mensual preliminar
+35020330,PTPM_CON,PTPM_CON@35020330.data,Precipitación,mm/mes,19,21,Agregado mensual preliminar
+35020330,TSSM_MEDIA_D,TSSM_MEDIA_D@35020330.data,Temperatura seca media,°C,0,1,Agregado mensual preliminar
+35025060,EVTE_CON,EVTE_CON@35025060.data,Evaporación convencional,mm/mes,74,1434,Agregado mensual preliminar
+35025060,HRHG_CON,HRHG_CON@35025060.data,"Humedad relativa (07, 13 y 19 h)",%,1,347,Agregado mensual preliminar
+35025060,PTPM_CON,PTPM_CON@35025060.data,Precipitación,mm/mes,365,444,Agregado mensual preliminar
+35025060,THSM_MEDIA_D,THSM_MEDIA_D@35025060.data,Temperatura húmeda media,°C,226,423,Agregado mensual preliminar
+35025060,TSSM_MEDIA_D,TSSM_MEDIA_D@35025060.data,Temperatura seca media,°C,281,437,Agregado mensual preliminar
+35030010,PTPM_CON,PTPM_CON@35030010.data,Precipitación,mm/mes,387,667,Agregado mensual preliminar
+35030020,PTPM_CON,PTPM_CON@35030020.data,Precipitación,mm/mes,580,661,Agregado mensual preliminar
+35030080,PTPM_CON,PTPM_CON@35030080.data,Precipitación,mm/mes,418,450,Agregado mensual preliminar
+35030090,PTPM_CON,PTPM_CON@35030090.data,Precipitación,mm/mes,342,362,Agregado mensual preliminar
+35035030,HRHG_CON,HRHG_CON@35035030.data,"Humedad relativa (07, 13 y 19 h)",%,0,4,Agregado mensual preliminar
+35035030,PTPM_CON,PTPM_CON@35035030.data,Precipitación,mm/mes,243,420,Agregado mensual preliminar
+35035030,THSM_MEDIA_D,THSM_MEDIA_D@35035030.data,Temperatura húmeda media,°C,0,120,Agregado mensual preliminar
+35035030,TSSM_MEDIA_D,TSSM_MEDIA_D@35035030.data,Temperatura seca media,°C,38,180,Agregado mensual preliminar
+35035090,PTPM_CON,PTPM_CON@35035090.data,Precipitación,mm/mes,95,104,Agregado mensual preliminar
+35035130,EV_AUT_60,EV_AUT_60@35035130.data,Evaporación automática,,0,0,Pendiente verificar unidad y significado
+35035130,EV_TT_D,EV_TT_D@35035130.data,Evaporación automática,,0,0,Pendiente verificar unidad y significado
+35040010,PTPM_CON,PTPM_CON@35040010.data,Precipitación,mm/mes,568,666,Agregado mensual preliminar
+35050010,PTPM_CON,PTPM_CON@35050010.data,Precipitación,mm/mes,620,656,Agregado mensual preliminar
+35050020,PTPM_CON,PTPM_CON@35050020.data,Precipitación,mm/mes,634,669,Agregado mensual preliminar
+35060020,PTPM_CON,PTPM_CON@35060020.data,Precipitación,mm/mes,546,618,Agregado mensual preliminar
+35060040,PTPM_CON,PTPM_CON@35060040.data,Precipitación,mm/mes,145,151,Agregado mensual preliminar
+35060050,PTPM_CON,PTPM_CON@35060050.data,Precipitación,mm/mes,679,735,Agregado mensual preliminar
+35060060,PTPM_CON,PTPM_CON@35060060.data,Precipitación,mm/mes,130,132,Agregado mensual preliminar
+35060090,PTPM_CON,PTPM_CON@35060090.data,Precipitación,mm/mes,670,734,Agregado mensual preliminar
+35060100,PTPM_CON,PTPM_CON@35060100.data,Precipitación,mm/mes,557,610,Agregado mensual preliminar
+35060120,PTPM_CON,PTPM_CON@35060120.data,Precipitación,mm/mes,585,627,Agregado mensual preliminar
+35060130,PTPM_CON,PTPM_CON@35060130.data,Precipitación,mm/mes,546,577,Agregado mensual preliminar
+35060140,PTPM_CON,PTPM_CON@35060140.data,Precipitación,mm/mes,599,623,Agregado mensual preliminar
+35060150,PTPM_CON,PTPM_CON@35060150.data,Precipitación,mm/mes,554,623,Agregado mensual preliminar
+35060160,PTPM_CON,PTPM_CON@35060160.data,Precipitación,mm/mes,582,609,Agregado mensual preliminar
+35060180,PTPM_CON,PTPM_CON@35060180.data,Precipitación,mm/mes,729,777,Agregado mensual preliminar
+35060200,PTPM_CON,PTPM_CON@35060200.data,Precipitación,mm/mes,609,613,Agregado mensual preliminar
+35060210,PTPM_CON,PTPM_CON@35060210.data,Precipitación,mm/mes,595,619,Agregado mensual preliminar
+35060220,PTPM_CON,PTPM_CON@35060220.data,Precipitación,mm/mes,669,708,Agregado mensual preliminar
+35060230,PTPM_CON,PTPM_CON@35060230.data,Precipitación,mm/mes,557,586,Agregado mensual preliminar
+35060240,PTPM_CON,PTPM_CON@35060240.data,Precipitación,mm/mes,556,612,Agregado mensual preliminar
+35060250,PTPM_CON,PTPM_CON@35060250.data,Precipitación,mm/mes,589,610,Agregado mensual preliminar
+35065010,EVTE_CON,EVTE_CON@35065010.data,Evaporación convencional,mm/mes,113,500,Agregado mensual preliminar
+35065010,PTPM_CON,PTPM_CON@35065010.data,Precipitación,mm/mes,504,741,Agregado mensual preliminar
+35065010,THSM_MEDIA_D,THSM_MEDIA_D@35065010.data,Temperatura húmeda media,°C,158,476,Agregado mensual preliminar
+35065010,TSSM_MEDIA_D,TSSM_MEDIA_D@35065010.data,Temperatura seca media,°C,243,525,Agregado mensual preliminar
+35065020,PTPM_CON,PTPM_CON@35065020.data,Precipitación,mm/mes,96,118,Agregado mensual preliminar
+35065020,THSM_MEDIA_D,THSM_MEDIA_D@35065020.data,Temperatura húmeda media,°C,1,1,Agregado mensual preliminar
+35065020,TSSM_MEDIA_D,TSSM_MEDIA_D@35065020.data,Temperatura seca media,°C,22,57,Agregado mensual preliminar

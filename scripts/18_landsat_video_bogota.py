@@ -4,24 +4,26 @@ No interpola años faltantes; usa las imágenes y rótulos originales del script
 """
 from pathlib import Path
 import json
+import argparse
 import subprocess
 import sys
 import tempfile
 
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
-from siams.landsat_calidad import cargar_criterios
+from siams.landsat_calidad import cargar_criterios, normalizar
 from siams.landsat_secuencia import fotogramas_aprobados
 
 
-def generar(carpeta: Path, umbral: float):
+def generar(carpeta: Path, umbral: float, sede="Bogotá", meses=(12, 1, 2)):
     from PIL import Image, ImageOps
     import imageio_ffmpeg
-    registros = fotogramas_aprobados(carpeta, umbral)
+    registros = fotogramas_aprobados(carpeta, umbral, sede, meses)
     if len(registros) < 2:
         raise SystemExit('Se necesitan al menos dos temporadas aprobadas para generar el MP4.')
-    video = carpeta / 'landsat_bogota_temporadas.mp4'
-    manifiesto = carpeta / 'landsat_bogota_temporadas.json'
+    slug = normalizar(sede).replace(' ', '_')
+    video = carpeta / f'landsat_{slug}_temporadas.mp4'
+    manifiesto = carpeta / f'landsat_{slug}_temporadas.json'
     with tempfile.TemporaryDirectory(dir=carpeta) as temporal:
         tmp = Path(temporal)
         for i, r in enumerate(registros):
@@ -41,5 +43,10 @@ def generar(carpeta: Path, umbral: float):
 
 
 if __name__ == '__main__':
-    generar(RAIZ / 'Landsat' / 'Bogota' / 'compuestos',
-            cargar_criterios()['compuestos']['sin_dato_max_pct'])
+    p = argparse.ArgumentParser()
+    p.add_argument('--sede', choices=['Bogotá', 'Chingaza'], default='Bogotá')
+    a = p.parse_args()
+    c = cargar_criterios()
+    carpeta = 'Bogota' if a.sede == 'Bogotá' else 'Chingaza'
+    generar(RAIZ / 'Landsat' / carpeta / 'compuestos',
+            c['compuestos']['sin_dato_max_pct'], a.sede, c['ventana_estacional'][normalizar(a.sede)])

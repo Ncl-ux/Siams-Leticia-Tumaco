@@ -1,0 +1,11 @@
+{
+  "coleccion": "GPM_3IMERGM",
+  "version_archivo": "V07B",
+  "doi": "10.5067/GPM/IMERG/3B-MONTH/07",
+  "unidad": "mm/mes",
+  "ultimo_mes_publicado_CMR": "2025-09-01",
+  "meses_procesados_en_corrida": 333,
+  "errores": 0,
+  "pendientes_no_procesados": 0,
+  "fecha_corrida_utc": "2026-11-19T18:11:50.736149+00:00"
+}

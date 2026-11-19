@@ -33,6 +33,8 @@ Tumaco = [7, 8, 9, 10]          # meses menos lluviosos en IDEAM y NASA POWER; n
 "Bogotá" = [12, 1, 2]
 
 # Buffer (km) del área de interés alrededor de la sede, el mismo que usaron los fotogramas originales.
+Chingaza = [12, 1, 2] # climatología exploratoria EAAB mensual
+
 [buffer_km]
 Arauca = 20
 "La Paz" = 20

@@ -235,6 +235,7 @@ def tabla_disponibilidad(nombre_territorio: str) -> pd.DataFrame:
     })
 
 SIAMS_SEDES_PORTADA = {
+    "Chingaza": {"icono":"⛰️", "tema":"Sistema hídrico de Chingaza", "descripcion":"Observatorio de cuencas, precipitación y caudales mensuales del proyecto Chingaza."},
     "Bogotá": {
         "icono": "🏛️", "tema": "Cartografía y localización",
         "descripcion": "Ubicación multiescala de la Ciudad Universitaria y exploración del contexto espacial.",
@@ -490,6 +491,12 @@ def periodo_csv_mapbiomas_portada(ruta_texto: str, fecha_cambio_ns: int):
 def periodos_reales_sede_portada(nombre: str) -> list[tuple[str, str]]:
     """Periodos de cobertura de FUENTES distintas, no un único rango inventado."""
     resultado = []
+    if nombre == "Chingaza":
+        from .chingaza_datos import leer_eaab, leer_nasa
+        e=leer_eaab(); e=e.loc[e.valor.notna()]
+        if not e.empty: resultado.append(("EAAB mensual", f"{e.fecha.min().year}–{e.fecha.max().year}"))
+        n=leer_nasa().dropna(subset=["precipitacion_mm_mes"])
+        if not n.empty: resultado.append(("NASA POWER mensual", f"{n.fecha.min().year}–{n.fecha.max().year}"))
     for etiqueta, ruta in (
         ("IDEAM", ARCHIVOS_IDEAM.get(nombre)),
         ("NASA POWER", archivo_nasa_territorio(nombre)),
@@ -525,12 +532,12 @@ def mostrar_sintesis_sedes_inicio() -> None:
     """Galería uniforme 4+3, con fotos y fechas verificadas automáticamente."""
     st.markdown(
         '<div class="siams-home-kicker">SIAMS EN COLOMBIA</div>'
-        '<div class="section-title" style="margin-top:0">Conoce nuestras sedes</div>'
+        '<div class="section-title" style="margin-top:0">Conoce nuestros territorios</div>'
         '<p class="siams-home-subtitle">Una mirada rápida a los territorios, '
         'los estudios y los periodos de información disponibles en el semillero.</p>',
         unsafe_allow_html=True,
     )
-    orden = ["Bogotá", "Leticia", "Tumaco", "Medellín", "San Andrés", "Arauca", "La Paz"]
+    orden = ["Bogotá", "Leticia", "Tumaco", "Medellín", "San Andrés", "Arauca", "La Paz", "Chingaza"]
     # Se usan siempre cuatro columnas: las tres últimas no se ensanchan.
     # Así TODAS las tarjetas miden igual en escritorio.
     for comienzo in (0, 4):

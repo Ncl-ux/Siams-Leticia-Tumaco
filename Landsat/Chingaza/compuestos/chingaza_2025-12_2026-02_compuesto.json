@@ -1,0 +1,64 @@
+{
+ "sede": "Chingaza",
+ "periodo": "2025-12 a 2026-02",
+ "temporadas": [
+  2026
+ ],
+ "ventana_meses": [
+  12,
+  1,
+  2
+ ],
+ "buffer_km": null,
+ "crs": "EPSG:32618",
+ "pixel_m": 30.0,
+ "area_interes": "PNN Chingaza (límite original SIG del proyecto)",
+ "ancho_grilla_m": 52290.0,
+ "producto": "Landsat Collection 2 Level-2 Tier 1 (reflectancia superficial), vía Microsoft Planetary Computer",
+ "sensores": [
+  "landsat-8",
+  "landsat-9"
+ ],
+ "escenas_consultadas": 33,
+ "escenas_usadas": 2,
+ "primera_fecha": "2026-02-27",
+ "ultima_fecha": "2026-02-28",
+ "mascara": "QA_PIXEL bits 0–4 (relleno, nube dilatada, cirro, nube, sombra) y confianza de nube ≥ media, ampliada 60 m",
+ "metodo": "mediana por píxel de observaciones despejadas, sin las que superan en 0.04 el azul mínimo del píxel",
+ "aoi_sin_observacion_pct": 36.44,
+ "publicable": false,
+ "criterio_publicacion": "AOI sin observación ≤ 5.0 %",
+ "realce_color_natural": {
+  "rojo": [
+   0.0,
+   0.18
+  ],
+  "verde": [
+   0.0,
+   0.15
+  ],
+  "azul": [
+   0.0,
+   0.12
+  ]
+ },
+ "realce_falso_color": {
+  "swir1": [
+   0.0,
+   0.4
+  ],
+  "nir": [
+   0.0,
+   0.45
+  ],
+  "rojo": [
+   0.0,
+   0.18
+  ]
+ },
+ "imagenes": {
+  "color_natural": "chingaza_2025-12_2026-02_color_natural.jpg",
+  "falso_color": "chingaza_2025-12_2026-02_falso_color.jpg"
+ },
+ "script": "scripts/08_landsat_compuestos_stac.py"
+}
