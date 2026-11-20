@@ -64,15 +64,15 @@ def mapa():
 
                 lat.append(None);lon.append(None)
 
-        fig.add_trace(go.Scattermapbox(lat=lat,lon=lon,mode='lines',line=dict(width=2,color=colores[i]),name=capa['nombre'],hoverinfo='name'))
+        fig.add_trace(go.Scattermap(lat=lat,lon=lon,mode='lines',line=dict(width=2,color=colores[i]),name=capa['nombre'],hoverinfo='name'))
 
-    fig.add_trace(go.Scattermapbox(lat=[ref['lat']],lon=[ref['lon']],mode='markers',marker=dict(size=11,color='#cd6532'),name='Referencia satelital puntual'))
+    fig.add_trace(go.Scattermap(lat=[ref['lat']],lon=[ref['lon']],mode='markers',marker=dict(size=11,color='#cd6532'),name='Referencia satelital puntual'))
 
     if st.checkbox('Mostrar estaciones IDEAM',value=True,key='chingaza_mapa_ideam'):
 
         agregar_mapa(fig)
 
-    fig.update_layout(mapbox=dict(style='open-street-map',center=dict(lat=ref['lat'],lon=ref['lon']),zoom=9),height=620,margin=dict(l=0,r=0,t=0,b=0),legend=dict(orientation='h'))
+    fig.update_layout(map=dict(style='open-street-map',center=dict(lat=ref['lat'],lon=ref['lon']),zoom=9),height=620,margin=dict(l=0,r=0,t=0,b=0),legend=dict(orientation='h'))
 
     st.plotly_chart(fig,width='stretch')
 

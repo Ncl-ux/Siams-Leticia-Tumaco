@@ -26,7 +26,7 @@ def mostrar_inventario():
 def agregar_mapa(fig):
     est,_,_=cargar()
     for disponible,g in est.groupby('series_en_entrega'):
-        fig.add_trace(go.Scattermapbox(lat=g.latitud,lon=g.longitud,mode='markers',marker=dict(size=8 if disponible else 5,color='#245da8' if disponible else '#929292'),name='IDEAM · con series' if disponible else 'IDEAM · sin series en entrega',text=g.nombre,hovertemplate='%{text}<extra></extra>'))
+        fig.add_trace(go.Scattermap(lat=g.latitud,lon=g.longitud,mode='markers',marker=dict(size=8 if disponible else 5,color='#245da8' if disponible else '#929292'),name='IDEAM · con series' if disponible else 'IDEAM · sin series en entrega',text=g.nombre,hovertemplate='%{text}<extra></extra>'))
 
 def mostrar_ideam():
     est,inv,d=cargar(); st.caption(FUENTE)
