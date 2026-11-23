@@ -4,101 +4,111 @@
       "leticia": {
         "filas": 550,
         "estado": "ok",
-        "actualizado": "2026-11-16T20:45:31+00:00"
+        "actualizado": "2026-11-23T22:20:03+00:00"
       },
       "tumaco": {
         "filas": 550,
         "estado": "ok",
-        "actualizado": "2026-11-16T20:45:31+00:00"
+        "actualizado": "2026-11-23T22:20:03+00:00"
       },
       "arauca": {
         "filas": 550,
         "estado": "ok",
-        "actualizado": "2026-11-16T20:45:31+00:00"
+        "actualizado": "2026-11-23T22:20:03+00:00"
       },
       "la_paz": {
         "filas": 550,
         "estado": "ok",
-        "actualizado": "2026-11-16T20:45:31+00:00"
+        "actualizado": "2026-11-23T22:20:03+00:00"
       },
       "bogota": {
         "filas": 550,
         "estado": "ok",
-        "actualizado": "2026-11-16T20:45:32+00:00"
+        "actualizado": "2026-11-23T22:20:03+00:00"
       },
       "medellin": {
-        "filas": 547,
+        "filas": 550,
         "estado": "ok",
-        "actualizado": "2026-11-17T00:30:22+00:00"
+        "actualizado": "2026-11-23T22:20:03+00:00"
       },
       "san_andres": {
-        "filas": 547,
+        "filas": 550,
         "estado": "ok",
-        "actualizado": "2026-11-17T00:30:22+00:00"
+        "actualizado": "2026-11-23T22:20:03+00:00"
       }
     },
     "ideam": {
       "leticia": {
-        "filas": 524,
+        "filas": 530,
         "estado": "ok",
-        "actualizado": "2026-11-16T20:45:50+00:00"
+        "actualizado": "2026-11-23T22:20:49+00:00"
       },
       "tumaco": {
-        "filas": 522,
+        "filas": 530,
         "estado": "ok",
-        "actualizado": "2026-11-16T20:46:16+00:00"
+        "actualizado": "2026-11-23T22:20:58+00:00"
       },
       "arauca": {
-        "filas": 456,
+        "filas": 464,
         "estado": "ok",
-        "actualizado": "2026-11-16T20:46:33+00:00"
+        "actualizado": "2026-11-23T22:21:03+00:00"
       },
       "la_paz": {
         "filas": 0,
         "estado": "ok",
-        "actualizado": "2026-11-16T20:46:33+00:00"
+        "actualizado": "2026-11-23T22:21:03+00:00"
       },
       "bogota": {
         "filas": 0,
         "estado": "ok",
-        "actualizado": "2026-11-16T20:46:33+00:00"
+        "actualizado": "2026-11-23T22:21:03+00:00"
+      },
+      "medellin": {
+        "filas": 0,
+        "estado": "ok",
+        "actualizado": "2026-11-23T22:20:58+00:00"
+      },
+      "san_andres": {
+        "filas": 0,
+        "estado": "ok",
+        "actualizado": "2026-11-23T22:20:58+00:00"
       }
     },
     "nasa_power": {
       "leticia": {
-        "filas": 16753,
+        "filas": 16760,
         "estado": "ok",
-        "actualizado": "2026-11-16T19:54:22+00:00"
+        "actualizado": "2026-11-23T22:19:55+00:00"
       },
       "tumaco": {
-        "filas": 16753,
+        "filas": 16760,
         "estado": "ok",
-        "actualizado": "2026-11-16T19:54:24+00:00"
+        "actualizado": "2026-11-23T22:19:56+00:00"
       },
       "arauca": {
-        "filas": 16753,
+        "filas": 16760,
         "estado": "ok",
-        "actualizado": "2026-11-16T19:54:27+00:00"
+        "actualizado": "2026-11-23T22:19:58+00:00"
       },
       "la_paz": {
-        "filas": 16753,
+        "filas": 16760,
         "estado": "ok",
-        "actualizado": "2026-11-16T19:54:30+00:00"
+        "actualizado": "2026-11-23T22:19:59+00:00"
       },
       "bogota": {
-        "filas": 16753,
+        "filas": 16760,
         "estado": "ok",
-        "actualizado": "2026-11-16T19:51:11+00:00"
+        "actualizado": "2026-11-23T22:20:00+00:00"
       },
       "medellin": {
-        "filas": 16753,
+        "filas": 16760,
         "estado": "ok",
-        "actualizado": "2026-11-16T19:54:32+00:00"
+        "actualizado": "2026-11-23T22:19:57+00:00"
       },
       "san_andres": {
-        "filas": 16753,
+        "filas": 16760,
         "estado": "ok",
-        "actualizado": "2026-11-16T19:54:34+00:00"
+        "actualizado": "2026-11-23T22:19:58+00:00"
       }
     }
   },
@@ -106,5 +116,5 @@
     "grace_gldas": "Requiere Earthdata (scripts/06_*.py); se actualiza manualmente.",
     "era5_land": "Requiere clave Copernicus CDS; no configurada."
   },
-  "ultima_actualizacion": "2026-11-17T00:30:22+00:00"
+  "ultima_actualizacion": "2026-11-23T22:21:03+00:00"
 }
